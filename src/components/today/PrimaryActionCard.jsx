@@ -13,6 +13,9 @@ function MetaItem({ icon, children }) {
 }
 
 export default function PrimaryActionCard({
+  state = "neutral",
+  tone = "neutral",
+  motionIntensity = "normal",
   durationLabel = "30 min",
   title = "Bloc prioritaire",
   description = "Avancer sur ton objectif principal.",
@@ -20,6 +23,7 @@ export default function PrimaryActionCard({
   timingLabel = "",
   priorityLabel = "Priorité haute",
   reason = "C’est le bloc qui débloque ta journée.",
+  label = "Action critique",
   primaryLabel = "Verrouiller 30 min",
   secondaryLabel = "Reporter",
   detailLabel = "Voir détail",
@@ -27,14 +31,22 @@ export default function PrimaryActionCard({
   onSecondary,
   onDetail,
   canPrimary = true,
+  canSecondary = true,
+  canDetail = true,
+  status = "ready",
 }) {
+  const statusClass = status ? ` is-action-${String(status).replace(/_/g, "-")}` : "";
+  const stateClass = state ? ` today-state-${state}` : "";
+  const toneClass = tone ? ` today-tone-${tone}` : "";
+  const motionClass = motionIntensity ? ` today-motion-${motionIntensity}` : "";
+
   return (
-    <CommandSurface className="todayPrimaryActionCard" tone="execution" data-testid="today-primary-action-card">
+    <CommandSurface className={`todayPrimaryActionCard${statusClass}${stateClass}${toneClass}${motionClass}`} tone="execution" data-testid="today-primary-action-card">
       <div className="todayPrimaryBeam" aria-hidden="true" />
       <div className="todaySurfaceTopline">
         <span className="todaySurfaceEyebrow">
           <span className="todaySurfaceDot" aria-hidden="true" />
-          Action critique
+          {label}
         </span>
         {durationLabel ? <span className="todaySurfaceMeta">{durationLabel}</span> : null}
       </div>
@@ -63,11 +75,11 @@ export default function PrimaryActionCard({
         </button>
 
         <div className="todayPrimarySecondaryRow">
-          <button type="button" onClick={() => onSecondary?.()}>
+          <button type="button" onClick={() => onSecondary?.()} disabled={!canSecondary}>
             {secondaryLabel}
           </button>
           <span aria-hidden="true" />
-          <button type="button" onClick={() => onDetail?.()}>
+          <button type="button" onClick={() => onDetail?.()} disabled={!canDetail}>
             {detailLabel}
           </button>
         </div>

@@ -693,6 +693,95 @@
     linear-gradient(180deg, #050607 0%, #080a0d 48%, #040505 100%);
 }
 
+.todayCockpitScreen.today-tone-offline .bg {
+  background:
+    radial-gradient(circle at 64% 5%, rgba(210, 216, 210, 0.08), transparent 34%),
+    radial-gradient(circle at 5% 22%, rgba(210, 216, 210, 0.035), transparent 28%),
+    linear-gradient(180deg, #050607 0%, #080a0d 48%, #040505 100%);
+}
+
+.todayCockpitScreen {
+  --today-state-accent: var(--today-green);
+  --today-state-soft: rgba(53, 240, 109, 0.14);
+  --today-state-border: rgba(53, 240, 109, 0.2);
+}
+
+.todayCockpitScreen.today-tone-risk {
+  --today-state-accent: #ff9b45;
+  --today-state-soft: rgba(255, 155, 69, 0.12);
+  --today-state-border: rgba(255, 155, 69, 0.26);
+}
+
+.todayCockpitScreen.today-tone-late,
+.todayCockpitScreen.today-tone-error {
+  --today-state-accent: var(--today-danger);
+  --today-state-soft: rgba(255, 77, 77, 0.1);
+  --today-state-border: rgba(255, 77, 77, 0.24);
+}
+
+.todayCockpitScreen.today-tone-offline,
+.todayCockpitScreen.today-motion-frozen,
+.todayCockpitScreen.today-motion-none {
+  --today-state-accent: rgba(210, 216, 210, 0.72);
+  --today-state-soft: rgba(210, 216, 210, 0.07);
+  --today-state-border: rgba(210, 216, 210, 0.14);
+  --today-timeline-progress: rgba(218, 224, 218, 0.5);
+}
+
+.todayCockpitScreen.today-tone-locked {
+  --today-state-accent: color-mix(in srgb, var(--today-green) 82%, white 18%);
+  --today-state-soft: rgba(53, 240, 109, 0.1);
+  --today-state-border: rgba(53, 240, 109, 0.18);
+}
+
+.todayCockpitScreen.today-tone-risk {
+  --today-timeline-progress: #ff9b45;
+}
+
+.todayCockpitScreen.today-tone-late {
+  --today-timeline-progress: var(--today-danger);
+}
+
+.todayCockpitScreen.today-tone-error {
+  --today-timeline-progress: rgba(255, 120, 120, 0.62);
+}
+
+.todayCockpitScreen.today-tone-risk .todayDiagnosticHero,
+.todayCockpitScreen.today-tone-risk .todayPrimaryActionCard,
+.todayCockpitScreen.today-tone-late .todayDiagnosticHero,
+.todayCockpitScreen.today-tone-late .todayPrimaryActionCard,
+.todayCockpitScreen.today-tone-error .todayDiagnosticHero,
+.todayCockpitScreen.today-tone-offline .todayDiagnosticHero,
+.todayCockpitScreen.today-tone-offline .todayPrimaryActionCard {
+  border-color: var(--today-state-border);
+}
+
+.todayCockpitScreen.today-tone-risk .todaySurfaceEyebrow,
+.todayCockpitScreen.today-tone-risk .todayHeroDelta,
+.todayCockpitScreen.today-tone-late .todaySurfaceEyebrow,
+.todayCockpitScreen.today-tone-late .todayHeroDelta,
+.todayCockpitScreen.today-tone-error .todaySurfaceEyebrow,
+.todayCockpitScreen.today-tone-error .todayHeroDelta,
+.todayCockpitScreen.today-tone-offline .todaySurfaceEyebrow,
+.todayCockpitScreen.today-tone-offline .todayHeroDelta {
+  color: var(--today-state-accent);
+}
+
+.todayCockpitScreen.today-tone-risk .todayFloatingWelcomeLine svg,
+.todayCockpitScreen.today-tone-late .todayFloatingWelcomeLine svg,
+.todayCockpitScreen.today-tone-error .todayFloatingWelcomeLine svg,
+.todayCockpitScreen.today-tone-offline .todayFloatingWelcomeLine svg {
+  color: var(--today-state-accent);
+  filter: drop-shadow(0 0 8px var(--today-state-soft));
+}
+
+.todayCockpitScreen.today-tone-risk .todayAiEyebrow,
+.todayCockpitScreen.today-tone-late .todayAiEyebrow,
+.todayCockpitScreen.today-tone-error .todayAiEyebrow,
+.todayCockpitScreen.today-tone-offline .todayAiEyebrow {
+  color: var(--today-ai);
+}
+
 .todayCockpitScreen .container {
   max-width: 665px;
   padding-top: calc(14px + var(--safe-top));
@@ -929,6 +1018,29 @@
   padding: 14px 18px 13px;
   display: grid;
   gap: 7px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 18px 40px rgba(0, 0, 0, 0.44),
+    0 0 34px rgba(53, 240, 109, 0.075);
+}
+
+.todayDiagnosticHero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 68% 7%, rgba(53, 240, 109, 0.34), transparent 30%),
+    radial-gradient(circle at 20% 58%, rgba(53, 240, 109, 0.08), transparent 34%),
+    radial-gradient(circle at center, rgba(94, 255, 137, 0.22) 0 1px, transparent 1px),
+    linear-gradient(90deg, rgba(53, 240, 109, 0.035) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(53, 240, 109, 0.035) 1px, transparent 1px);
+  background-size: 310px 220px, 270px 190px, 15px 15px, 52px 52px, 52px 52px;
+  background-position: 64% -8px, 18% 54%, 0 0, 0 0, 0 0;
+  opacity: 0.26;
+  mask-image: linear-gradient(90deg, transparent, black 14%, black 86%, transparent);
+  animation: todayHeroSurfaceDrift 24s ease-in-out infinite alternate;
+  will-change: opacity, background-position;
 }
 
 .todayDiagnosticHero::after {
@@ -943,10 +1055,14 @@
   box-shadow:
     0 0 32px rgba(53, 240, 109, 0.32),
     inset 0 0 34px rgba(53, 240, 109, 0.1);
+  opacity: 0.74;
   pointer-events: none;
   transition:
     opacity var(--today-motion-standard) var(--today-ease-out),
     box-shadow var(--today-motion-standard) var(--today-ease-out);
+  animation: todayHeroArcOrbit 26s ease-in-out infinite alternate;
+  transform-origin: 50% 50%;
+  will-change: transform, opacity;
 }
 
 .todayHeroScoreCluster,
@@ -967,6 +1083,18 @@
   color: #fbfbf8;
   font-variant-numeric: tabular-nums;
   text-shadow: 0 0 28px rgba(53, 240, 109, 0.16);
+}
+
+.todayHeroScore.is-unavailable {
+  gap: 0;
+}
+
+.todayHeroScoreUnavailable {
+  display: inline-block;
+  color: #fbfbf8;
+  font-size: 0.86em;
+  line-height: 0.9;
+  letter-spacing: 0;
 }
 
 .todayHeroScoreMain::first-letter {
@@ -994,6 +1122,22 @@
   color: var(--today-green);
   font-size: 14px;
   line-height: 1.2;
+}
+
+.todayCockpitScreen .todayHeroDelta.is-delta-positive {
+  color: var(--today-green);
+}
+
+.todayCockpitScreen .todayHeroDelta.is-delta-negative {
+  color: #ff9b45;
+}
+
+.todayCockpitScreen .todayHeroDelta.is-delta-severe {
+  color: var(--today-danger);
+}
+
+.todayCockpitScreen .todayHeroDelta.is-delta-neutral {
+  color: rgba(235, 239, 235, 0.68);
 }
 
 .todayHeroStatus {
@@ -1112,21 +1256,141 @@
 
 .todayPrimaryActionCard {
   padding: 14px 18px 13px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    0 18px 40px rgba(0, 0, 0, 0.44),
+    0 0 30px rgba(53, 240, 109, 0.055);
   transition:
     border-color var(--today-motion-standard) var(--today-ease-out),
     box-shadow var(--today-motion-standard) var(--today-ease-out);
 }
 
+.todayPrimaryActionCard::after {
+  content: "";
+  position: absolute;
+  inset: -18px -14px;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 58%, rgba(53, 240, 109, 0.13), transparent 35%),
+    repeating-radial-gradient(ellipse at 50% 46%, rgba(53, 240, 109, 0.18) 0 1px, transparent 1px 13px),
+    linear-gradient(90deg, transparent 0 34%, rgba(53, 240, 109, 0.08) 46%, rgba(53, 240, 109, 0.12) 50%, rgba(53, 240, 109, 0.08) 54%, transparent 66%),
+    radial-gradient(ellipse at 50% 0%, rgba(53, 240, 109, 0.16), transparent 42%);
+  background-size: 100% 100%, 420px 210px, 100% 100%, 100% 100%;
+  background-position: center, 50% 50%, center, center;
+  opacity: 0.26;
+  transform: rotate(-1deg) scale(1.02);
+  mask-image: radial-gradient(ellipse at 50% 58%, black 0 42%, transparent 76%);
+  animation: todayPrimaryFlowDrift 18s linear infinite;
+  will-change: background-position;
+}
+
 .todayPrimaryBeam {
   position: absolute;
   inset: -18px auto -18px 50%;
+  z-index: 0;
   width: 1px;
   background: linear-gradient(180deg, transparent, rgba(53, 240, 109, 0.88), transparent);
   box-shadow: 0 0 22px rgba(53, 240, 109, 0.72);
+  opacity: 0.62;
   pointer-events: none;
   transition:
     opacity var(--today-motion-standard) var(--today-ease-out),
     box-shadow var(--today-motion-standard) var(--today-ease-out);
+  animation: todayPrimaryBeamBreathe 10s ease-in-out infinite;
+  will-change: opacity, box-shadow;
+}
+
+.todayPrimaryActionCard.is-action-in-progress .todayPrimaryBeam {
+  animation-duration: 6.4s;
+  opacity: 0.74;
+}
+
+.todayPrimaryActionCard.is-action-late .todayPrimaryBeam {
+  background: linear-gradient(180deg, transparent, rgba(255, 122, 69, 0.78), rgba(53, 240, 109, 0.35), transparent);
+  box-shadow: 0 0 22px rgba(255, 122, 69, 0.36);
+  animation-duration: 7s;
+}
+
+.todayCockpitScreen.today-tone-risk .todayPrimaryBeam,
+.todayPrimaryActionCard.today-tone-risk .todayPrimaryBeam {
+  background: linear-gradient(180deg, transparent, rgba(255, 155, 69, 0.58), rgba(53, 240, 109, 0.36), transparent);
+  box-shadow: 0 0 20px rgba(255, 155, 69, 0.26);
+}
+
+.todayCockpitScreen.today-tone-late .todayPrimaryActionCard,
+.todayCockpitScreen.today-tone-error .todayPrimaryActionCard {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    0 18px 40px rgba(0, 0, 0, 0.44),
+    0 0 20px rgba(255, 77, 77, 0.07);
+}
+
+.todayCockpitScreen.today-motion-low .todayPrimaryBeam,
+.todayPrimaryActionCard.today-motion-low .todayPrimaryBeam {
+  animation-duration: 12s;
+  opacity: 0.48;
+}
+
+.todayCockpitScreen.today-motion-elevated .todayPrimaryBeam,
+.todayPrimaryActionCard.today-motion-elevated .todayPrimaryBeam {
+  animation-duration: 6.2s;
+  opacity: 0.76;
+}
+
+.todayCockpitScreen.today-motion-none .todayDiagnosticHero::before,
+.todayCockpitScreen.today-motion-none .todayDiagnosticHero::after,
+.todayCockpitScreen.today-motion-none .todayPrimaryActionCard::after,
+.todayCockpitScreen.today-motion-none .todayPrimaryBeam,
+.todayCockpitScreen.today-motion-none .todayTimelineTrack::after,
+.todayCockpitScreen.today-motion-none .todayTimelinePoint.is-active .todayTimelinePointMarker::after,
+.todayCockpitScreen.today-motion-none .todayAiSignal,
+.todayCockpitScreen.today-motion-none .todayAiSignal::before,
+.todayCockpitScreen.today-motion-frozen .todayDiagnosticHero::before,
+.todayCockpitScreen.today-motion-frozen .todayDiagnosticHero::after,
+.todayCockpitScreen.today-motion-frozen .todayPrimaryActionCard::after,
+.todayCockpitScreen.today-motion-frozen .todayPrimaryBeam,
+.todayCockpitScreen.today-motion-frozen .todayTimelineTrack::after,
+.todayCockpitScreen.today-motion-frozen .todayTimelinePoint.is-active .todayTimelinePointMarker::after,
+.todayCockpitScreen.today-motion-frozen .todayAiSignal,
+.todayCockpitScreen.today-motion-frozen .todayAiSignal::before {
+  animation: none;
+}
+
+.todayCockpitScreen.today-motion-none .todayDiagnosticHero::before,
+.todayCockpitScreen.today-motion-frozen .todayDiagnosticHero::before {
+  opacity: 0.16;
+}
+
+.todayCockpitScreen.today-motion-none .todayPrimaryActionCard::after,
+.todayCockpitScreen.today-motion-frozen .todayPrimaryActionCard::after,
+.todayCockpitScreen.today-motion-none .todayAiSignal,
+.todayCockpitScreen.today-motion-frozen .todayAiSignal {
+  opacity: 0.18;
+}
+
+.todayCockpitScreen.today-state-offline_without_cache .todayDiagnosticHero::before,
+.todayCockpitScreen.today-state-offline_without_cache .todayPrimaryActionCard::after {
+  filter: grayscale(0.78) saturate(0.22);
+  opacity: 0.12;
+}
+
+.todayCockpitScreen.today-state-offline_without_cache .todayDiagnosticHero::after {
+  border-color: rgba(218, 224, 218, 0.24);
+  box-shadow:
+    0 0 22px rgba(218, 224, 218, 0.08),
+    inset 0 0 28px rgba(218, 224, 218, 0.045);
+  opacity: 0.42;
+}
+
+.todayCockpitScreen.today-state-offline_without_cache .todayPrimaryBeam {
+  background: linear-gradient(180deg, transparent, rgba(218, 224, 218, 0.22), transparent);
+  box-shadow: 0 0 14px rgba(218, 224, 218, 0.08);
+  opacity: 0.28;
+}
+
+.todayCockpitScreen.today-state-offline_without_cache .todayHeroProgressText strong::first-letter {
+  color: rgba(235, 239, 235, 0.72);
 }
 
 .todayPrimaryActionCard:has(.todayCommitmentButton:active:not(:disabled)) {
@@ -1205,6 +1469,15 @@
   opacity: 0.64;
 }
 
+.todayPrimaryActionCard.today-state-offline_without_cache .todayCommitmentButton:disabled {
+  background: linear-gradient(90deg, rgba(218, 224, 218, 0.72), rgba(180, 188, 182, 0.64));
+  color: rgba(5, 8, 7, 0.72);
+  opacity: 0.78;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    0 0 12px rgba(218, 224, 218, 0.045);
+}
+
 .todayCommitmentButton:active,
 .todayPrimarySecondaryRow button:active,
 .todayAiActions button:active,
@@ -1245,9 +1518,19 @@
   transform-origin: center;
 }
 
+.todayPrimarySecondaryRow button:disabled {
+  cursor: default;
+  opacity: 0.42;
+}
+
 .todayPrimarySecondaryRow button:hover,
 .todayPrimarySecondaryRow button:focus-visible {
   color: rgba(235, 239, 235, 0.82);
+}
+
+.todayPrimarySecondaryRow button:disabled:hover,
+.todayPrimarySecondaryRow button:disabled:focus-visible {
+  color: rgba(235, 239, 235, 0.62);
 }
 
 .todayTimelineCard {
@@ -1312,12 +1595,37 @@
   right: 76px;
   bottom: 8px;
   height: 2px;
+  z-index: 0;
   background: linear-gradient(90deg, var(--today-green), rgba(255, 255, 255, 0.16));
+}
+
+.todayTimelineTrack::after {
+  content: "";
+  position: absolute;
+  left: 34px;
+  right: 76px;
+  bottom: 8px;
+  height: 2px;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(53, 240, 109, 0.08) 24%,
+    rgba(53, 240, 109, 0.34) 50%,
+    rgba(53, 240, 109, 0.08) 76%,
+    transparent 100%
+  );
+  background-size: 170px 100%;
+  opacity: 0.22;
+  animation: todayTimelineRailSheen 8s linear infinite;
+  will-change: background-position, opacity;
 }
 
 .todayTimelinePoint {
   appearance: none;
   position: relative;
+  z-index: 1;
   display: grid;
   justify-items: center;
   gap: 4px;
@@ -1423,6 +1731,27 @@
   box-shadow: 0 0 14px rgba(53, 240, 109, 0.52);
 }
 
+.todayTimelinePoint.is-late {
+  color: var(--today-danger);
+}
+
+.todayTimelinePoint.is-late .todayTimelinePointMarker {
+  border-color: rgba(255, 77, 77, 0.7);
+  background: #261213;
+  color: #ffd6d6;
+  box-shadow: 0 0 12px rgba(255, 77, 77, 0.32);
+}
+
+.todayTimelinePoint.is-postponed {
+  color: #ffad66;
+}
+
+.todayTimelinePoint.is-postponed .todayTimelinePointMarker {
+  border-color: rgba(255, 155, 69, 0.7);
+  background: rgba(255, 155, 69, 0.16);
+  box-shadow: 0 0 12px rgba(255, 155, 69, 0.18);
+}
+
 .todayTimelinePoint.is-active .todayTimelinePointTime {
   padding: 4px 7px;
   border-radius: 8px;
@@ -1434,8 +1763,39 @@
   color: rgba(245, 248, 244, 0.92);
 }
 
+.todayTimelinePoint.is-active .todayTimelinePointMarker::after {
+  opacity: 0.56;
+  transform: scale(1);
+  animation: todayTimelineActiveGlow 7.2s ease-in-out infinite;
+  will-change: opacity, transform;
+}
+
 .todayTimelinePoint.is-empty .todayTimelinePointTitle {
   white-space: normal;
+}
+
+.todayTimelineCard.has-placeholder-timeline .todayTimelineTrack {
+  justify-content: flex-start;
+  min-width: 100%;
+  padding-right: 0;
+}
+
+.todayTimelineCard.has-placeholder-timeline .todayTimelinePoint {
+  flex-basis: 128px;
+  min-width: 128px;
+}
+
+.todayTimelineCard.is-timeline-disabled .todayTimelineTrack::before,
+.todayTimelineCard.is-timeline-disabled .todayTimelineTrack::after,
+.todayTimelineCard.is-timeline-empty .todayTimelineTrack::before,
+.todayTimelineCard.is-timeline-empty .todayTimelineTrack::after {
+  background: rgba(255, 255, 255, 0.12);
+  animation: none;
+}
+
+.todayTimelineCard.has-placeholder-timeline .todayTimelineProgressEnd {
+  color: rgba(235, 239, 235, 0.5);
+  text-shadow: none;
 }
 
 .todayTimelineProgressEnd {
@@ -1453,8 +1813,36 @@
   text-shadow: 0 0 14px rgba(53, 240, 109, 0.22);
 }
 
+.todayTimelineCard.today-tone-neutral .todayTimelineProgressEnd {
+  color: color-mix(in srgb, var(--today-green) 64%, rgba(235, 239, 235, 0.72) 36%);
+  text-shadow: 0 0 10px rgba(53, 240, 109, 0.12);
+}
+
+.todayTimelineCard.today-tone-risk .todayTimelineProgressEnd,
+.todayTimelineCard.today-state-postponed .todayTimelineProgressEnd {
+  color: #ff9b45;
+  text-shadow: 0 0 12px rgba(255, 155, 69, 0.16);
+}
+
+.todayTimelineCard.today-tone-late .todayTimelineProgressEnd {
+  color: var(--today-danger);
+  text-shadow: 0 0 12px rgba(255, 77, 77, 0.16);
+}
+
+.todayTimelineCard.today-tone-error .todayTimelineProgressEnd,
+.todayTimelineCard.today-tone-offline .todayTimelineProgressEnd,
+.todayTimelineCard.is-timeline-disabled .todayTimelineProgressEnd,
+.todayTimelineCard.is-timeline-empty .todayTimelineProgressEnd {
+  color: rgba(235, 239, 235, 0.46);
+  text-shadow: none;
+}
+
 .todayAiInsightCard {
   padding: 14px 18px 15px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    0 22px 50px rgba(0, 0, 0, 0.48),
+    0 0 36px rgba(139, 92, 246, 0.12);
 }
 
 .todayAiSignal {
@@ -1462,14 +1850,76 @@
   inset: 14px -40px auto 34%;
   height: 92px;
   pointer-events: none;
+  overflow: visible;
   background:
-    radial-gradient(ellipse at center, rgba(139, 92, 246, 0.3), transparent 56%),
-    repeating-radial-gradient(ellipse at center, rgba(139, 92, 246, 0.28) 0 1px, transparent 1px 12px);
-  opacity: 0.44;
+    radial-gradient(ellipse at 62% 52%, rgba(139, 92, 246, 0.3), transparent 56%),
+    repeating-radial-gradient(ellipse at 60% 54%, rgba(139, 92, 246, 0.24) 0 1px, transparent 1px 12px),
+    linear-gradient(105deg, transparent 0 22%, rgba(185, 137, 255, 0.2) 44%, transparent 66% 100%);
+  background-size: 100% 100%, 360px 130px, 220% 100%;
+  background-position: center, 50% 50%, 120% 0;
+  opacity: 0.42;
   transform: rotate(-8deg);
   transition:
     opacity var(--today-motion-standard) var(--today-ease-out),
     transform var(--today-motion-standard) var(--today-ease-out);
+  animation: todayAiSignalDrift 16s ease-in-out infinite alternate;
+  will-change: opacity, transform, background-position;
+}
+
+.todayAiSignal::before,
+.todayAiSignal::after {
+  content: "";
+  position: absolute;
+  inset: -10px -18px;
+  pointer-events: none;
+}
+
+.todayAiSignal::before {
+  background:
+    radial-gradient(circle at center, rgba(202, 170, 255, 0.28) 0 1px, transparent 1px),
+    linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.12), transparent);
+  background-size: 12px 12px, 220% 100%;
+  background-position: 0 0, 100% 0;
+  opacity: 0.28;
+  mask-image: linear-gradient(105deg, transparent 0%, black 24%, black 74%, transparent 100%);
+  animation: todayAiSignalSweep 14s linear infinite;
+  will-change: background-position;
+}
+
+.todayAiSignal::after {
+  border-radius: 999px;
+  background:
+    radial-gradient(ellipse at 72% 50%, rgba(190, 143, 255, 0.2), transparent 54%),
+    repeating-radial-gradient(ellipse at 72% 50%, transparent 0 13px, rgba(139, 92, 246, 0.2) 14px 15px, transparent 16px 27px);
+  opacity: 0.3;
+  transform: translate3d(8px, 0, 0) scaleX(1.04);
+}
+
+.todayAiInsightCard.is-ai-loading .todayAiSignal {
+  opacity: 0.58;
+  animation: todayAiLoadingSignal 6.4s ease-in-out infinite alternate;
+}
+
+.todayAiInsightCard.is-ai-loading .todayAiSignal::before {
+  opacity: 0.42;
+  animation-duration: 6.8s;
+}
+
+.todayAiInsightCard.is-ai-unavailable .todayAiSignal,
+.todayAiInsightCard.is-ai-error .todayAiSignal,
+.todayAiInsightCard.is-ai-hidden .todayAiSignal {
+  opacity: 0.16;
+  animation: none;
+}
+
+.todayAiInsightCard.is-ai-unavailable .todayAiSignal::before,
+.todayAiInsightCard.is-ai-error .todayAiSignal::before,
+.todayAiInsightCard.is-ai-hidden .todayAiSignal::before,
+.todayAiInsightCard.is-ai-unavailable .todayAiSignal::after,
+.todayAiInsightCard.is-ai-error .todayAiSignal::after,
+.todayAiInsightCard.is-ai-hidden .todayAiSignal::after {
+  animation: none;
+  opacity: 0.16;
 }
 
 .todayAiEyebrow {
@@ -1561,14 +2011,30 @@
 }
 
 .todayAiApplyButton {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
+  overflow: hidden;
   border: 0;
   background: linear-gradient(180deg, #8f50ff, #7025e8);
   color: #fbf7ff;
   box-shadow: 0 0 22px rgba(139, 92, 246, 0.34);
+}
+
+.todayAiApplyButton::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  pointer-events: none;
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.5), transparent 54%);
+  opacity: 0;
+  transform: scale(0.88);
+}
+
+.todayAiInsightCard.is-ai-applicable .todayAiApplyButton:not(:disabled):active::after {
+  animation: todayAiApplyConfirm 520ms ease-out both;
 }
 
 .todayAiApplyButton:disabled {
@@ -1684,6 +2150,119 @@
   }
 }
 
+@keyframes todayHeroSurfaceDrift {
+  0% {
+    opacity: 0.2;
+    background-position: 60% -10px, 17% 56%, 0 0, 0 0, 0 0;
+  }
+  100% {
+    opacity: 0.34;
+    background-position: 70% 4px, 22% 50%, 12px 10px, 18px 0, 0 18px;
+  }
+}
+
+@keyframes todayHeroArcOrbit {
+  0% {
+    opacity: 0.68;
+    transform: translate3d(-3px, 2px, 0) rotate(-1.2deg) scale(1);
+  }
+  100% {
+    opacity: 0.82;
+    transform: translate3d(5px, -4px, 0) rotate(1.4deg) scale(1.018);
+  }
+}
+
+@keyframes todayPrimaryBeamBreathe {
+  0%,
+  100% {
+    opacity: 0.48;
+    box-shadow: 0 0 18px rgba(53, 240, 109, 0.44);
+  }
+  50% {
+    opacity: 0.72;
+    box-shadow: 0 0 26px rgba(53, 240, 109, 0.68);
+  }
+}
+
+@keyframes todayPrimaryFlowDrift {
+  0% {
+    background-position: center, 48% 50%, center, center;
+  }
+  100% {
+    background-position: center, 56% 50%, center, center;
+  }
+}
+
+@keyframes todayTimelineActiveGlow {
+  0%,
+  100% {
+    opacity: 0.38;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 0.64;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes todayTimelineRailSheen {
+  from {
+    background-position: -170px 0;
+  }
+  to {
+    background-position: 170px 0;
+  }
+}
+
+@keyframes todayAiSignalDrift {
+  0% {
+    opacity: 0.36;
+    transform: rotate(-8deg) translate3d(-4px, 2px, 0) scale(0.992);
+    background-position: center, 48% 50%, 120% 0;
+  }
+  100% {
+    opacity: 0.5;
+    transform: rotate(-6.5deg) translate3d(6px, -2px, 0) scale(1.018);
+    background-position: center, 56% 50%, 0% 0;
+  }
+}
+
+@keyframes todayAiSignalSweep {
+  from {
+    background-position: 0 0, 110% 0;
+  }
+  to {
+    background-position: 18px 10px, -10% 0;
+  }
+}
+
+@keyframes todayAiLoadingSignal {
+  0% {
+    opacity: 0.44;
+    transform: rotate(-8deg) translate3d(-5px, 2px, 0) scale(0.99);
+    background-position: center, 48% 50%, 120% 0;
+  }
+  100% {
+    opacity: 0.66;
+    transform: rotate(-6deg) translate3d(7px, -3px, 0) scale(1.026);
+    background-position: center, 58% 50%, -8% 0;
+  }
+}
+
+@keyframes todayAiApplyConfirm {
+  0% {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+  38% {
+    opacity: 0.42;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.18);
+  }
+}
+
 @media (max-width: 520px) {
   .todayCockpitScreen .container {
     padding-inline: calc(13px + var(--safe-left)) calc(13px + var(--safe-right));
@@ -1743,6 +2322,19 @@
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
+  }
+
+  .todayDiagnosticHero::before,
+  .todayDiagnosticHero::after,
+  .todayPrimaryActionCard::after,
+  .todayPrimaryBeam,
+  .todayTimelineTrack::after,
+  .todayTimelinePoint.is-active .todayTimelinePointMarker::after,
+  .todayAiSignal,
+  .todayAiSignal::before,
+  .todayAiSignal::after,
+  .todayAiApplyButton::after {
+    animation: none !important;
   }
 
   .todayCockpitAvatarButton:active,

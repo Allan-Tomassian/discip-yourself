@@ -579,6 +579,9 @@ function loadLegacyBlockOrder() {
 export default function Home({
   data,
   setData,
+  dataLoading = false,
+  dataLoadError = "",
+  hasCachedData = false,
   persistenceScope = "local_fallback",
   onOpenLibrary,
   onOpenCoachGuided,
@@ -624,6 +627,10 @@ export default function Home({
   const auth = useAuth();
   const { session, signOut } = auth;
   const profileState = useProfile();
+  const [isOnline, setIsOnline] = useState(() => {
+    if (typeof navigator === "undefined") return true;
+    return navigator.onLine !== false;
+  });
   const legacyOrder = useMemo(() => loadLegacyBlockOrder(), []);
   const blockOrder = useMemo(() => {
     const raw = safeData?.ui?.blocksByPage?.home;
@@ -937,6 +944,19 @@ export default function Home({
         window.clearTimeout(microRewardFeedbackTimeoutRef.current);
         microRewardFeedbackTimeoutRef.current = null;
       }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const updateOnlineState = () => {
+      setIsOnline(typeof navigator === "undefined" ? true : navigator.onLine !== false);
+    };
+    window.addEventListener("online", updateOnlineState);
+    window.addEventListener("offline", updateOnlineState);
+    return () => {
+      window.removeEventListener("online", updateOnlineState);
+      window.removeEventListener("offline", updateOnlineState);
     };
   }, []);
 
@@ -2535,8 +2555,23 @@ export default function Home({
     persistenceScope,
     selectedDateKey,
     now: new Date(),
+    dataLoading,
+    dataLoadError,
+    hasCachedData,
+    isOnline,
     visualSmokeModel,
   });
+  const todayCockpitClassName = [
+    "todayCockpitScreen",
+    todayData.state ? `today-state-${todayData.state}` : "",
+    todayData.tone ? `today-tone-${todayData.tone}` : "",
+    todayData.motionIntensity ? `today-motion-${todayData.motionIntensity}` : "",
+    todayData.isRefreshing ? "is-refreshing" : "",
+    todayData.flags?.offline ? "is-offline" : "",
+    todayData.flags?.error ? "has-state-error" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
   const hasExecutablePrimaryAction = canHandleTodayHeroAction(todayShellModel.hero.primaryAction);
   const runPrimaryCockpitAction = useCallback(() => {
     if (hasExecutablePrimaryAction) {
@@ -2581,9 +2616,9 @@ export default function Home({
   return (
     <>
       <AppScreen
-        accent={TODAY_EXECUTION_GREEN}
+        accent={todayData.accent || TODAY_EXECUTION_GREEN}
         pageId="today"
-        className="todayCockpitScreen"
+        className={todayCockpitClassName}
       >
         <div className="todayCockpitShell" data-tour-id="today-title">
           <TodayHeader
@@ -2593,9 +2628,19 @@ export default function Home({
             onOpenProfile={() => setProfileSheetOpen(true)}
           />
 
-          <FloatingWelcomeLine>{todayData.welcomeLine}</FloatingWelcomeLine>
+          <FloatingWelcomeLine
+            state={todayData.state}
+            tone={todayData.tone}
+            motionIntensity={todayData.motionIntensity}
+            isRefreshing={todayData.isRefreshing}
+          >
+            {todayData.welcomeLine}
+          </FloatingWelcomeLine>
 
           <TodayHero
+            state={todayData.state}
+            tone={todayData.tone}
+            motionIntensity={todayData.motionIntensity}
             modeLabel={todayData.hero.modeLabel}
             dateLabel={todayData.hero.dateLabel}
             scoreLabel={todayData.hero.scoreLabel}
@@ -2607,6 +2652,9 @@ export default function Home({
           />
 
           <PrimaryActionCard
+            state={todayData.state}
+            tone={todayData.tone}
+            motionIntensity={todayData.motionIntensity}
             durationLabel={todayData.primaryAction.durationLabel}
             title={todayData.primaryAction.title}
             description={todayData.primaryAction.description}
@@ -2614,20 +2662,34 @@ export default function Home({
             timingLabel={todayData.primaryAction.timingLabel}
             priorityLabel={todayData.primaryAction.priorityLabel}
             reason={todayData.primaryAction.reason}
+            label={todayData.primaryAction.label}
             primaryLabel={todayData.primaryAction.primaryLabel}
+            secondaryLabel={todayData.primaryAction.secondaryLabel}
+            detailLabel={todayData.primaryAction.detailLabel}
+            status={todayData.primaryAction.status}
             onPrimary={runPrimaryCockpitAction}
             onSecondary={openPlanningForToday}
             onDetail={openPlanningForToday}
-            canPrimary={true}
+            canPrimary={todayData.primaryAction.canPrimary !== false}
+            canSecondary={todayData.primaryAction.canSecondary !== false}
+            canDetail={todayData.primaryAction.canDetail !== false}
           />
 
           <TodayTimeline
+            state={todayData.state}
+            tone={todayData.tone}
+            motionIntensity={todayData.motionIntensity}
+            timelineMode={todayData.timelineMode}
             items={todayData.timelineItems}
             progressLabel={todayData.timelineProgressLabel}
             onSelectItem={openPlanningForToday}
           />
 
           <AIInsightCard
+            state={todayData.state}
+            tone={todayData.tone}
+            motionIntensity={todayData.motionIntensity}
+            aiMode={todayData.aiMode}
             headline={todayData.aiInsight.headline}
             recommendation={todayData.aiInsight.recommendation}
             reason={todayData.aiInsight.reason}

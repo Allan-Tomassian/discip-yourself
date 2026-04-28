@@ -3,6 +3,10 @@ import { BrainCircuit, Sparkles } from "lucide-react";
 import CommandSurface from "./CommandSurface";
 
 export default function AIInsightCard({
+  state = "neutral",
+  tone = "neutral",
+  motionIntensity = "normal",
+  aiMode = "",
   headline = "Insight disponible.",
   recommendation = "Protège le prochain bloc avant de renégocier.",
   reason = "",
@@ -12,10 +16,16 @@ export default function AIInsightCard({
   onWhy,
   onOpenCoach,
 }) {
-  const applyEnabled = canApply && status === "available";
+  const resolvedAiMode = aiMode || status;
+  const applyEnabled = canApply && resolvedAiMode === "available";
+  const statusClass = resolvedAiMode ? ` is-ai-${String(resolvedAiMode).replace(/_/g, "-")}` : "";
+  const applyClass = applyEnabled ? " is-ai-applicable" : "";
+  const stateClass = state ? ` today-state-${state}` : "";
+  const toneClass = tone ? ` today-tone-${tone}` : "";
+  const motionClass = motionIntensity ? ` today-motion-${motionIntensity}` : "";
 
   return (
-    <CommandSurface className="todayAiInsightCard" tone="ai" data-testid="today-ai-insight-card">
+    <CommandSurface className={`todayAiInsightCard${statusClass}${applyClass}${stateClass}${toneClass}${motionClass}`} tone="ai" data-testid="today-ai-insight-card">
       <div className="todayAiSignal" aria-hidden="true" />
       <div className="todayAiHeader">
         <span className="todayAiEyebrow">

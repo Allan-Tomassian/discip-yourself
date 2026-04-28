@@ -3,6 +3,9 @@ import { Check } from "lucide-react";
 import CommandSurface from "./CommandSurface";
 
 export default function TodayHero({
+  state = "neutral",
+  tone = "neutral",
+  motionIntensity = "normal",
   modeLabel = "MODE EXÉCUTION",
   dateLabel = "",
   scoreLabel = "--%",
@@ -13,8 +16,21 @@ export default function TodayHero({
   plannedBlocksCount = 0,
 }) {
   const scoreText = String(scoreLabel || "--%").trim() || "--%";
-  const scoreHasPercent = scoreText.endsWith("%");
+  const scoreUnavailable = scoreText === "--%" || scoreText === "--";
+  const scoreHasPercent = !scoreUnavailable && scoreText.endsWith("%");
   const scoreMain = scoreHasPercent ? scoreText.slice(0, -1) : scoreText;
+  const deltaText = String(deltaLabel || "Point de départ").trim() || "Point de départ";
+  const deltaMatch = deltaText.match(/^([+-]?\d+)/);
+  const deltaValue = deltaMatch ? Number(deltaMatch[1]) : null;
+  const deltaClass = Number.isFinite(deltaValue)
+    ? deltaValue > 0
+      ? "is-delta-positive"
+      : deltaValue < -14
+        ? "is-delta-severe"
+        : deltaValue < 0
+          ? "is-delta-negative"
+          : "is-delta-neutral"
+    : "is-delta-neutral";
   const safeDone = Number.isFinite(doneBlocksCount) ? Math.max(0, doneBlocksCount) : 0;
   const safeTotal = Number.isFinite(plannedBlocksCount) ? Math.max(0, plannedBlocksCount) : 0;
   const progressTotal = Math.min(Math.max(safeTotal, 0), 4);
@@ -22,9 +38,17 @@ export default function TodayHero({
   const progressCopy = safeTotal
     ? `${safeDone} / ${safeTotal} blocs terminés`
     : "Aucun bloc structuré";
+  const className = [
+    "todayDiagnosticHero",
+    state ? `today-state-${state}` : "",
+    tone ? `today-tone-${tone}` : "",
+    motionIntensity ? `today-motion-${motionIntensity}` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
-    <CommandSurface className="todayDiagnosticHero" tone="execution" data-testid="today-hero-card">
+    <CommandSurface className={className} tone="execution" data-testid="today-hero-card">
       <div className="todayHeroTopline">
         <span className="todaySurfaceEyebrow">
           <span className="todaySurfaceDot" aria-hidden="true" />
@@ -34,12 +58,18 @@ export default function TodayHero({
       </div>
 
       <div className="todayHeroScoreCluster">
-        <div className="todayHeroScore">
-          <span className="todayHeroScoreMain">{scoreMain}</span>
-          {scoreHasPercent ? <span className="todayHeroScorePercent">%</span> : null}
+        <div className={`todayHeroScore${scoreUnavailable ? " is-unavailable" : ""}`}>
+          {scoreUnavailable ? (
+            <span className="todayHeroScoreUnavailable">--%</span>
+          ) : (
+            <>
+              <span className="todayHeroScoreMain">{scoreMain}</span>
+              {scoreHasPercent ? <span className="todayHeroScorePercent">%</span> : null}
+            </>
+          )}
         </div>
         <div className="todayHeroScoreLabel">Discipline score</div>
-        <div className="todayHeroDelta">{deltaLabel}</div>
+        <div className={`todayHeroDelta ${deltaClass}`}>{deltaText}</div>
       </div>
 
       <div className="todayHeroStatus">

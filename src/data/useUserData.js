@@ -271,6 +271,7 @@ export function useUserData() {
       setData,
       loading,
       loadError,
+      hasCachedData: hasMeaningfulLocalData(data),
       persistenceScope,
     }),
     [data, loadError, loading, persistenceScope, setData]

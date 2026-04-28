@@ -113,7 +113,14 @@ function isSameOrder(a, b) {
 }
 
 export default function App() {
-  const { data, setData, loading: dataLoading, persistenceScope } = useUserData();
+  const {
+    data,
+    setData,
+    loading: dataLoading,
+    loadError: dataLoadError,
+    hasCachedData,
+    persistenceScope,
+  } = useUserData();
   const safeData = data && typeof data === "object" ? data : {};
   const {
     tab,
@@ -981,7 +988,9 @@ export default function App() {
     </BehaviorFeedbackProvider>
   );
 
-  if (dataLoading) {
+  const renderTodayDuringDataLoad = dataLoading && tab === "today";
+
+  if (dataLoading && !renderTodayDuringDataLoad) {
     return renderWithBehaviorFeedback(
       <div
         data-testid="user-data-loading-screen"
@@ -993,7 +1002,7 @@ export default function App() {
     );
   }
 
-  if (showPlanStep && firstRunDone) {
+  if (!renderTodayDuringDataLoad && showPlanStep && firstRunDone) {
     return renderWithBehaviorFeedback(
       <>
         <Onboarding data={data} setData={setData} onDone={() => setTab("settings")} planOnly />
@@ -1001,7 +1010,7 @@ export default function App() {
       </>
     );
   }
-  if (!firstRunDone) {
+  if (!renderTodayDuringDataLoad && !firstRunDone) {
     return renderWithBehaviorFeedback(
       <>
         <Onboarding data={data} setData={setData} onDone={() => setTab("today")} />
@@ -1010,7 +1019,7 @@ export default function App() {
     );
   }
 
-  if (tab === "onboarding") {
+  if (!renderTodayDuringDataLoad && tab === "onboarding") {
     return renderWithBehaviorFeedback(
       <div
         data-testid="first-run-redirecting-screen"
@@ -1028,6 +1037,9 @@ export default function App() {
         <Home
           data={data}
           setData={setData}
+          dataLoading={dataLoading}
+          dataLoadError={dataLoadError}
+          hasCachedData={hasCachedData}
           persistenceScope={persistenceScope}
           onOpenLibrary={homeNavigationHandlers.onOpenLibrary}
           onOpenCoachGuided={({ mode = "free", prefill = "" } = {}) => {
