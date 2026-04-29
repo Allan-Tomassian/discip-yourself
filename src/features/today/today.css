@@ -369,14 +369,14 @@
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(circle at 68% 7%, rgba(53, 240, 109, 0.34), transparent 30%),
-    radial-gradient(circle at 20% 58%, rgba(53, 240, 109, 0.08), transparent 34%),
-    radial-gradient(circle at center, rgba(94, 255, 137, 0.22) 0 1px, transparent 1px),
-    linear-gradient(90deg, rgba(53, 240, 109, 0.035) 1px, transparent 1px),
-    linear-gradient(180deg, rgba(53, 240, 109, 0.035) 1px, transparent 1px);
-  background-size: 310px 220px, 270px 190px, 15px 15px, 52px 52px, 52px 52px;
-  background-position: 64% -8px, 18% 54%, 0 0, 0 0, 0 0;
-  opacity: 0.26;
+    radial-gradient(circle at 70% 4%, rgba(53, 240, 109, 0.34), transparent 28%),
+    radial-gradient(circle at 18% 58%, rgba(53, 240, 109, 0.075), transparent 34%),
+    radial-gradient(circle at center, rgba(120, 255, 157, 0.28) 0 1px, transparent 1px),
+    linear-gradient(90deg, rgba(53, 240, 109, 0.04) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(53, 240, 109, 0.04) 1px, transparent 1px);
+  background-size: 320px 220px, 270px 190px, 14px 14px, 48px 48px, 48px 48px;
+  background-position: 66% -10px, 18% 54%, 0 0, 0 0, 0 0;
+  opacity: 0.28;
   mask-image: linear-gradient(90deg, transparent, black 14%, black 86%, transparent);
   animation: todayHeroSurfaceDrift 24s ease-in-out infinite alternate;
   will-change: opacity, background-position;
@@ -392,9 +392,10 @@
   border: 1px solid rgba(53, 240, 109, 0.72);
   border-radius: 999px;
   box-shadow:
-    0 0 32px rgba(53, 240, 109, 0.32),
-    inset 0 0 34px rgba(53, 240, 109, 0.1);
-  opacity: 0.74;
+    0 0 30px rgba(53, 240, 109, 0.3),
+    0 0 72px rgba(53, 240, 109, 0.12),
+    inset 0 0 38px rgba(53, 240, 109, 0.11);
+  opacity: 0.78;
   pointer-events: none;
   transition:
     opacity var(--today-motion-standard) var(--today-ease-out),
@@ -496,8 +497,14 @@
   margin: 0;
   color: #fbfbf8;
   font-size: 22px;
-  line-height: 1.14;
+  line-height: 1.1;
   font-weight: 720;
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .todayHeroStatus p,
@@ -611,13 +618,13 @@
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(ellipse at 50% 58%, rgba(53, 240, 109, 0.13), transparent 35%),
-    repeating-radial-gradient(ellipse at 50% 46%, rgba(53, 240, 109, 0.18) 0 1px, transparent 1px 13px),
-    linear-gradient(90deg, transparent 0 34%, rgba(53, 240, 109, 0.08) 46%, rgba(53, 240, 109, 0.12) 50%, rgba(53, 240, 109, 0.08) 54%, transparent 66%),
-    radial-gradient(ellipse at 50% 0%, rgba(53, 240, 109, 0.16), transparent 42%);
-  background-size: 100% 100%, 420px 210px, 100% 100%, 100% 100%;
+    radial-gradient(ellipse at 50% 58%, rgba(53, 240, 109, 0.16), transparent 36%),
+    repeating-radial-gradient(ellipse at 50% 46%, rgba(53, 240, 109, 0.22) 0 1px, transparent 1px 12px),
+    linear-gradient(90deg, transparent 0 33%, rgba(53, 240, 109, 0.09) 45%, rgba(53, 240, 109, 0.15) 50%, rgba(53, 240, 109, 0.09) 55%, transparent 67%),
+    radial-gradient(ellipse at 50% 0%, rgba(53, 240, 109, 0.18), transparent 42%);
+  background-size: 100% 100%, 410px 200px, 100% 100%, 100% 100%;
   background-position: center, 50% 50%, center, center;
-  opacity: 0.26;
+  opacity: 0.3;
   transform: rotate(-1deg) scale(1.02);
   mask-image: radial-gradient(ellipse at 50% 58%, black 0 42%, transparent 76%);
   animation: todayPrimaryFlowDrift 18s linear infinite;
@@ -630,8 +637,10 @@
   z-index: 0;
   width: 1px;
   background: linear-gradient(180deg, transparent, rgba(53, 240, 109, 0.88), transparent);
-  box-shadow: 0 0 22px rgba(53, 240, 109, 0.72);
-  opacity: 0.62;
+  box-shadow:
+    0 0 22px rgba(53, 240, 109, 0.74),
+    0 0 46px rgba(53, 240, 109, 0.2);
+  opacity: 0.66;
   pointer-events: none;
   transition:
     opacity var(--today-motion-standard) var(--today-ease-out),
@@ -874,6 +883,10 @@
 
 .todayTimelineCard {
   padding: 14px 16px 12px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    0 18px 40px rgba(0, 0, 0, 0.45),
+    0 0 28px rgba(53, 240, 109, 0.04);
 }
 
 .todayTimelineHeader {
@@ -900,15 +913,15 @@
   -webkit-mask-image: linear-gradient(
     90deg,
     transparent 0,
-    #000 18px,
-    #000 calc(100% - 18px),
+    #000 24px,
+    #000 calc(100% - 24px),
     transparent 100%
   );
   mask-image: linear-gradient(
     90deg,
     transparent 0,
-    #000 18px,
-    #000 calc(100% - 18px),
+    #000 24px,
+    #000 calc(100% - 24px),
     transparent 100%
   );
 }
@@ -923,8 +936,8 @@
   align-items: flex-start;
   gap: 18px;
   width: max-content;
-  min-width: 100%;
-  padding: 0 18px 1px 0;
+  min-width: max(100%, 320px);
+  padding: 0 20px 1px 0;
 }
 
 .todayTimelineTrack::before {
@@ -935,7 +948,7 @@
   bottom: 8px;
   height: 2px;
   z-index: 0;
-  background: linear-gradient(90deg, var(--today-green), rgba(255, 255, 255, 0.16));
+  background: linear-gradient(90deg, var(--today-green), rgba(255, 255, 255, 0.18));
 }
 
 .todayTimelineTrack::after {
@@ -956,7 +969,7 @@
     transparent 100%
   );
   background-size: 170px 100%;
-  opacity: 0.22;
+  opacity: 0.26;
   animation: todayTimelineRailSheen 8s linear infinite;
   will-change: background-position, opacity;
 }
@@ -1115,7 +1128,7 @@
 
 .todayTimelineCard.has-placeholder-timeline .todayTimelineTrack {
   justify-content: flex-start;
-  min-width: 100%;
+  min-width: max(100%, 320px);
   padding-right: 0;
 }
 
@@ -1141,13 +1154,15 @@
   position: relative;
   z-index: 1;
   align-self: end;
-  flex: 0 0 58px;
-  padding: 0 0 4px 8px;
+  flex: 0 0 48px;
+  min-width: 48px;
+  margin-left: auto;
+  padding: 0 0 4px 14px;
   color: var(--today-green);
   font-size: 13px;
   font-weight: 760;
   line-height: 1;
-  text-align: left;
+  text-align: right;
   font-variant-numeric: tabular-nums;
   text-shadow: 0 0 14px rgba(53, 240, 109, 0.22);
 }
@@ -1181,22 +1196,22 @@
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.055),
     0 22px 50px rgba(0, 0, 0, 0.48),
-    0 0 36px rgba(139, 92, 246, 0.12);
+    0 0 38px rgba(139, 92, 246, 0.14);
 }
 
 .todayAiSignal {
   position: absolute;
-  inset: 14px -40px auto 34%;
-  height: 92px;
+  inset: 10px -54px auto 30%;
+  height: 108px;
   pointer-events: none;
   overflow: visible;
   background:
-    radial-gradient(ellipse at 62% 52%, rgba(139, 92, 246, 0.3), transparent 56%),
-    repeating-radial-gradient(ellipse at 60% 54%, rgba(139, 92, 246, 0.24) 0 1px, transparent 1px 12px),
-    linear-gradient(105deg, transparent 0 22%, rgba(185, 137, 255, 0.2) 44%, transparent 66% 100%);
-  background-size: 100% 100%, 360px 130px, 220% 100%;
+    radial-gradient(ellipse at 64% 52%, rgba(139, 92, 246, 0.36), transparent 56%),
+    repeating-radial-gradient(ellipse at 62% 54%, rgba(139, 92, 246, 0.28) 0 1px, transparent 1px 11px),
+    linear-gradient(105deg, transparent 0 20%, rgba(185, 137, 255, 0.25) 43%, transparent 66% 100%);
+  background-size: 100% 100%, 390px 140px, 220% 100%;
   background-position: center, 50% 50%, 120% 0;
-  opacity: 0.42;
+  opacity: 0.48;
   transform: rotate(-8deg);
   transition:
     opacity var(--today-motion-standard) var(--today-ease-out),
@@ -1215,11 +1230,11 @@
 
 .todayAiSignal::before {
   background:
-    radial-gradient(circle at center, rgba(202, 170, 255, 0.28) 0 1px, transparent 1px),
-    linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.12), transparent);
-  background-size: 12px 12px, 220% 100%;
+    radial-gradient(circle at center, rgba(202, 170, 255, 0.34) 0 1px, transparent 1px),
+    linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.16), transparent);
+  background-size: 11px 11px, 220% 100%;
   background-position: 0 0, 100% 0;
-  opacity: 0.28;
+  opacity: 0.34;
   mask-image: linear-gradient(105deg, transparent 0%, black 24%, black 74%, transparent 100%);
   animation: todayAiSignalSweep 14s linear infinite;
   will-change: background-position;
@@ -1228,10 +1243,10 @@
 .todayAiSignal::after {
   border-radius: 999px;
   background:
-    radial-gradient(ellipse at 72% 50%, rgba(190, 143, 255, 0.2), transparent 54%),
-    repeating-radial-gradient(ellipse at 72% 50%, transparent 0 13px, rgba(139, 92, 246, 0.2) 14px 15px, transparent 16px 27px);
-  opacity: 0.3;
-  transform: translate3d(8px, 0, 0) scaleX(1.04);
+    radial-gradient(ellipse at 72% 50%, rgba(190, 143, 255, 0.24), transparent 54%),
+    repeating-radial-gradient(ellipse at 72% 50%, transparent 0 12px, rgba(139, 92, 246, 0.24) 13px 14px, transparent 15px 26px);
+  opacity: 0.36;
+  transform: translate3d(8px, 0, 0) scaleX(1.06);
 }
 
 .todayAiInsightCard.is-ai-loading .todayAiSignal {
@@ -1247,7 +1262,8 @@
 .todayAiInsightCard.is-ai-unavailable .todayAiSignal,
 .todayAiInsightCard.is-ai-error .todayAiSignal,
 .todayAiInsightCard.is-ai-hidden .todayAiSignal {
-  opacity: 0.16;
+  opacity: 0.28;
+  filter: saturate(0.72) brightness(0.84);
   animation: none;
 }
 
@@ -1258,7 +1274,7 @@
 .todayAiInsightCard.is-ai-error .todayAiSignal::after,
 .todayAiInsightCard.is-ai-hidden .todayAiSignal::after {
   animation: none;
-  opacity: 0.16;
+  opacity: 0.22;
 }
 
 .todayAiEyebrow {
@@ -1632,6 +1648,11 @@
 
   .todayPrimaryActionCard {
     padding: 14px 17px 12px;
+  }
+
+  .todayPrimaryActionTitleBlock h2 {
+    font-size: 21px;
+    line-height: 1.08;
   }
 
   .todayAiActions {
