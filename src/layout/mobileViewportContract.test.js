@@ -30,7 +30,7 @@ describe("mobile viewport contract", () => {
     expect(app).toContain('rootStyle.setProperty("--bottom-fixed-stack-space", "0px");');
     expect(app).toContain('rootStyle.setProperty("--bottom-fixed-stack-space", `${clearSpace}px`);');
     expect(app).toContain("root.dataset.activeTab = tab;");
-    expect(app).toContain("<LovableTabBar");
+    expect(app).toContain("<BottomNavigation");
     expect(app).toContain('className="appViewportFill"');
     expect(app).not.toContain('minHeight: "100vh"');
     expect(authGate).not.toContain('minHeight: "100vh"');

@@ -23,12 +23,12 @@ describe("category accent UI contract", () => {
 
   it("keeps category color as subtle metadata instead of full-screen shell chrome", () => {
     const todayHero = readSrc("components/today/TodayHero.jsx");
-    const todayNextActions = readSrc("components/today/TodayNextActions.jsx");
+    const primaryAction = readSrc("components/today/PrimaryActionCard.jsx");
     const objectives = readSrc("pages/Objectives.jsx");
 
     expect(todayHero).not.toContain("getCategoryUiVars");
-    expect(todayHero).toContain("recommendedCategoryLabel");
-    expect(todayNextActions).toContain("resolveCategoryColor");
+    expect(primaryAction).toContain("categoryLabel");
+    expect(primaryAction).not.toContain("resolveCategoryColor");
     expect(objectives).toContain("resolveCategoryColor");
     expect(objectives).toContain("ObjectiveRing");
     expect(objectives).toContain("category?.name");

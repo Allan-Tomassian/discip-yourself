@@ -25,7 +25,7 @@ describe("session runtime wiring (SSoT)", () => {
 
   it("uses activeSession/sessionHistory model and avoids legacy activeSessionId/sessions writes", () => {
     const session = readSrc("pages/Session.jsx");
-    expect(session).toContain("function startTimer()");
+    expect(session).toContain("function startTimer(");
     expect(session).toContain("function pauseTimer()");
     expect(session).toContain("function resumeTimer()");
     expect(session).toContain("function endSession()");

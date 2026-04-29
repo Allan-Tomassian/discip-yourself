@@ -29,7 +29,7 @@ describe("session launch contract", () => {
     expect(app).toContain("ensureResolvedEntitlement={ensureResolved}");
     expect(app).toContain("entitlementAccess={entitlementAccess}");
     expect(app).not.toContain("setSessionLaunchState((current) => (current ? null : current))");
-    expect(home).toContain("onOpenSession({");
+    expect(home).toContain("onOpenSession?.({");
     expect(timeline).toContain("onOpenSession");
     expect(coach).toContain("onOpenSession,");
     expect(controller).toContain("onOpenSession");

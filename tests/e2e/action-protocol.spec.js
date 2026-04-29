@@ -33,7 +33,7 @@ async function seedApp(page, state) {
 }
 
 async function expectPrimaryActionAboveFold(page) {
-  const primaryAction = page.locator('[data-testid="today-hero-card"] .lovablePrimaryButton');
+  const primaryAction = page.locator('[data-testid="today-primary-action-card"] .todayCommitmentButton');
   await expect(primaryAction).toBeVisible();
   const box = await primaryAction.boundingBox();
   const viewport = page.viewportSize();
@@ -182,7 +182,7 @@ function buildSportState() {
 async function openToday(page, state) {
   await seedApp(page, state);
   await page.goto("/");
-  await expect(page.locator(".pageHeader .pageTitle")).toContainText("Allan");
+  await expect(page.locator(".todayCockpitTitle")).toHaveText("Today");
 }
 
 async function openSession(page, state, { categoryId }) {
@@ -192,30 +192,28 @@ async function openSession(page, state, { categoryId }) {
   await expect(page.getByTestId("session-action-protocol")).toBeVisible();
 }
 
-test("today ready shows a compact deep-work brief inside the hero", async ({ page }, testInfo) => {
+test("today ready routes the deep-work block through the primary action card", async ({ page }, testInfo) => {
   await openToday(page, buildDeepWorkState());
 
-  await expect(page.getByTestId("today-action-protocol")).toBeVisible();
-  await expect(page.getByTestId("today-action-protocol")).toContainText("Cap");
-  await expect(page.getByTestId("today-action-protocol")).toContainText("avancer sur un levier concret");
-  await expect(page.getByTestId("today-action-protocol")).toContainText("Départ");
-  await expect(page.getByTestId("today-action-protocol")).toContainText("ouvre la première sous-partie précise");
+  await expect(page.getByTestId("today-primary-action-card")).toBeVisible();
+  await expect(page.getByTestId("today-primary-action-card")).toContainText("Build onboarding MVP");
+  await expect(page.getByTestId("today-primary-action-card")).not.toContainText("Cap");
+  await expect(page.getByTestId("today-action-protocol")).toHaveCount(0);
   await expectPrimaryActionAboveFold(page);
 
-  await attachScreenshot(page, testInfo, "today-action-protocol-deep-work-ready.png");
+  await attachScreenshot(page, testInfo, "today-primary-action-deep-work-ready.png");
 });
 
-test("today active session keeps a compact deep-work brief", async ({ page }, testInfo) => {
+test("today active session keeps the resume action in the primary card", async ({ page }, testInfo) => {
   await openToday(page, buildDeepWorkActiveSessionState());
 
-  await expect(page.getByTestId("today-action-protocol")).toBeVisible();
-  await expect(page.getByTestId("today-action-protocol")).toContainText("Cap");
-  await expect(page.getByTestId("today-action-protocol")).toContainText("avancer sur un levier concret");
-  await expect(page.getByTestId("today-action-protocol")).toContainText("Blocage");
-  await expect(page.getByTestId("today-action-protocol")).toContainText("réduis le scope à un sous-livrable");
+  await expect(page.getByTestId("today-primary-action-card")).toBeVisible();
+  await expect(page.getByTestId("today-primary-action-card")).toContainText("BLOC EN COURS");
+  await expect(page.getByTestId("today-primary-action-card").locator(".todayCommitmentButton")).toContainText(/Reprendre/i);
+  await expect(page.getByTestId("today-action-protocol")).toHaveCount(0);
   await expectPrimaryActionAboveFold(page);
 
-  await attachScreenshot(page, testInfo, "today-action-protocol-deep-work-session.png");
+  await attachScreenshot(page, testInfo, "today-primary-action-deep-work-session.png");
 });
 
 test("session shows the full deep-work protocol without a new flow", async ({ page }, testInfo) => {

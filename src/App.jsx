@@ -39,8 +39,8 @@ import CategoryProgress from "./pages/CategoryProgress";
 import Session from "./pages/Session";
 import Privacy from "./pages/Privacy";
 import Support from "./pages/Support";
-import LovableTabBar from "./components/navigation/LovableTabBar";
-import LovableCreateMenu from "./components/navigation/LovableCreateMenu";
+import BottomNavigation from "./components/navigation/BottomNavigation";
+import TodayAdjustmentSheet from "./components/today/TodayAdjustmentSheet";
 import { applyThemeTokens, BRAND_ACCENT, DEFAULT_THEME } from "./theme/themeTokens";
 import { todayLocalKey } from "./utils/dateKey";
 import { normalizePriorities } from "./logic/priority";
@@ -57,14 +57,6 @@ import { useRemindersLoop } from "./hooks/useRemindersLoop";
 import { useSessionRuntimeLoop } from "./hooks/useSessionRuntimeLoop";
 import { useCreateFlowOrchestration } from "./hooks/useCreateFlowOrchestration";
 import { useCategorySelectionSync } from "./hooks/useCategorySelectionSync";
-import {
-  commitPreparedCreatePlan,
-  prepareCreateCommit,
-} from "./features/create-item/createItemCommit";
-import {
-  buildUniversalCaptureCoachPrefill,
-  resolveUniversalCaptureDecision,
-} from "./features/universal-capture/universalCapture";
 import { getInboxId } from "./app/inbox";
 import { createHomeNavigationHandlers } from "./app/homeNavigation";
 import { resolveCoachCreatedViewTarget } from "./app/coachCreatedViewTarget";
@@ -112,7 +104,14 @@ function isSameOrder(a, b) {
 }
 
 export default function App() {
-  const { data, setData, loading: dataLoading, persistenceScope } = useUserData();
+  const {
+    data,
+    setData,
+    loading: dataLoading,
+    loadError: dataLoadError,
+    hasCachedData,
+    persistenceScope,
+  } = useUserData();
   const safeData = data && typeof data === "object" ? data : {};
   const {
     tab,
@@ -133,13 +132,13 @@ export default function App() {
   } = useAppNavigation({ safeData, setData });
   const [editItem, setEditItem] = useState(null);
   const [createTaskState, setCreateTaskState] = useState(null);
-  const [universalCapturePreview, setUniversalCapturePreview] = useState(null);
   const [sessionLaunchState, setSessionLaunchState] = useState(null);
   const [coachState, setCoachState] = useState({
     mode: "free",
     conversationId: null,
     prefill: "",
   });
+  const [adjustmentSheetOpen, setAdjustmentSheetOpen] = useState(false);
   const dataRef = useRef(data);
   const invariantLogRef = useRef(new Set());
   const tour = useTour({ data, setData, steps: FIRST_USE_TOUR_STEPS, tourVersion: TOUR_VERSION });
@@ -277,6 +276,16 @@ export default function App() {
     tab === "session" ||
     tab === "onboarding";
   const showBottomRail = !hideNavigationChrome && new Set(["today", "objectives", "timeline", "insights", "coach"]).has(tab);
+  const handleBottomNavigationSelect = useCallback(
+    (nextTab) => {
+      if (nextTab === "adjust") {
+        setAdjustmentSheetOpen(true);
+        return;
+      }
+      setTab(nextTab);
+    },
+    [setTab]
+  );
   const categories = useMemo(
     () => (Array.isArray(safeData.categories) ? safeData.categories : []),
     [safeData.categories]
@@ -345,14 +354,6 @@ export default function App() {
     [openLibraryDetail, setTab]
   );
   const {
-    hasDraft,
-    plusOpen,
-    plusAnchorRect,
-    plusContext,
-    openCreateExpander,
-    closePlusExpander,
-    resumeCreateDraft,
-    openCreateOutcome,
     openCreateAction,
     openCreateAssistant,
   } = useCreateFlowOrchestration({
@@ -539,180 +540,6 @@ export default function App() {
     },
     [openCreateAction, resolveRouteOrigin]
   );
-
-  const launchOutcomeCreate = useCallback(
-    ({ sourceSurface, categoryId = null, initialTitle = "", draftOverrides = null } = {}) => {
-      const origin = resolveRouteOrigin({ sourceSurface, categoryId });
-      setCreateTaskState({ origin, kind: "outcome" });
-      openCreateOutcome({ source: sourceSurface, categoryId, initialTitle, draftOverrides });
-    },
-    [openCreateOutcome, resolveRouteOrigin]
-  );
-
-  const handleUniversalCaptureClose = useCallback(() => {
-    setUniversalCapturePreview(null);
-    closePlusExpander();
-  }, [closePlusExpander]);
-
-  const handleUniversalCaptureSubmit = useCallback(
-    (rawText) => {
-      const categoryId =
-        plusContext?.categoryId || libraryCategoryId || selectedCategoryId || homeActiveCategoryId || null;
-      const categoryLabel = visibleCategories.find((category) => category?.id === categoryId)?.name || "";
-      const decision = resolveUniversalCaptureDecision(rawText, {
-        categoryId,
-        categoryLabel,
-      });
-
-      if (
-        (decision.route === "direct_action" || decision.route === "direct_goal") &&
-        decision.confidence === "high" &&
-        decision.preview
-      ) {
-        setUniversalCapturePreview(decision.preview);
-        return;
-      }
-
-      setUniversalCapturePreview(null);
-      closePlusExpander();
-      const coachRoute =
-        decision.route === "coach_structuring" || decision.route === "coach_clarify"
-          ? decision.route
-          : decision.fallbackCoachRoute;
-
-      setCoachState({
-        mode: coachRoute === "coach_structuring" ? "plan" : "free",
-        conversationId: null,
-        prefill: buildUniversalCaptureCoachPrefill({
-          route: coachRoute,
-          text: decision.normalizedText,
-        }),
-      });
-      setTab("coach");
-    },
-    [
-      closePlusExpander,
-      homeActiveCategoryId,
-      libraryCategoryId,
-      plusContext,
-      selectedCategoryId,
-      setTab,
-      visibleCategories,
-    ]
-  );
-
-  const handleUniversalCapturePreviewAdjust = useCallback(() => {
-    const preview = universalCapturePreview;
-    if (!preview) return;
-    const sourceSurface = plusContext?.source || "objectives";
-    const categoryId =
-      preview.categoryId || plusContext?.categoryId || libraryCategoryId || selectedCategoryId || homeActiveCategoryId || null;
-
-    setUniversalCapturePreview(null);
-    closePlusExpander();
-
-    if (preview.kind === "action") {
-      launchActionCreate({
-        sourceSurface,
-        categoryId,
-        initialTitle: preview.title,
-        draftOverrides: preview.actionDraft ? { actionDraft: preview.actionDraft } : null,
-      });
-      return;
-    }
-
-    launchOutcomeCreate({
-      sourceSurface,
-      categoryId,
-      initialTitle: preview.title,
-      draftOverrides: preview.outcomeDraft ? { outcomeDraft: preview.outcomeDraft } : null,
-    });
-  }, [
-    closePlusExpander,
-    homeActiveCategoryId,
-    launchActionCreate,
-    launchOutcomeCreate,
-    libraryCategoryId,
-    plusContext,
-    selectedCategoryId,
-    universalCapturePreview,
-  ]);
-
-  const handleUniversalCapturePreviewCreate = useCallback(() => {
-    const preview = universalCapturePreview;
-    if (!preview) return;
-
-    const preparedCommit = prepareCreateCommit({
-      state: safeData,
-      kind: preview.kind === "goal" ? "outcome" : "action",
-      actionDraft: preview.actionDraft,
-      outcomeDraft: preview.outcomeDraft,
-      canCreateAction: canCreateActionNow,
-      canCreateOutcome: canCreateOutcomeNow,
-      isPremiumPlan,
-      planLimits,
-    });
-
-    if (!preparedCommit.ok) {
-      if (preparedCommit.kind === "paywall") {
-        openPaywall(preparedCommit.message);
-        return;
-      }
-      handleUniversalCapturePreviewAdjust();
-      return;
-    }
-
-    const commitResult = commitPreparedCreatePlan(safeData, preparedCommit.plan, {
-      generationWindowDays,
-      isPremiumPlan,
-    });
-    const sourceSurface = plusContext?.source || "objectives";
-    const previewCategoryId = preview.categoryId || commitResult.createdCategoryId || plusContext?.categoryId || null;
-
-    setData((previous) => {
-      const safePrevious = previous && typeof previous === "object" ? previous : {};
-      const previousUi = safePrevious.ui && typeof safePrevious.ui === "object" ? safePrevious.ui : {};
-      const committedUi =
-        commitResult.state?.ui && typeof commitResult.state.ui === "object" ? commitResult.state.ui : previousUi;
-      const baseUi =
-        sourceSurface === "objectives" && previewCategoryId
-          ? withLibraryActiveCategoryId(committedUi, previewCategoryId)
-          : committedUi;
-
-      return {
-        ...commitResult.state,
-        ui: {
-          ...baseUi,
-          libraryFocusTarget: commitResult.viewTarget,
-          selectedGoalByCategory:
-            commitResult.createdOutcomeId && previewCategoryId
-              ? {
-                  ...(baseUi.selectedGoalByCategory || {}),
-                  [previewCategoryId]: commitResult.createdOutcomeId,
-                }
-              : baseUi.selectedGoalByCategory || {},
-        },
-      };
-    });
-    setUniversalCapturePreview(null);
-    closePlusExpander();
-    setTab(sourceSurface === "objectives" ? "objectives" : tab);
-  }, [
-    canCreateActionNow,
-    canCreateOutcomeNow,
-    closePlusExpander,
-    generationWindowDays,
-    handleUniversalCapturePreviewAdjust,
-    isPremiumPlan,
-    openPaywall,
-    planLimits,
-    plusContext,
-    safeData,
-    setData,
-    setTab,
-    tab,
-    universalCapturePreview,
-  ]);
 
   // Theme reconciliation:
   // - The app now ships a single locked design system.
@@ -969,7 +796,9 @@ export default function App() {
     </BehaviorFeedbackProvider>
   );
 
-  if (dataLoading) {
+  const renderTodayDuringDataLoad = dataLoading && tab === "today";
+
+  if (dataLoading && !renderTodayDuringDataLoad) {
     return renderWithBehaviorFeedback(
       <div
         data-testid="user-data-loading-screen"
@@ -981,7 +810,7 @@ export default function App() {
     );
   }
 
-  if (showPlanStep && firstRunDone) {
+  if (!renderTodayDuringDataLoad && showPlanStep && firstRunDone) {
     return renderWithBehaviorFeedback(
       <>
         <Onboarding data={data} setData={setData} onDone={() => setTab("settings")} planOnly />
@@ -989,7 +818,7 @@ export default function App() {
       </>
     );
   }
-  if (!firstRunDone) {
+  if (!renderTodayDuringDataLoad && !firstRunDone) {
     return renderWithBehaviorFeedback(
       <>
         <Onboarding data={data} setData={setData} onDone={() => setTab("today")} />
@@ -998,7 +827,7 @@ export default function App() {
     );
   }
 
-  if (tab === "onboarding") {
+  if (!renderTodayDuringDataLoad && tab === "onboarding") {
     return renderWithBehaviorFeedback(
       <div
         data-testid="first-run-redirecting-screen"
@@ -1016,6 +845,9 @@ export default function App() {
         <Home
           data={data}
           setData={setData}
+          dataLoading={dataLoading}
+          dataLoadError={dataLoadError}
+          hasCachedData={hasCachedData}
           persistenceScope={persistenceScope}
           onOpenLibrary={homeNavigationHandlers.onOpenLibrary}
           onOpenCoachGuided={({ mode = "free", prefill = "" } = {}) => {
@@ -1040,12 +872,6 @@ export default function App() {
               ui: withLibraryActiveCategoryId(prev.ui, categoryId),
             }));
             setTab("objectives");
-          }}
-          onOpenCreateOutcome={() => {
-            launchOutcomeCreate({ sourceSurface: "today" });
-          }}
-          onOpenCreateHabit={() => {
-            launchActionCreate({ sourceSurface: "today" });
           }}
           onOpenSession={({ categoryId, dateKey, occurrenceId }) =>
             openSessionSurface({
@@ -1146,14 +972,6 @@ export default function App() {
         <Objectives
           data={data}
           setData={setData}
-          onOpenCreateMenu={({ source, anchorEl, anchorRect }) =>
-            openCreateExpander({
-              source,
-              categoryId: libraryCategoryId || selectedCategoryId || homeActiveCategoryId || null,
-              anchorEl,
-              anchorRect,
-            })
-          }
           onOpenCreateAction={(categoryId, outcomeId) =>
             launchActionCreate({
               sourceSurface: "objectives",
@@ -1388,17 +1206,40 @@ export default function App() {
         />
       ) : null}
       <DiagnosticOverlay data={safeData} tab={tab} />
-      <LovableCreateMenu
-        open={plusOpen}
-        anchorRect={plusAnchorRect}
-        onClose={handleUniversalCaptureClose}
-        onSubmitCapture={handleUniversalCaptureSubmit}
-        preview={universalCapturePreview}
-        onPreviewCreate={handleUniversalCapturePreviewCreate}
-        onPreviewAdjust={handleUniversalCapturePreviewAdjust}
-        onClearPreview={() => setUniversalCapturePreview(null)}
-        onResumeDraft={hasDraft ? resumeCreateDraft : null}
-        hasDraft={hasDraft}
+      <TodayAdjustmentSheet
+        open={adjustmentSheetOpen}
+        onClose={() => setAdjustmentSheetOpen(false)}
+        onSimplify={() => {
+          setAdjustmentSheetOpen(false);
+          setCoachState({
+            mode: "plan",
+            conversationId: null,
+            prefill: "Simplifie ma journée en gardant seulement le prochain bloc utile.",
+          });
+          setTab("coach");
+        }}
+        onReorganize={() => {
+          setAdjustmentSheetOpen(false);
+          setTab("timeline");
+        }}
+        onReduce={() => {
+          setAdjustmentSheetOpen(false);
+          setCoachState({
+            mode: "plan",
+            conversationId: null,
+            prefill: "Réduis la charge de ma journée sans perdre l’action critique.",
+          });
+          setTab("coach");
+        }}
+        onAskCoach={() => {
+          setAdjustmentSheetOpen(false);
+          setCoachState({
+            mode: "free",
+            conversationId: null,
+            prefill: "Aide-moi à ajuster ma journée.",
+          });
+          setTab("coach");
+        }}
       />
       <PaywallModal
         open={paywallOpen}
@@ -1410,7 +1251,9 @@ export default function App() {
         onOpenTerms={() => setTab("legal")}
         onOpenPrivacy={() => setTab("privacy")}
       />
-      {showBottomRail ? <LovableTabBar ref={bottomRailRef} activeTab={tab} onSelect={setTab} /> : null}
+      {showBottomRail ? (
+        <BottomNavigation ref={bottomRailRef} activeTab={tab} onSelect={handleBottomNavigationSelect} />
+      ) : null}
     </>
   );
 }
