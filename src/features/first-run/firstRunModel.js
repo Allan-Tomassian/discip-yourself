@@ -1,5 +1,6 @@
 import { USER_AI_CATEGORY_META, USER_AI_GOAL_IDS } from "../../domain/userAiProfile";
 import { uid } from "../../utils/helpers";
+import { addDaysLocal, appDowFromDate, fromLocalDateKey, normalizeLocalDateKey, toLocalDateKey } from "../../utils/datetime";
 import {
   FIRST_RUN_PLAN_RESPONSE_VERSION,
   FIRST_RUN_PLAN_VARIANTS,
@@ -33,6 +34,7 @@ export const FIRST_RUN_PLAN_ERROR_CODES = Object.freeze([
   "INVALID_RESPONSE",
   "FIRST_RUN_PLAN_BACKEND_UNAVAILABLE",
 ]);
+export const FIRST_RUN_COMMIT_STATUSES = Object.freeze(["idle", "applying", "applied", "failed"]);
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -355,6 +357,45 @@ function normalizeInputHash(value) {
   return trimString(value, 256) || null;
 }
 
+function normalizeIdList(value) {
+  if (!Array.isArray(value)) return [];
+  const out = [];
+  const seen = new Set();
+  value.forEach((rawValue) => {
+    const normalized = trimString(rawValue, 160);
+    if (!normalized || seen.has(normalized)) return;
+    seen.add(normalized);
+    out.push(normalized);
+  });
+  return out;
+}
+
+function normalizeCommitStatus(value) {
+  const normalized = trimString(value, 32);
+  return FIRST_RUN_COMMIT_STATUSES.includes(normalized) ? normalized : "idle";
+}
+
+function normalizeCommitV1(value) {
+  const source = isPlainObject(value) ? value : {};
+  const status = normalizeCommitStatus(source.status);
+  return {
+    version: 1,
+    status,
+    commitKey: trimString(source.commitKey, 160) || null,
+    selectedPlanId: trimString(source.selectedPlanId, 120) || null,
+    selectedPlanType: trimString(source.selectedPlanType, 80) || null,
+    selectedPlanSource: trimString(source.selectedPlanSource, 80) || null,
+    appliedAt: status === "applied" ? normalizeIsoString(source.appliedAt) : null,
+    createdCategoryIds: normalizeIdList(source.createdCategoryIds),
+    reusedCategoryIds: normalizeIdList(source.reusedCategoryIds),
+    createdGoalIds: normalizeIdList(source.createdGoalIds),
+    createdActionIds: normalizeIdList(source.createdActionIds),
+    createdOccurrenceIds: normalizeIdList(source.createdOccurrenceIds),
+    errorCode: status === "failed" ? trimString(source.errorCode, 80) || "COMMIT_FAILED" : null,
+    updatedAt: normalizeIsoString(source.updatedAt),
+  };
+}
+
 function normalizeGeneratedPlan(value, index = 0) {
   const source = isPlainObject(value) ? value : {};
   const variant = normalizePlanVariant(source.variant || source.id, index);
@@ -417,6 +458,7 @@ export function createInitialFirstRunState(overrides = {}, options = {}) {
     inputHash: normalizeInputHash(source.inputHash),
     generationError: normalizeGenerationError(source.generationError),
     selectedPlanId: normalizeSelectedPlanId(source.selectedPlanId, generatedPlans),
+    commitV1: normalizeCommitV1(source.commitV1),
     discoveryDone: status === "done" ? true : source.discoveryDone === true,
     lastUpdatedAt: normalizeIsoString(source.lastUpdatedAt),
   };
@@ -429,7 +471,10 @@ export function normalizeFirstRunV1(rawValue, options = {}) {
 export function isFirstRunDone(ui) {
   const safeUi = isPlainObject(ui) ? ui : {};
   if (isPlainObject(safeUi.firstRunV1)) {
-    return normalizeFirstRunV1(safeUi.firstRunV1).status === "done";
+    const firstRun = normalizeFirstRunV1(safeUi.firstRunV1);
+    if (firstRun.status !== "done") return false;
+    if (isPlainObject(safeUi.firstRunV1.commitV1) && firstRun.commitV1.status !== "applied") return false;
+    return true;
   }
   return safeUi.onboardingCompleted === true;
 }
@@ -443,7 +488,14 @@ export function hasMeaningfulFirstRunState(value) {
   if (trimString(draft.whyText, 1200) || trimString(draft.primaryGoal, 240) || draft.currentCapacity) return true;
   if (draft.priorityCategoryIds.length) return true;
   if (draft.unavailableWindows.length || draft.preferredWindows.length) return true;
-  if (firstRun.generatedPlans || firstRun.inputHash || firstRun.generationError || firstRun.selectedPlanId || firstRun.discoveryDone) {
+  if (
+    firstRun.generatedPlans ||
+    firstRun.inputHash ||
+    firstRun.generationError ||
+    firstRun.selectedPlanId ||
+    firstRun.discoveryDone ||
+    firstRun.commitV1.status !== "idle"
+  ) {
     return true;
   }
 
@@ -453,6 +505,7 @@ export function hasMeaningfulFirstRunState(value) {
 export function getNextFirstRunStatus(status, snapshot = {}) {
   const normalized = normalizeStatus(status);
   if (normalized === "compare" && !trimString(snapshot.selectedPlanId, 80)) return "compare";
+  if (normalized === "discovery" && snapshot?.commitV1?.status !== "applied") return "discovery";
 
   const currentIndex = FIRST_RUN_STATUSES.indexOf(normalized);
   if (currentIndex < 0 || currentIndex >= FIRST_RUN_STATUSES.length - 1) return normalized;
@@ -501,6 +554,123 @@ function buildPlanPreview({ draftAnswers, variant, weeklyMinutes, focusBlocks })
   ].filter(Boolean);
 }
 
+function resolveFallbackTodayKey(now) {
+  const date = now instanceof Date && !Number.isNaN(now.getTime()) ? now : new Date();
+  return normalizeLocalDateKey(date) || toLocalDateKey(date);
+}
+
+function resolveFallbackCategoryIds(draftAnswers) {
+  const ids = Array.isArray(draftAnswers.priorityCategoryIds) ? draftAnswers.priorityCategoryIds : [];
+  return ids.length ? ids : ["productivity"];
+}
+
+function resolveFallbackStartTime(draftAnswers) {
+  const preferredWindows = Array.isArray(draftAnswers.preferredWindows) ? draftAnswers.preferredWindows : [];
+  const preferred = preferredWindows.map((windowValue) => normalizeTime(windowValue?.startTime)).find(Boolean);
+  return preferred || "00:00";
+}
+
+function formatFallbackDayLabel(dateKey, index) {
+  const date = fromLocalDateKey(dateKey);
+  const fallback = `J+${index}`;
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return fallback;
+  try {
+    return new Intl.DateTimeFormat("fr-FR", { weekday: "short", day: "2-digit", month: "2-digit" })
+      .format(date)
+      .replace(".", "")
+      .toUpperCase();
+  } catch {
+    return fallback;
+  }
+}
+
+function buildFallbackDates(todayKey, blockCount) {
+  const count = Math.max(1, Math.round(blockCount || 1));
+  const offsets = count <= 3 ? [0, 2, 4] : count === 4 ? [0, 1, 3, 5] : [0, 1, 2, 4, 5, 6];
+  return offsets.slice(0, count).map((offset) => addDaysLocal(todayKey, offset)).filter(Boolean);
+}
+
+function buildFallbackCommitDraft({ draftAnswers, variant, todayKey, focusBlocks, minutesPerBlock }) {
+  const categoryIds = resolveFallbackCategoryIds(draftAnswers);
+  const categoryId = categoryIds[0] || "productivity";
+  const meta = USER_AI_CATEGORY_META[categoryId] || USER_AI_CATEGORY_META.productivity;
+  const primaryGoal = trimString(draftAnswers.primaryGoal, 180) || "Installer un premier rythme";
+  const startTime = resolveFallbackStartTime(draftAnswers);
+  const fixedTime = startTime !== "00:00";
+  const dates = buildFallbackDates(todayKey, focusBlocks);
+  const daysOfWeek = [];
+  dates.forEach((dateKey) => {
+    const dow = appDowFromDate(fromLocalDateKey(dateKey));
+    if (Number.isInteger(dow) && !daysOfWeek.includes(dow)) daysOfWeek.push(dow);
+  });
+
+  const draftCategoryId = `fallback_${variant}_${categoryId}`;
+  const draftGoalId = `fallback_${variant}_goal`;
+  const draftActionId = `fallback_${variant}_action`;
+  const title = variant === "ambitious" ? `Bloc prioritaire: ${primaryGoal}` : `Premier bloc: ${primaryGoal}`;
+
+  const preview = dates.map((dateKey, index) => ({
+    dayKey: dateKey,
+    dayLabel: formatFallbackDayLabel(dateKey, index),
+    slotLabel: fixedTime ? startTime : "Flexible",
+    categoryId: draftCategoryId,
+    categoryLabel: meta?.label || "Productivité",
+    title,
+    minutes: minutesPerBlock,
+  }));
+
+  return {
+    preview,
+    todayPreview: preview.slice(0, 1),
+    commitDraft: {
+      version: 1,
+      categories: [
+        {
+          id: draftCategoryId,
+          templateId: categoryId,
+          name: meta?.label || "Productivité",
+          color: meta?.color || "",
+          order: 0,
+        },
+      ],
+      goals: [
+        {
+          id: draftGoalId,
+          categoryId: draftCategoryId,
+          title: primaryGoal,
+          type: "OUTCOME",
+          order: 0,
+        },
+      ],
+      actions: [
+        {
+          id: draftActionId,
+          categoryId: draftCategoryId,
+          parentGoalId: draftGoalId,
+          title,
+          type: "PROCESS",
+          order: 0,
+          repeat: "weekly",
+          daysOfWeek: daysOfWeek.length ? daysOfWeek : [appDowFromDate(fromLocalDateKey(todayKey)) || 1],
+          timeMode: fixedTime ? "FIXED" : "NONE",
+          startTime: fixedTime ? startTime : "",
+          timeSlots: fixedTime ? [startTime] : [],
+          durationMinutes: minutesPerBlock,
+          sessionMinutes: minutesPerBlock,
+        },
+      ],
+      occurrences: dates.map((dateKey, index) => ({
+        id: `fallback_${variant}_occ_${index + 1}`,
+        actionId: draftActionId,
+        date: dateKey,
+        start: fixedTime ? startTime : "00:00",
+        durationMinutes: minutesPerBlock,
+        status: "planned",
+      })),
+    },
+  };
+}
+
 export function buildLocalStubGeneratedPlans(draftAnswers, now = new Date()) {
   const safeDraftAnswers = normalizeFirstRunDraftAnswers(draftAnswers);
   const capacity = safeDraftAnswers.currentCapacity || "stable";
@@ -512,15 +682,30 @@ export function buildLocalStubGeneratedPlans(draftAnswers, now = new Date()) {
   const stretchMinutes = Math.max(steadyMinutes + 45, baseMinutes + 60 - unavailableCount * 10);
   const steadyBlocks = capacity === "reprise" ? 3 : 4;
   const stretchBlocks = capacity === "forte" ? 6 : 5;
+  const todayKey = resolveFallbackTodayKey(now);
+  const steadyFallback = buildFallbackCommitDraft({
+    draftAnswers: safeDraftAnswers,
+    variant: "tenable",
+    todayKey,
+    focusBlocks: steadyBlocks,
+    minutesPerBlock: capacity === "reprise" ? 20 : 25,
+  });
+  const stretchFallback = buildFallbackCommitDraft({
+    draftAnswers: safeDraftAnswers,
+    variant: "ambitious",
+    todayKey,
+    focusBlocks: stretchBlocks,
+    minutesPerBlock: capacity === "forte" ? 35 : 30,
+  });
 
   return normalizeGeneratedPlans({
-    version: FIRST_RUN_VERSION,
-    source: "local_stub",
+    version: FIRST_RUN_PLAN_RESPONSE_VERSION,
+    source: "local_fallback",
     generatedAt: now.toISOString(),
     plans: [
       {
-        id: "steady",
-        variant: "steady",
+        id: "tenable",
+        variant: "tenable",
         title: "Plan tenable",
         summary: preferredCount
           ? "Un rythme sobre qui sécurise la régularité dès la première semaine."
@@ -530,16 +715,24 @@ export function buildLocalStubGeneratedPlans(draftAnswers, now = new Date()) {
           focusBlocks: steadyBlocks,
           flexibility: "high",
         },
-        preview: buildPlanPreview({
+        preview: steadyFallback.preview,
+        todayPreview: steadyFallback.todayPreview,
+        rationale: {
+          whyFit: safeDraftAnswers.whyText ? "Construit à partir de ton pourquoi, sans bloquer l’activation." : "Point de départ local, sans dépendre de l’IA.",
+          capacityFit: capacity === "reprise" ? "Charge légère pour relancer sans dette." : "Charge contenue pour créer une première preuve.",
+          constraintFit: safeDraftAnswers.unavailableWindows.length ? "Les indisponibilités connues restent évitées autant que possible." : "Plan souple avec une marge d’ajustement.",
+        },
+        commitDraft: steadyFallback.commitDraft,
+        legacyPreview: buildPlanPreview({
           draftAnswers: safeDraftAnswers,
-          variant: "steady",
+          variant: "tenable",
           weeklyMinutes: steadyMinutes,
           focusBlocks: steadyBlocks,
         }),
       },
       {
-        id: "stretch",
-        variant: "stretch",
+        id: "ambitious",
+        variant: "ambitious",
         title: "Plan ambitieux",
         summary: "Une version plus dense, avec davantage de blocs et moins de marge.",
         metrics: {
@@ -547,9 +740,17 @@ export function buildLocalStubGeneratedPlans(draftAnswers, now = new Date()) {
           focusBlocks: stretchBlocks,
           flexibility: "medium",
         },
-        preview: buildPlanPreview({
+        preview: stretchFallback.preview,
+        todayPreview: stretchFallback.todayPreview,
+        rationale: {
+          whyFit: safeDraftAnswers.whyText ? "Même objectif central, avec une cadence plus engagée." : "Version locale plus dense pour tester ton rythme.",
+          capacityFit: capacity === "forte" ? "Charge soutenue, cohérente avec ta capacité déclarée." : "Montée en charge plus exigeante que le plan tenable.",
+          constraintFit: safeDraftAnswers.preferredWindows.length ? "S’appuie sur les créneaux favorables déclarés." : "À choisir seulement si tu veux moins de marge.",
+        },
+        commitDraft: stretchFallback.commitDraft,
+        legacyPreview: buildPlanPreview({
           draftAnswers: safeDraftAnswers,
-          variant: "stretch",
+          variant: "ambitious",
           weeklyMinutes: stretchMinutes,
           focusBlocks: stretchBlocks,
         }),

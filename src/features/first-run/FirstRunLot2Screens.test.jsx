@@ -202,7 +202,31 @@ describe("First-run lot 2 screens", () => {
 
     expect(generateHtml).toContain("4/5");
     expect(compareHtml).toContain("5/5");
+    expect(commitHtml).toContain("On applique ton choix dans ton vrai système");
+    expect(commitHtml).not.toContain("ne crée pas encore le vrai système produit");
     expect(commitHtml).not.toContain("6/7");
     expect(discoveryHtml).not.toContain("7/7");
+  });
+
+  it("keeps commit failure on the commit screen with conservative copy", () => {
+    const html = renderToStaticMarkup(
+      <FirstRunCommitScreen
+        data={{}}
+        selectedPlan={{
+          id: "tenable",
+          title: "Plan tenable",
+          summary: "Plan de départ",
+          preview: [],
+          variant: "tenable",
+        }}
+        errorCode="MISSING_COMMIT_ACTION"
+        isApplying={false}
+        onBack={() => {}}
+        onContinue={() => {}}
+      />
+    );
+
+    expect(html).toContain("Impossible d’appliquer ce plan pour le moment");
+    expect(html).toContain("Valider ce choix");
   });
 });

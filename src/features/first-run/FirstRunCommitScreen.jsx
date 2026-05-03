@@ -15,6 +15,8 @@ function renderPreviewLine(item) {
 export default function FirstRunCommitScreen({
   data,
   selectedPlan,
+  isApplying = false,
+  errorCode = null,
   onBack,
   onContinue,
 }) {
@@ -23,18 +25,23 @@ export default function FirstRunCommitScreen({
       data={data}
       testId="first-run-screen-commit"
       title="Validation du plan choisi"
-      subtitle="Ce lot ne crée pas encore le vrai système produit. Il persiste uniquement le choix et l'étape atteinte."
+      subtitle="On applique ton choix dans ton vrai système avant d’ouvrir le cockpit."
       badge=""
       footer={
         <>
-          <GhostButton onClick={onBack}>Retour</GhostButton>
-          <PrimaryButton disabled={!selectedPlan} onClick={onContinue}>
-            Valider ce choix
+          <GhostButton disabled={isApplying} onClick={onBack}>Retour</GhostButton>
+          <PrimaryButton disabled={!selectedPlan || isApplying} onClick={onContinue}>
+            {isApplying ? "Application..." : "Valider ce choix"}
           </PrimaryButton>
         </>
       }
     >
       <div className="firstRunSectionStack">
+        {errorCode ? (
+          <FeedbackMessage tone="error">
+            Impossible d’appliquer ce plan pour le moment. Vérifie ton choix puis réessaie.
+          </FeedbackMessage>
+        ) : null}
         {selectedPlan ? (
           <>
             <AppInlineMetaCard

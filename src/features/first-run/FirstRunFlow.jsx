@@ -13,8 +13,10 @@ import { saveState } from "../../utils/storage";
 import { todayLocalKey } from "../../utils/datetime";
 import { useAuth } from "../../auth/useAuth";
 import { buildAiFirstRunPlanRequest, requestAiFirstRunPlan } from "../../infra/aiFirstRunClient";
+import { TOUR_VERSION } from "../../tour/tourSpec";
 import {
   addFirstRunDraftWindow,
+  buildLocalStubGeneratedPlans,
   createInitialFirstRunState,
   getNextFirstRunStatus,
   getPreviousFirstRunStatus,
@@ -24,7 +26,6 @@ import {
   removeFirstRunDraftWindow,
 } from "./firstRunModel";
 import {
-  applyFirstRunGenerationFailure,
   applyFirstRunGenerationSuccess,
   buildFirstRunGenerationError,
   markFirstRunGenerationPending,
@@ -33,6 +34,7 @@ import {
   shouldReuseFirstRunGeneratedPlans,
   shouldStartFirstRunGeneration,
 } from "./firstRunGenerationState";
+import { applyFirstRunCommitDraft } from "./firstRunCommit";
 import FirstRunCommitScreen from "./FirstRunCommitScreen";
 import FirstRunCompareScreen from "./FirstRunCompareScreen";
 import FirstRunDiscoveryScreen from "./FirstRunDiscoveryScreen";
@@ -81,6 +83,11 @@ function buildNextUi(baseUi, nextFirstRun) {
     onboardingCompleted: completed,
     onboardingSeenVersion: completed ? Math.max(Number(baseUi?.onboardingSeenVersion) || 0, 3) : Number(baseUi?.onboardingSeenVersion) || 0,
     onboardingStep: completed ? 5 : 1,
+    tourSeenVersion:
+      completed && nextFirstRun.commitV1?.status === "applied"
+        ? Math.max(Number(baseUi?.tourSeenVersion) || 0, TOUR_VERSION)
+        : Number(baseUi?.tourSeenVersion) || 0,
+    tourStepIndex: completed && nextFirstRun.commitV1?.status === "applied" ? 0 : Number(baseUi?.tourStepIndex) || 0,
     showPlanStep: false,
   };
 }
@@ -144,6 +151,7 @@ export default function FirstRunFlow({ data, setData, onDone, planOnly = false }
   const safeUi = isPlainObject(safeData.ui) ? safeData.ui : {};
   const generationRequestRef = useRef({ token: 0, inputHash: null });
   const isUnmountedRef = useRef(false);
+  const commitApplyingRef = useRef(false);
   const firstRun = useMemo(
     () =>
       normalizeFirstRunV1(safeUi.firstRunV1, {
@@ -152,6 +160,7 @@ export default function FirstRunFlow({ data, setData, onDone, planOnly = false }
     [safeUi.firstRunV1, safeUi.onboardingCompleted]
   );
   const [planChoice, setPlanChoice] = useState(safeData?.profile?.plan === "premium" ? "premium" : "free");
+  const [isCommitApplying, setIsCommitApplying] = useState(false);
 
   const updateFirstRun = useCallback(
     (updater) => {
@@ -220,6 +229,7 @@ export default function FirstRunFlow({ data, setData, onDone, planOnly = false }
         inputHash: null,
         generationError: null,
         selectedPlanId: null,
+        commitV1: { status: "idle" },
         discoveryDone: false,
         lastUpdatedAt: new Date().toISOString(),
       }));
@@ -370,11 +380,22 @@ export default function FirstRunFlow({ data, setData, onDone, planOnly = false }
       generationRequestRef.current = { token: requestToken, inputHash: null };
 
       if (!result.ok) {
+        const generationError = buildFirstRunGenerationError(result);
+        const fallbackPlans = buildLocalStubGeneratedPlans(firstRun.draftAnswers, new Date());
         commitFirstRunFromLatest((current) => {
-          return applyFirstRunGenerationFailure(current, {
+          if (current?.status !== "generate" || current?.inputHash !== inputHash) return current;
+          return {
+            ...current,
             inputHash,
-            error: buildFirstRunGenerationError(result),
-          });
+            generatedPlans: {
+              ...fallbackPlans,
+              inputHash,
+            },
+            generationError,
+            selectedPlanId: null,
+            status: "compare",
+            lastUpdatedAt: new Date().toISOString(),
+          };
         });
         return;
       }
@@ -501,6 +522,7 @@ export default function FirstRunFlow({ data, setData, onDone, planOnly = false }
           updateFirstRun((current) => ({
             ...current,
             selectedPlanId: planId,
+            commitV1: { status: "idle" },
             lastUpdatedAt: new Date().toISOString(),
           }))
         }
@@ -510,20 +532,90 @@ export default function FirstRunFlow({ data, setData, onDone, planOnly = false }
   }
 
   if (firstRun.status === "commit") {
-    return <FirstRunCommitScreen data={safeData} selectedPlan={selectedPlan} onBack={goBack} onContinue={goNext} />;
+    const handleApplyCommit = () => {
+      if (commitApplyingRef.current) return;
+      commitApplyingRef.current = true;
+      setIsCommitApplying(true);
+      setData((previous) => {
+        const safePrevious = isPlainObject(previous) ? previous : {};
+        const baseUi = isPlainObject(safePrevious.ui) ? safePrevious.ui : {};
+        const current = normalizeFirstRunV1(baseUi.firstRunV1, {
+          legacyOnboardingCompleted: baseUi.onboardingCompleted === true,
+        });
+        const safePlans = Array.isArray(current.generatedPlans?.plans) ? current.generatedPlans.plans : [];
+        const currentSelectedPlan = safePlans.find((plan) => plan.id === current.selectedPlanId) || selectedPlan;
+        const result = applyFirstRunCommitDraft({
+          state: safePrevious,
+          firstRun: current,
+          selectedPlan: currentSelectedPlan,
+          now: new Date(),
+        });
+
+        const nextFirstRun = normalizeFirstRunV1(
+          {
+            ...current,
+            status: result.ok ? "discovery" : "commit",
+            commitV1: result.commitV1,
+            lastUpdatedAt: new Date().toISOString(),
+          },
+          { legacyOnboardingCompleted: baseUi.onboardingCompleted === true }
+        );
+        const stateWithCommit = result.ok ? result.nextState : safePrevious;
+        const nextBaseUi = isPlainObject(stateWithCommit.ui) ? stateWithCommit.ui : baseUi;
+        const nextState = {
+          ...stateWithCommit,
+          ui: buildNextUi(nextBaseUi, nextFirstRun),
+        };
+        saveState(nextState);
+        Promise.resolve().then(() => {
+          commitApplyingRef.current = false;
+          setIsCommitApplying(false);
+        });
+        return nextState;
+      });
+    };
+
+    return (
+      <FirstRunCommitScreen
+        data={safeData}
+        selectedPlan={selectedPlan}
+        isApplying={isCommitApplying || firstRun.commitV1?.status === "applying"}
+        errorCode={firstRun.commitV1?.status === "failed" ? firstRun.commitV1?.errorCode : null}
+        onBack={goBack}
+        onContinue={handleApplyCommit}
+      />
+    );
   }
 
   return (
     <FirstRunDiscoveryScreen
       data={safeData}
       onComplete={() => {
-        updateFirstRun((current) => ({
-          ...current,
-          status: "done",
-          discoveryDone: true,
-          lastUpdatedAt: new Date().toISOString(),
-        }));
-        if (typeof onDone === "function") onDone();
+        const canCompleteDiscovery = firstRun.commitV1?.status === "applied";
+        updateFirstRun((current) => {
+          if (current.commitV1?.status !== "applied") {
+            return {
+              ...current,
+              status: "commit",
+              discoveryDone: false,
+              commitV1: {
+                ...current.commitV1,
+                version: 1,
+                status: "failed",
+                errorCode: "COMMIT_REQUIRED",
+                updatedAt: new Date().toISOString(),
+              },
+              lastUpdatedAt: new Date().toISOString(),
+            };
+          }
+          return {
+            ...current,
+            status: "done",
+            discoveryDone: true,
+            lastUpdatedAt: new Date().toISOString(),
+          };
+        });
+        if (canCompleteDiscovery && typeof onDone === "function") onDone();
       }}
     />
   );

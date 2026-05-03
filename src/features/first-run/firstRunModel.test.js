@@ -10,6 +10,7 @@ import {
   normalizeFirstRunV1,
   patchFirstRunDraftWindow,
   removeFirstRunDraftWindow,
+  buildLocalStubGeneratedPlans,
 } from "./firstRunModel";
 
 describe("firstRunModel", () => {
@@ -48,6 +49,7 @@ describe("firstRunModel", () => {
     expect(normalized.inputHash).toBeNull();
     expect(normalized.generationError).toBeNull();
     expect(normalized.selectedPlanId).toBeNull();
+    expect(normalized.commitV1.status).toBe("idle");
     expect(normalized.discoveryDone).toBe(false);
   });
 
@@ -55,6 +57,8 @@ describe("firstRunModel", () => {
     expect(normalizeFirstRunV1(null, { legacyOnboardingCompleted: true }).status).toBe("done");
     expect(isFirstRunDone({ onboardingCompleted: true })).toBe(true);
     expect(isFirstRunDone({ firstRunV1: { status: "signals" }, onboardingCompleted: true })).toBe(false);
+    expect(isFirstRunDone({ firstRunV1: { status: "done", commitV1: { status: "failed" } }, onboardingCompleted: true })).toBe(false);
+    expect(isFirstRunDone({ firstRunV1: { status: "done" }, onboardingCompleted: true })).toBe(true);
   });
 
   it("migrates incomplete legacy onboarding to intro", () => {
@@ -320,5 +324,50 @@ describe("firstRunModel", () => {
     });
 
     expect(normalized.generatedPlans?.plans[0]?.commitDraft?.occurrences[0]?.actionId).toBe("action_1");
+  });
+
+  it("normalizes commit metadata and local fallback plans with a real commitDraft", () => {
+    const normalized = normalizeFirstRunV1({
+      status: "discovery",
+      commitV1: {
+        status: "applied",
+        commitKey: "commit-1",
+        selectedPlanId: "tenable",
+        selectedPlanType: "tenable",
+        selectedPlanSource: "local_fallback",
+        appliedAt: "2026-04-29T08:00:00.000Z",
+        createdCategoryIds: ["cat_1", "cat_1"],
+        reusedCategoryIds: ["cat_existing"],
+        createdGoalIds: ["goal_1"],
+        createdActionIds: ["action_1"],
+        createdOccurrenceIds: ["occ_1"],
+      },
+    });
+
+    expect(normalized.commitV1).toMatchObject({
+      status: "applied",
+      commitKey: "commit-1",
+      selectedPlanSource: "local_fallback",
+      createdCategoryIds: ["cat_1"],
+      reusedCategoryIds: ["cat_existing"],
+    });
+
+    const fallback = buildLocalStubGeneratedPlans(
+      {
+        whyText: "Reprendre le contrôle",
+        primaryGoal: "Relancer le projet",
+        currentCapacity: "stable",
+        priorityCategoryIds: ["business"],
+        preferredWindows: [{ id: "p1", daysOfWeek: [3], startTime: "08:00", endTime: "10:00", label: "Matin" }],
+      },
+      new Date(2026, 3, 29, 10, 0, 0, 0)
+    );
+
+    expect(fallback.source).toBe("local_fallback");
+    expect(fallback.plans).toHaveLength(2);
+    expect(fallback.plans[0].commitDraft.categories.length).toBeGreaterThan(0);
+    expect(fallback.plans[0].commitDraft.goals.length).toBeGreaterThan(0);
+    expect(fallback.plans[0].commitDraft.actions.length).toBeGreaterThan(0);
+    expect(fallback.plans[0].commitDraft.occurrences.some((occurrence) => occurrence.date === "2026-04-29")).toBe(true);
   });
 });
