@@ -1,10 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildAuthPath,
+  getAuthScreenFromPath,
   parseAuthCallbackParams,
   shouldDetectSupabaseSessionInUrl,
 } from "./authPaths";
 
 describe("authPaths", () => {
+  it("expose la route welcome auth sans casser les routes directes", () => {
+    expect(getAuthScreenFromPath("/auth/welcome")).toBe("welcome");
+    expect(buildAuthPath("welcome")).toBe("/auth/welcome");
+    expect(buildAuthPath("signup")).toBe("/auth/signup");
+    expect(buildAuthPath("login")).toBe("/auth/login");
+  });
+
   it("detecte les callbacks Supabase uniquement sur verify-email et reset-password", () => {
     expect(
       shouldDetectSupabaseSessionInUrl(
@@ -40,4 +49,3 @@ describe("authPaths", () => {
     });
   });
 });
-

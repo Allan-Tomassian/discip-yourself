@@ -1,15 +1,18 @@
 import React from "react";
 import { useAuth } from "./useAuth";
+import Welcome from "./Welcome";
 import Signup from "./Signup";
 import Login from "./Login";
 import VerifyEmail from "./VerifyEmail";
 import ForgotPassword from "./ForgotPassword";
 import ResetPassword from "./ResetPassword";
+import FirstAccessShell from "../features/first-access/FirstAccessShell";
+import AuthCommandSurface, { AuthSecureNote } from "../features/first-access/AuthCommandSurface";
 import { buildLocalUserDataKey } from "../data/userDataApi";
 import { hasMeaningfulFirstRunState, isFirstRunDone } from "../features/first-run/firstRunModel";
 import { resolveAuthGateState } from "./authGateModel";
 import {
-  AUTH_SIGNUP_PATH,
+  AUTH_WELCOME_PATH,
   AUTH_VERIFY_EMAIL_PATH,
   getSearchParam,
   normalizePathname,
@@ -18,7 +21,7 @@ import { loadState } from "../utils/storage";
 
 function readLocation() {
   if (typeof window === "undefined") {
-    return { pathname: AUTH_SIGNUP_PATH, search: "" };
+    return { pathname: AUTH_WELCOME_PATH, search: "" };
   }
   return {
     pathname: normalizePathname(window.location.pathname),
@@ -61,6 +64,46 @@ function readCachedFirstRunSummary(userId) {
   return userSummary || globalSummary;
 }
 
+export function AuthStatusScreen({ testId, title, subtitle, steps = [] }) {
+  return (
+    <FirstAccessShell variant="status">
+      <AuthCommandSurface
+        data-testid={testId}
+        tone="status"
+        eyebrow="Connexion au système"
+        title={title}
+        subtitle={subtitle}
+        showIcon={false}
+        className="authCommandSurface--statusCompact"
+        bodyClassName="authStatusStack"
+      >
+        <div className="authStatusModule" aria-hidden="true">
+          <div className="authStatusRadar">
+            <span className="authStatusCore" />
+            <span className="authStatusScanLine" />
+          </div>
+        </div>
+
+        {steps.length ? (
+          <div className="authStatusList">
+            {steps.map((step, index) => (
+              <div
+                key={step}
+                className={`authStatusStep${index >= steps.length - 1 ? " is-pending" : " is-complete"}`}
+              >
+                <span className="authStatusStepDot" aria-hidden="true" />
+                <span>{step}</span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        <AuthSecureNote>Connexion sécurisée</AuthSecureNote>
+      </AuthCommandSurface>
+    </FirstAccessShell>
+  );
+}
+
 export default function AuthGate({ children }) {
   const {
     loading,
@@ -89,7 +132,7 @@ export default function AuthGate({ children }) {
 
   const navigate = React.useCallback((path, options = {}) => {
     if (typeof window === "undefined") return;
-    const target = String(path || AUTH_SIGNUP_PATH).trim() || AUTH_SIGNUP_PATH;
+    const target = String(path || AUTH_WELCOME_PATH).trim() || AUTH_WELCOME_PATH;
     if (options.replace) {
       window.history.replaceState({}, "", target);
     } else {
@@ -118,25 +161,33 @@ export default function AuthGate({ children }) {
 
   if (loading) {
     return (
-      <div
-        data-testid="auth-loading-screen"
-        className="appViewportFill"
-        style={{ display: "grid", placeItems: "center", padding: 24 }}
-      >
-        <p>Chargement...</p>
-      </div>
+      <AuthStatusScreen
+        testId="auth-loading-screen"
+        title="Vérification de ton accès…"
+        subtitle="Préparation de ton cockpit personnel."
+        steps={[
+          "Vérification des identifiants",
+          "Sécurisation de la connexion",
+          "Chargement de ton système",
+          "Redirection vers ton cockpit",
+        ]}
+      />
     );
   }
 
   if (resolved.kind === "redirect") {
     return (
-      <div
-        data-testid="auth-redirecting-screen"
-        className="appViewportFill"
-        style={{ display: "grid", placeItems: "center", padding: 24 }}
-      >
-        <p>Redirection...</p>
-      </div>
+      <AuthStatusScreen
+        testId="auth-redirecting-screen"
+        title="Vérification de ton accès…"
+        subtitle="Préparation de ton cockpit personnel."
+        steps={[
+          "Vérification des identifiants",
+          "Sécurisation de la connexion",
+          "Chargement de ton système",
+          "Redirection vers ton cockpit",
+        ]}
+      />
     );
   }
 
@@ -145,6 +196,10 @@ export default function AuthGate({ children }) {
     const queryMessage = getSearchParam(location.search, "message");
     const queryMode = getSearchParam(location.search, "mode") || "signup";
     const targetEmail = queryEmail || String(user?.email || "").trim();
+
+    if (resolved.screen === "welcome") {
+      return <Welcome onNavigate={navigate} />;
+    }
 
     if (resolved.screen === "signup") {
       return (

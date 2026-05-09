@@ -1,12 +1,14 @@
 import React, { useMemo, useState } from "react";
+import { AlertTriangle } from "lucide-react";
 import {
   AppInput,
-  AppStandaloneScreen,
-  AppTextButton,
   FeedbackMessage,
   FieldGroup,
+  GhostButton,
   PrimaryButton,
 } from "../shared/ui/app";
+import FirstAccessShell from "../features/first-access/FirstAccessShell";
+import AuthCommandSurface, { AuthSecureNote } from "../features/first-access/AuthCommandSurface";
 
 const MIN_PASSWORD_LENGTH = 6;
 
@@ -58,79 +60,91 @@ export default function ResetPassword({ recoveryMode = false, onNavigate, onUpda
 
   if (!recoveryMode) {
     return (
-      <AppStandaloneScreen
-        data-testid="auth-reset-password-screen"
-        title="Lien invalide"
-        subtitle="Le lien de réinitialisation a expiré, est invalide ou la session de récupération est absente."
-        footer={(
-          <AppTextButton
+      <FirstAccessShell variant="reset-password">
+        <AuthCommandSurface
+          data-testid="auth-reset-password-screen"
+          tone="danger"
+          icon={AlertTriangle}
+          eyebrow="Lien expiré"
+          title="Lien invalide"
+          subtitle="Le lien de réinitialisation a expiré, est invalide ou la session de récupération est absente."
+          footer={<AuthSecureNote>Sécurisé par Discip Yourself</AuthSecureNote>}
+        >
+          <div className="authDangerPanel">
+            <div className="authDangerTitle">Lien invalide ou expiré</div>
+            <div className="authDangerText">
+              Redemande un email de réinitialisation pour définir un nouveau mot de passe.
+            </div>
+          </div>
+          <GhostButton
+            className="authCriticalCta"
             type="button"
             onClick={() => onNavigate("/auth/forgot-password", { replace: true })}
           >
             Demander un nouveau lien
-          </AppTextButton>
-        )}
-      >
-        <FeedbackMessage>
-          Redemande un email de réinitialisation pour définir un nouveau mot de passe.
-        </FeedbackMessage>
-      </AppStandaloneScreen>
+          </GhostButton>
+        </AuthCommandSurface>
+      </FirstAccessShell>
     );
   }
 
   return (
-    <AppStandaloneScreen
-      data-testid="auth-reset-password-screen"
-      title="Nouveau mot de passe"
-      subtitle="Définis ton nouveau mot de passe puis retourne directement dans l’app."
-    >
-      <form onSubmit={handleSubmit} className="appSimpleStack">
-        <FieldGroup
-          label="Nouveau mot de passe"
-          htmlFor="auth-reset-password"
-          error={passwordTooShort ? `Utilise au moins ${MIN_PASSWORD_LENGTH} caractères.` : ""}
-        >
-          <AppInput
-            id="auth-reset-password"
-            data-testid="auth-password-input"
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            placeholder="Nouveau mot de passe"
-            autoComplete="new-password"
-            required
-          />
-        </FieldGroup>
-        <FieldGroup
-          label="Confirmer le mot de passe"
-          htmlFor="auth-reset-password-confirm"
-          error={passwordsMismatch ? "Les mots de passe ne correspondent pas." : ""}
-        >
-          <AppInput
-            id="auth-reset-password-confirm"
-            data-testid="auth-confirm-password-input"
-            type="password"
-            value={confirmPassword}
-            onChange={(event) => setConfirmPassword(event.target.value)}
-            placeholder="Confirmer le mot de passe"
-            autoComplete="new-password"
-            required
-          />
-        </FieldGroup>
-        <PrimaryButton data-testid="auth-submit-button" type="submit" disabled={!canSubmit}>
-          {submitting ? "Mise à jour…" : "Mettre à jour mon mot de passe"}
-        </PrimaryButton>
-      </form>
+    <FirstAccessShell variant="reset-password">
+      <AuthCommandSurface
+        data-testid="auth-reset-password-screen"
+        eyebrow="Nouvel accès"
+        title="Nouveau mot de passe"
+        subtitle="Définis un nouveau mot de passe sécurisé pour protéger ton compte."
+        footer={<AuthSecureNote>Sécurisé par Discip Yourself</AuthSecureNote>}
+      >
+        <form onSubmit={handleSubmit} className="authFormStack">
+          <FieldGroup
+            label="Nouveau mot de passe"
+            htmlFor="auth-reset-password"
+            error={passwordTooShort ? `Utilise au moins ${MIN_PASSWORD_LENGTH} caractères.` : ""}
+          >
+            <AppInput
+              id="auth-reset-password"
+              data-testid="auth-password-input"
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="Nouveau mot de passe"
+              autoComplete="new-password"
+              required
+            />
+          </FieldGroup>
+          <FieldGroup
+            label="Confirmer le mot de passe"
+            htmlFor="auth-reset-password-confirm"
+            error={passwordsMismatch ? "Les mots de passe ne correspondent pas." : ""}
+          >
+            <AppInput
+              id="auth-reset-password-confirm"
+              data-testid="auth-confirm-password-input"
+              type="password"
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              placeholder="Confirmer le mot de passe"
+              autoComplete="new-password"
+              required
+            />
+          </FieldGroup>
+          <PrimaryButton data-testid="auth-submit-button" type="submit" disabled={!canSubmit}>
+            {submitting ? "Mise à jour…" : "Mettre à jour"}
+          </PrimaryButton>
+        </form>
 
-      {status.message ? (
-        <FeedbackMessage
-          data-testid="auth-status"
-          role={status.type === "error" ? "alert" : "status"}
-          tone={status.type === "error" ? "error" : "success"}
-        >
-          {status.message}
-        </FeedbackMessage>
-      ) : null}
-    </AppStandaloneScreen>
+        {status.message ? (
+          <FeedbackMessage
+            data-testid="auth-status"
+            role={status.type === "error" ? "alert" : "status"}
+            tone={status.type === "error" ? "error" : "success"}
+          >
+            {status.message}
+          </FeedbackMessage>
+        ) : null}
+      </AuthCommandSurface>
+    </FirstAccessShell>
   );
 }
