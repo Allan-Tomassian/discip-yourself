@@ -1,7 +1,6 @@
 import React from "react";
 import {
   AppChip,
-  AppFormSection,
   AppInput,
   ChoiceCard,
   FieldGroup,
@@ -9,8 +8,7 @@ import {
   PrimaryButton,
 } from "../../shared/ui/app";
 import { USER_AI_CATEGORY_META } from "../../domain/userAiProfile";
-import { getCategoryUiVars } from "../../utils/categoryAccent";
-import FirstRunStepScreen from "./FirstRunStepScreen";
+import FirstRunCommandSurface from "./FirstRunCommandSurface";
 
 const DAY_OPTIONS = [
   { value: 1, label: "L" },
@@ -26,19 +24,40 @@ const CAPACITY_OPTIONS = [
   {
     id: "reprise",
     title: "Reprise",
-    description: "Priorité à la continuité.",
+    description: "Je reconstruis sans me griller.",
   },
   {
     id: "stable",
     title: "Stable",
-    description: "Sérieux mais respirable.",
+    description: "Je peux tenir un rythme sérieux.",
   },
   {
     id: "forte",
     title: "Forte",
-    description: "Rythme plus dense.",
+    description: "Je peux absorber une charge dense.",
   },
 ];
+
+const CATEGORY_SIGNAL_DESCRIPTIONS = Object.freeze({
+  health: "Énergie, corps, rythme.",
+  business: "Projet, revenus, exécution.",
+  learning: "Compétence, étude, progression.",
+  productivity: "Focus, organisation, constance.",
+  personal: "Vie perso, cadre, équilibre.",
+  finance: "Argent, clarté, décisions.",
+});
+
+function SignalBoardSection({ title, description, className = "", children }) {
+  return (
+    <section className={["firstRunSignalBoardSection", className].filter(Boolean).join(" ")}>
+      <div className="firstRunSignalBoardHeader">
+        <h2>{title}</h2>
+        {description ? <p>{description}</p> : null}
+      </div>
+      <div className="firstRunSignalBoardBody">{children}</div>
+    </section>
+  );
+}
 
 function WindowEditorCard({
   title,
@@ -106,7 +125,7 @@ function WindowEditorCard({
   );
 }
 
-function WindowSection({
+function WindowActionGroup({
   title,
   description,
   itemLabel = "Fenêtre",
@@ -121,12 +140,16 @@ function WindowSection({
   const safeWindows = Array.isArray(windows) ? windows : [];
 
   return (
-    <AppFormSection
-      title={title}
-      description={description}
-      className="firstRunFormSection"
-      bodyClassName="firstRunFormSectionBody"
-    >
+    <div className="firstRunWindowActionGroup">
+      <div className="firstRunWindowActionRow">
+        <div className="firstRunWindowActionText">
+          <strong>{title}</strong>
+          <span>{description}</span>
+        </div>
+        <GhostButton size="sm" className="firstRunWindowActionButton" onClick={onAdd}>
+          {addLabel}
+        </GhostButton>
+      </div>
       <div className="firstRunWindowList">
         {safeWindows.length ? (
           safeWindows.map((windowValue, index) => (
@@ -143,10 +166,7 @@ function WindowSection({
           <div className="firstRunEmptyHint">{emptyLabel}</div>
         )}
       </div>
-      <GhostButton size="sm" className="firstRunSectionAction" onClick={onAdd}>
-        {addLabel}
-      </GhostButton>
-    </AppFormSection>
+    </div>
   );
 }
 
@@ -172,12 +192,23 @@ export default function FirstRunSignalsScreen({
     : [];
 
   return (
-    <FirstRunStepScreen
+    <FirstRunCommandSurface
       data={data}
       testId="first-run-screen-signals"
-      title="Quelques signaux utiles"
-      subtitle="On cadre juste ce qu’il faut pour préparer deux plans crédibles."
-      badge="3/5"
+      activeStep="signals"
+      eyebrow="Tes signaux"
+      title={
+        <>
+          Quels sont tes <strong>plus grands freins&nbsp;?</strong>
+        </>
+      }
+      subtitle={
+        <>
+          Sélectionne ce qui te correspond.
+          <br />
+          On construira ton système autour de ça.
+        </>
+      }
       footer={
         <>
           <GhostButton onClick={onBack}>Retour</GhostButton>
@@ -187,14 +218,13 @@ export default function FirstRunSignalsScreen({
         </>
       }
       bodyClassName="firstRunSignalsBody"
-      footerSurfaceClassName="firstRunFooterSurface--quiet"
+      className="firstRunCommandSurface--signals"
     >
       <div className="firstRunSectionStack">
-        <AppFormSection
-          title="Objectif principal"
-          description="Ce que tu veux faire avancer d’abord."
-          className="firstRunFormSection"
-          bodyClassName="firstRunFormSectionBody"
+        <SignalBoardSection
+          title="Cap principal"
+          description="Ce que ton système doit faire avancer en premier."
+          className="firstRunSignalSection firstRunSignalSection--goal"
         >
           <AppInput
             className="firstRunPrimaryGoalInput"
@@ -204,19 +234,18 @@ export default function FirstRunSignalsScreen({
             placeholder="Ex. remettre mon projet en mouvement"
             onChange={(event) => onPrimaryGoalChange(event.target.value)}
           />
-        </AppFormSection>
+        </SignalBoardSection>
 
-        <AppFormSection
+        <SignalBoardSection
           title="Capacité actuelle"
-          description="Le niveau de charge qui te paraît réaliste maintenant."
-          className="firstRunFormSection"
-          bodyClassName="firstRunFormSectionBody"
+          description="Choisis une charge réaliste. Le système doit tenir quand la motivation baisse."
+          className="firstRunSignalSection firstRunSignalSection--capacity"
         >
-          <div className="firstRunChoiceGrid firstRunCapacityGrid">
+          <div className="firstRunCapacitySegmentRow">
             {CAPACITY_OPTIONS.map((option) => (
               <ChoiceCard
                 key={option.id}
-                className="firstRunChoiceCard firstRunCapacityCard"
+                className="firstRunChoiceCard firstRunCapacityCard firstRunCapacitySegment"
                 title={option.title}
                 description={option.description}
                 selected={safeDraftAnswers.currentCapacity === option.id}
@@ -224,13 +253,12 @@ export default function FirstRunSignalsScreen({
               />
             ))}
           </div>
-        </AppFormSection>
+        </SignalBoardSection>
 
-        <AppFormSection
-          title="Catégories prioritaires"
-          description="Choisis jusqu’à 3 domaines à faire avancer d’abord."
-          className="firstRunFormSection"
-          bodyClassName="firstRunFormSectionBody"
+        <SignalBoardSection
+          title="Zones à reprendre en main"
+          description="Choisis jusqu’à 3 domaines. Ils deviennent les premiers axes de ton système."
+          className="firstRunSignalSection firstRunSignalSection--categories"
         >
           <div className="firstRunChoiceGrid firstRunCategoryGrid">
             {Object.values(USER_AI_CATEGORY_META).map((categoryMeta) => {
@@ -241,43 +269,51 @@ export default function FirstRunSignalsScreen({
                   key={categoryMeta.id}
                   className={`firstRunChoiceCard firstRunCategoryCard ${selected ? "is-selected" : "is-idle"}`}
                   title={categoryMeta.label}
+                  description={CATEGORY_SIGNAL_DESCRIPTIONS[categoryMeta.id] || ""}
                   selected={selected}
                   disabled={!selected && selectedCategoryIds.length >= 3}
                   badge={selected ? `#${selectionIndex + 1}` : null}
-                  style={getCategoryUiVars(categoryMeta, { level: selected ? "focus" : "surface" })}
                   onClick={() => onTogglePriorityCategory(categoryMeta.id)}
                 />
               );
             })}
           </div>
-        </AppFormSection>
+        </SignalBoardSection>
 
-        <WindowSection
-          title="Indisponibilités"
-          description="Les moments à éviter."
-          itemLabel="Indisponibilité"
-          windows={safeDraftAnswers.unavailableWindows}
-          addLabel="Ajouter une indisponibilité"
-          removeLabel="Retirer"
-          emptyLabel="Aucune pour l’instant."
-          onAdd={onAddUnavailableWindow}
-          onPatch={onPatchUnavailableWindow}
-          onRemove={onRemoveUnavailableWindow}
-        />
+        <SignalBoardSection
+          title="Contraintes & créneaux"
+          description="Pose seulement les moments qui changent vraiment ton plan."
+          className="firstRunSignalSection firstRunSignalSection--windows"
+        >
+          <div className="firstRunWindowCommandGrid">
+            <WindowActionGroup
+              title="Contraintes horaires"
+              description="Moments à éviter."
+              itemLabel="Indisponibilité"
+              windows={safeDraftAnswers.unavailableWindows}
+              addLabel="Ajouter une indisponibilité"
+              removeLabel="Retirer"
+              emptyLabel="Aucune pour l’instant."
+              onAdd={onAddUnavailableWindow}
+              onPatch={onPatchUnavailableWindow}
+              onRemove={onRemoveUnavailableWindow}
+            />
 
-        <WindowSection
-          title="Créneaux favorables"
-          description="Les moments où c’est plus facile pour toi."
-          itemLabel="Créneau"
-          windows={safeDraftAnswers.preferredWindows}
-          addLabel="Ajouter un créneau favorable"
-          removeLabel="Retirer"
-          emptyLabel="Ajoute-en un si tu en as déjà un en tête."
-          onAdd={onAddPreferredWindow}
-          onPatch={onPatchPreferredWindow}
-          onRemove={onRemovePreferredWindow}
-        />
+            <WindowActionGroup
+              title="Créneaux favorables"
+              description="Moments naturellement plus accessibles."
+              itemLabel="Créneau"
+              windows={safeDraftAnswers.preferredWindows}
+              addLabel="Ajouter un créneau favorable"
+              removeLabel="Retirer"
+              emptyLabel="Ajoute-en un si tu en as déjà un en tête."
+              onAdd={onAddPreferredWindow}
+              onPatch={onPatchPreferredWindow}
+              onRemove={onRemovePreferredWindow}
+            />
+          </div>
+        </SignalBoardSection>
       </div>
-    </FirstRunStepScreen>
+    </FirstRunCommandSurface>
   );
 }

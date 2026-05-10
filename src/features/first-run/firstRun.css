@@ -664,3 +664,1204 @@
     grid-template-columns: 1fr;
   }
 }
+
+.firstRunNarrativeScreen {
+  --first-run-green: #35f06d;
+  --first-run-green-soft: rgba(53, 240, 109, 0.15);
+  --first-run-green-dim: rgba(53, 240, 109, 0.07);
+  --first-run-cream: #f5f1e8;
+  --first-run-panel: rgba(5, 8, 8, 0.92);
+  --first-run-panel-strong: rgba(7, 10, 10, 0.96);
+  --first-run-border: rgba(255, 255, 255, 0.13);
+  --first-run-border-soft: rgba(255, 255, 255, 0.08);
+  --first-run-muted: rgba(235, 239, 235, 0.64);
+  --first-run-danger: #ff4d4d;
+  color: #fbfbf8;
+  background:
+    radial-gradient(circle at 50% 8%, rgba(53, 240, 109, 0.15), transparent 28%),
+    linear-gradient(180deg, #050607 0%, #070909 54%, #030404 100%);
+}
+
+.firstRunNarrativeScreen .bg {
+  background:
+    radial-gradient(circle at 50% 10%, rgba(53, 240, 109, 0.18), transparent 27%),
+    radial-gradient(circle at 16% 26%, rgba(53, 240, 109, 0.06), transparent 30%),
+    linear-gradient(180deg, #050607 0%, #070909 52%, #030404 100%) !important;
+}
+
+.firstRunNarrativeScreen .container {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: none;
+  min-height: 100dvh;
+  overflow: visible;
+  padding:
+    calc(18px + var(--safe-top))
+    calc(14px + var(--safe-right))
+    calc(18px + var(--safe-bottom))
+    calc(14px + var(--safe-left));
+}
+
+.firstRunNarrativeScreen .pageContent {
+  align-items: center;
+  gap: 0;
+  min-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 36px);
+}
+
+.firstRunNarrativeBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.firstRunNarrativeGrid,
+.firstRunNarrativeBeam,
+.firstRunNarrativePath,
+.firstRunNarrativeHalo {
+  position: absolute;
+  pointer-events: none;
+}
+
+.firstRunNarrativeGrid {
+  inset: -2px;
+  background:
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.16) 0 1px, transparent 1px),
+    linear-gradient(90deg, rgba(53, 240, 109, 0.035) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(53, 240, 109, 0.035) 1px, transparent 1px);
+  background-size: 18px 18px, 54px 54px, 54px 54px;
+  opacity: 0.11;
+  mask-image: radial-gradient(circle at 50% 26%, black, transparent 74%);
+}
+
+.firstRunNarrativeBeam {
+  top: -20%;
+  left: 50%;
+  width: 1px;
+  height: 142%;
+  background: linear-gradient(180deg, transparent, rgba(53, 240, 109, 0.92), transparent);
+  box-shadow:
+    0 0 26px rgba(53, 240, 109, 0.62),
+    0 0 70px rgba(53, 240, 109, 0.18);
+  opacity: 0.5;
+  transform: translateX(-50%);
+  animation: firstRunNarrativeBeamBreathe 12s ease-in-out infinite;
+}
+
+.firstRunNarrativePath {
+  top: 16%;
+  left: 50%;
+  width: min(76vw, 440px);
+  height: 55vh;
+  border: 1px solid rgba(53, 240, 109, 0.24);
+  border-left-color: transparent;
+  border-bottom-color: transparent;
+  border-radius: 50%;
+  opacity: 0.22;
+  filter: drop-shadow(0 0 18px rgba(53, 240, 109, 0.24));
+  transform: translateX(-50%) rotate(-38deg) skewX(-12deg);
+  mask-image: linear-gradient(180deg, transparent, black 18%, black 78%, transparent);
+}
+
+.firstRunNarrativeHalo {
+  top: 12%;
+  left: 50%;
+  width: min(92vw, 560px);
+  aspect-ratio: 1;
+  border-radius: 999px;
+  border: 1px solid rgba(53, 240, 109, 0.22);
+  box-shadow:
+    inset 0 0 48px rgba(53, 240, 109, 0.06),
+    0 0 72px rgba(53, 240, 109, 0.07);
+  opacity: 0.32;
+  transform: translateX(-50%);
+  mask-image: radial-gradient(circle, black 0 61%, transparent 72%);
+}
+
+.firstRunNarrativeViewport {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 16px;
+  width: min(100%, 520px);
+  margin-inline: auto;
+}
+
+.firstRunProgressRail {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+  padding: 2px;
+}
+
+.firstRunProgressStep {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  opacity: 0.48;
+}
+
+.firstRunProgressStep.is-complete,
+.firstRunProgressStep.is-active {
+  opacity: 1;
+}
+
+.firstRunProgressIndex {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(53, 240, 109, 0.34);
+  border-radius: 999px;
+  background: rgba(53, 240, 109, 0.06);
+  color: var(--first-run-green);
+  font-size: 12px;
+  font-weight: 760;
+  box-shadow: 0 0 16px rgba(53, 240, 109, 0.1);
+}
+
+.firstRunProgressStep.is-active .firstRunProgressIndex {
+  border-color: rgba(53, 240, 109, 0.68);
+  background: rgba(53, 240, 109, 0.14);
+  box-shadow: 0 0 22px rgba(53, 240, 109, 0.22);
+}
+
+.firstRunProgressText {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.firstRunProgressLabel {
+  overflow: hidden;
+  color: var(--first-run-green);
+  font-size: 10px;
+  font-weight: 760;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.firstRunProgressDescription {
+  overflow: hidden;
+  color: rgba(235, 239, 235, 0.56);
+  font-size: 10px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.firstRunCommandSurface {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: grid;
+  gap: 20px;
+  width: 100%;
+  padding: clamp(22px, 5vw, 30px);
+  border: 1px solid var(--first-run-border);
+  border-radius: 28px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.008)),
+    var(--first-run-panel);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 24px 58px rgba(0, 0, 0, 0.48);
+}
+
+.firstRunCommandSurface--why {
+  gap: 16px;
+}
+
+.firstRunCommandSurface::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 8%, rgba(53, 240, 109, 0.15), transparent 29%),
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.14) 0 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 280px 220px, 17px 17px, 48px 48px, 48px 48px;
+  opacity: 0.18;
+  mask-image: linear-gradient(180deg, black, transparent 84%);
+}
+
+.firstRunCommandAura {
+  position: absolute;
+  inset: -20% -18% auto;
+  z-index: -1;
+  height: 230px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(53, 240, 109, 0.18), transparent 58%),
+    linear-gradient(90deg, transparent, rgba(53, 240, 109, 0.1), transparent);
+  opacity: 0.72;
+}
+
+.firstRunCommandBrand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.firstRunCommandBrandMark {
+  position: relative;
+  flex: 0 0 auto;
+  width: 24px;
+  height: 29px;
+  filter: drop-shadow(0 0 14px rgba(53, 240, 109, 0.22));
+}
+
+.firstRunCommandBrandMark::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(53, 240, 109, 0.72);
+  border-radius: 8px 8px 10px 10px;
+  clip-path: polygon(50% 100%, 5% 70%, 5% 0, 50% 22%, 95% 0, 95% 70%);
+}
+
+.firstRunCommandBrandMark span {
+  position: absolute;
+  inset: 7px 7px 9px;
+  border-left: 2px solid var(--first-run-green);
+  border-bottom: 2px solid var(--first-run-green);
+  transform: rotate(-45deg);
+  transform-origin: center;
+}
+
+.firstRunCommandBrandText {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  text-transform: uppercase;
+}
+
+.firstRunCommandBrandText strong {
+  overflow: hidden;
+  color: #fbfbf8;
+  font-size: 15px;
+  font-weight: 760;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.firstRunCommandBrandText span {
+  overflow: hidden;
+  color: var(--first-run-green);
+  font-size: 8px;
+  font-weight: 720;
+  line-height: 1.2;
+  letter-spacing: 0.19em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.firstRunCommandHeader {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.firstRunCommandEyebrow {
+  color: var(--first-run-green);
+  font-size: 11px;
+  font-weight: 760;
+  line-height: 1.1;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.firstRunCommandHeader h1 {
+  max-width: 10ch;
+  margin: 0;
+  color: #fbfbf8;
+  font-size: clamp(32px, 9vw, 48px);
+  font-weight: 790;
+  line-height: 1.04;
+  letter-spacing: 0;
+  text-wrap: balance;
+}
+
+.firstRunCommandSurface--why .firstRunCommandHeader h1 {
+  max-width: 12ch;
+  font-size: clamp(30px, 8.6vw, 42px);
+}
+
+.firstRunCommandHeader h1 strong {
+  color: var(--first-run-green);
+  font-weight: inherit;
+}
+
+.firstRunCommandHeader p {
+  max-width: 34ch;
+  margin: 0;
+  color: var(--first-run-muted);
+  font-size: 15px;
+  line-height: 1.5;
+  text-wrap: balance;
+}
+
+.firstRunCommandBody {
+  display: grid;
+  gap: 18px;
+}
+
+.firstRunCommandFooter {
+  display: flex;
+  gap: 10px;
+}
+
+.firstRunCommandFooter > * {
+  flex: 1 1 0;
+}
+
+.firstRunNarrativeScreen .gateButton {
+  min-height: 52px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 790;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.firstRunNarrativeScreen .gateButton--primary {
+  border-color: rgba(255, 255, 255, 0.62);
+  background: linear-gradient(90deg, #fbfaf5 0%, #eff3ea 58%, #cdf8d4 100%);
+  color: #071007;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 0 28px rgba(53, 240, 109, 0.16);
+}
+
+.firstRunNarrativeScreen .gateButton--ghost {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.035);
+  color: rgba(245, 248, 244, 0.88);
+  box-shadow: none;
+}
+
+.firstRunNarrativeScreen .gateButton--primary:hover:not(:disabled),
+.firstRunNarrativeScreen .gateButton--primary:focus-visible:not(:disabled) {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 0 34px rgba(53, 240, 109, 0.24);
+}
+
+.firstRunNarrativeScreen .gateButton--ghost:hover:not(:disabled),
+.firstRunNarrativeScreen .gateButton--ghost:focus-visible:not(:disabled) {
+  border-color: rgba(53, 240, 109, 0.28);
+  background: rgba(53, 240, 109, 0.06);
+  color: var(--first-run-green);
+}
+
+.firstRunIntroTransition {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(92px, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  width: min(100%, 330px);
+  margin: -2px auto 0;
+  color: rgba(235, 239, 235, 0.58);
+  font-size: 9px;
+  font-weight: 760;
+  letter-spacing: 0.16em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.firstRunIntroTransition i {
+  position: relative;
+  display: block;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, rgba(235, 239, 235, 0.12), rgba(53, 240, 109, 0.86)),
+    rgba(255, 255, 255, 0.04);
+  box-shadow:
+    0 0 18px rgba(53, 240, 109, 0.22),
+    0 0 34px rgba(53, 240, 109, 0.12);
+}
+
+.firstRunIntroTransition i::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid var(--first-run-green);
+  border-right: 2px solid var(--first-run-green);
+  transform: translateY(-50%) rotate(45deg);
+  filter: drop-shadow(0 0 8px rgba(53, 240, 109, 0.58));
+}
+
+.firstRunIntroContrastGrid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+  min-height: 0;
+  padding: 8px 0 2px;
+}
+
+.firstRunIntroContrastGrid::before {
+  content: "";
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: -14px;
+  height: calc(100% + 20px);
+  border-radius: 999px;
+  background:
+    radial-gradient(ellipse at 50% 44%, rgba(53, 240, 109, 0.12), transparent 58%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025), rgba(53, 240, 109, 0.045), rgba(255, 255, 255, 0.025));
+  filter: blur(1px);
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.firstRunContrastPanel {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 9px;
+}
+
+.firstRunContrastTitle {
+  color: var(--first-run-green);
+  font-size: 10px;
+  font-weight: 760;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.firstRunContrastPanel ul {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: rgba(235, 239, 235, 0.66);
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.firstRunCommandInsight {
+  display: flex;
+  gap: 13px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.014)),
+    rgba(255, 255, 255, 0.025);
+}
+
+.firstRunCommandInsightIcon {
+  position: relative;
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(53, 240, 109, 0.42);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(53, 240, 109, 0.18), transparent 64%),
+    rgba(53, 240, 109, 0.04);
+  box-shadow:
+    inset 0 0 18px rgba(53, 240, 109, 0.08),
+    0 0 20px rgba(53, 240, 109, 0.12);
+}
+
+.firstRunCommandInsightIcon::before,
+.firstRunCommandInsightIcon::after {
+  content: "";
+  position: absolute;
+  inset: 50% auto auto 50%;
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+}
+
+.firstRunCommandInsightIcon::before {
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--first-run-green);
+}
+
+.firstRunCommandInsightIcon::after {
+  width: 6px;
+  height: 6px;
+  background: var(--first-run-green);
+  box-shadow: 0 0 14px rgba(53, 240, 109, 0.62);
+}
+
+.firstRunCommandInsightIcon--target {
+  background:
+    linear-gradient(
+      90deg,
+      transparent 0 calc(50% - 0.5px),
+      rgba(53, 240, 109, 0.42) calc(50% - 0.5px) calc(50% + 0.5px),
+      transparent calc(50% + 0.5px)
+    ),
+    linear-gradient(
+      180deg,
+      transparent 0 calc(50% - 0.5px),
+      rgba(53, 240, 109, 0.42) calc(50% - 0.5px) calc(50% + 0.5px),
+      transparent calc(50% + 0.5px)
+    ),
+    radial-gradient(circle at 50% 50%, rgba(53, 240, 109, 0.18), transparent 64%),
+    rgba(53, 240, 109, 0.04);
+}
+
+.firstRunCommandInsight .firstRunAccentWord {
+  display: inline;
+  color: var(--first-run-green);
+}
+
+.firstRunCommandInsight strong,
+.firstRunCommandInsight span {
+  display: block;
+}
+
+.firstRunCommandInsight strong {
+  color: rgba(245, 248, 244, 0.94);
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.firstRunCommandInsight span {
+  margin-top: 4px;
+  color: rgba(235, 239, 235, 0.58);
+  font-size: 13px;
+  line-height: 1.42;
+}
+
+.firstRunWhyPanel {
+  max-width: none;
+}
+
+.firstRunNarrativeScreen .appFieldGroup {
+  gap: 10px;
+}
+
+.firstRunNarrativeScreen .appFieldLabel {
+  color: rgba(235, 239, 235, 0.78);
+  font-size: 11px;
+  font-weight: 760;
+  line-height: 1;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.firstRunNarrativeScreen .AppInput,
+.firstRunNarrativeScreen .AppTextarea {
+  border-color: rgba(255, 255, 255, 0.11);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015)),
+    rgba(255, 255, 255, 0.035);
+  color: #fbfbf8;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 12px 24px rgba(0, 0, 0, 0.16);
+}
+
+.firstRunNarrativeScreen .AppInput::placeholder,
+.firstRunNarrativeScreen .AppTextarea::placeholder {
+  color: rgba(235, 239, 235, 0.36);
+}
+
+.firstRunNarrativeScreen .AppInput:focus,
+.firstRunNarrativeScreen .AppTextarea:focus {
+  border-color: rgba(53, 240, 109, 0.48);
+  box-shadow:
+    0 0 0 1px rgba(53, 240, 109, 0.22),
+    0 0 22px rgba(53, 240, 109, 0.08);
+}
+
+.firstRunNarrativeScreen .firstRunWhyInput {
+  min-height: 150px;
+  border-radius: 16px;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.firstRunCommandSurface--why .firstRunCommandInsight {
+  padding: 12px;
+}
+
+.firstRunWhyMetaRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.firstRunWhyMetaRow.is-count-only {
+  justify-content: flex-end;
+}
+
+.firstRunWhyMetaRow .firstRunWhyHelper,
+.firstRunCharacterCount {
+  color: rgba(235, 239, 235, 0.52);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.firstRunWhyMetaRow .firstRunWhyHelper.is-error {
+  color: #ff9a9a;
+}
+
+.firstRunCharacterCount {
+  flex: 0 0 auto;
+}
+
+.firstRunNarrativeScreen .firstRunSectionStack {
+  gap: 12px;
+}
+
+.firstRunCommandSurface--signals {
+  gap: 14px;
+}
+
+.firstRunCommandSurface--signals .firstRunCommandBrand {
+  margin-bottom: 2px;
+}
+
+.firstRunCommandSurface--signals .firstRunCommandHeader {
+  gap: 9px;
+}
+
+.firstRunCommandSurface--signals .firstRunCommandHeader h1 {
+  max-width: 13ch;
+  font-size: clamp(30px, 8.6vw, 40px);
+  line-height: 1.02;
+}
+
+.firstRunCommandSurface--signals .firstRunCommandHeader p {
+  max-width: 32ch;
+  font-size: 14px;
+  line-height: 1.38;
+}
+
+.firstRunSignalsBody {
+  gap: 11px;
+}
+
+.firstRunSignalBoardSection {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.034), rgba(255, 255, 255, 0.01)),
+    rgba(255, 255, 255, 0.018);
+}
+
+.firstRunSignalBoardHeader {
+  display: grid;
+  gap: 4px;
+}
+
+.firstRunSignalBoardHeader h2,
+.firstRunSignalBoardHeader p {
+  margin: 0;
+}
+
+.firstRunSignalBoardHeader h2 {
+  color: #fbfbf8;
+  font-size: 14px;
+  font-weight: 760;
+  line-height: 1.15;
+}
+
+.firstRunSignalBoardHeader p {
+  color: rgba(235, 239, 235, 0.56);
+  font-size: 12px;
+  line-height: 1.34;
+}
+
+.firstRunSignalBoardBody {
+  display: grid;
+  gap: 9px;
+}
+
+.firstRunSignalSection--goal {
+  padding-bottom: 13px;
+}
+
+.firstRunNarrativeScreen .firstRunSignalSection--goal .firstRunPrimaryGoalInput {
+  min-height: 46px;
+  border-radius: 14px;
+  font-size: 14px;
+}
+
+.firstRunCapacitySegmentRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.firstRunNarrativeScreen .firstRunCapacitySegment {
+  min-height: 66px;
+  justify-content: center;
+  padding: 10px 8px;
+  text-align: center;
+}
+
+.firstRunNarrativeScreen .firstRunCapacitySegment .appChoiceCardText {
+  gap: 4px;
+}
+
+.firstRunNarrativeScreen .firstRunCapacitySegment .appChoiceCardTitle {
+  font-size: 13px;
+  line-height: 1.1;
+}
+
+.firstRunNarrativeScreen .firstRunCapacitySegment .appChoiceCardDescription {
+  display: -webkit-box;
+  overflow: hidden;
+  color: rgba(235, 239, 235, 0.48);
+  font-size: 10.5px;
+  line-height: 1.22;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.firstRunNarrativeScreen .firstRunCapacitySegment.isSelected {
+  border-color: rgba(53, 240, 109, 0.54);
+  background:
+    linear-gradient(180deg, rgba(53, 240, 109, 0.14), rgba(53, 240, 109, 0.035)),
+    rgba(255, 255, 255, 0.025);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 1px rgba(53, 240, 109, 0.18);
+}
+
+.firstRunNarrativeScreen .firstRunCommandSurface--signals .firstRunCategoryGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.firstRunNarrativeScreen .firstRunCommandSurface--signals .firstRunCategoryCard {
+  min-height: 64px;
+  padding: 10px 9px 9px 12px;
+  border-color: rgba(255, 255, 255, 0.1);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012)),
+    rgba(255, 255, 255, 0.02);
+}
+
+.firstRunNarrativeScreen .firstRunCommandSurface--signals .firstRunCategoryCard::before {
+  top: 12px;
+  bottom: 12px;
+  width: 3px;
+  background: rgba(53, 240, 109, 0.7);
+}
+
+.firstRunNarrativeScreen .firstRunCommandSurface--signals .firstRunCategoryCard .appChoiceCardText {
+  gap: 3px;
+}
+
+.firstRunNarrativeScreen .firstRunCommandSurface--signals .firstRunCategoryCard .appChoiceCardTitle {
+  font-size: 13px;
+  line-height: 1.15;
+}
+
+.firstRunNarrativeScreen .firstRunCommandSurface--signals .firstRunCategoryCard .appChoiceCardDescription {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 10.5px;
+  line-height: 1.22;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.firstRunNarrativeScreen .firstRunCommandSurface--signals .firstRunCategoryCard.isSelected,
+.firstRunNarrativeScreen .firstRunCommandSurface--signals .firstRunCategoryCard.is-selected.isSelected {
+  border-color: rgba(53, 240, 109, 0.52);
+  background:
+    linear-gradient(135deg, rgba(53, 240, 109, 0.14), rgba(255, 255, 255, 0.018) 58%),
+    rgba(255, 255, 255, 0.025);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 1px rgba(53, 240, 109, 0.18),
+    0 0 18px rgba(53, 240, 109, 0.08);
+}
+
+.firstRunWindowCommandGrid,
+.firstRunWindowActionGroup {
+  display: grid;
+  gap: 8px;
+}
+
+.firstRunWindowActionGroup {
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.016);
+}
+
+.firstRunWindowActionRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.firstRunWindowActionText {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.firstRunWindowActionText strong {
+  color: rgba(245, 248, 244, 0.92);
+  font-size: 13px;
+  line-height: 1.15;
+}
+
+.firstRunWindowActionText span {
+  color: rgba(235, 239, 235, 0.5);
+  font-size: 11px;
+  line-height: 1.24;
+}
+
+.firstRunNarrativeScreen .firstRunWindowActionButton {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.firstRunNarrativeScreen .firstRunWindowList {
+  gap: 8px;
+}
+
+.firstRunNarrativeScreen .firstRunWindowCard {
+  gap: 10px;
+  padding: 10px;
+}
+
+.firstRunNarrativeScreen .firstRunWindowCardHeader .gateButton {
+  min-height: 32px;
+  padding: 7px 9px;
+  border-radius: 9px;
+  font-size: 10px;
+}
+
+.firstRunNarrativeScreen .firstRunWindowTopRow {
+  gap: 7px;
+}
+
+.firstRunNarrativeScreen .firstRunEmptyHint {
+  padding: 8px 10px;
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.firstRunNarrativeScreen .firstRunFormSection {
+  --gate-card-padding: 14px;
+  --gate-card-gap: 10px;
+  --gate-section-body-gap: 12px;
+  border-color: rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012)),
+    rgba(255, 255, 255, 0.02);
+  box-shadow: none;
+}
+
+.firstRunNarrativeScreen .firstRunFormSection .gateSectionTitle {
+  color: #fbfbf8;
+  font-size: 14px;
+  font-weight: 760;
+  letter-spacing: 0;
+}
+
+.firstRunNarrativeScreen .firstRunFormSection .gateSectionDescription {
+  color: rgba(235, 239, 235, 0.56);
+  font-size: 12px;
+}
+
+.firstRunNarrativeScreen .firstRunChoiceGrid {
+  gap: 8px;
+}
+
+.firstRunNarrativeScreen .firstRunChoiceCard {
+  min-height: 78px;
+  padding: 12px;
+  border-color: rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012)),
+    rgba(255, 255, 255, 0.02);
+  box-shadow: none;
+}
+
+.firstRunNarrativeScreen .firstRunChoiceCard::before {
+  background: rgba(53, 240, 109, 0.68);
+  opacity: 0.58;
+}
+
+.firstRunNarrativeScreen .firstRunChoiceCard.isSelected {
+  border-color: rgba(53, 240, 109, 0.46);
+  background:
+    linear-gradient(135deg, rgba(53, 240, 109, 0.14), rgba(255, 255, 255, 0.018) 58%),
+    rgba(255, 255, 255, 0.025);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 1px rgba(53, 240, 109, 0.18),
+    0 0 22px rgba(53, 240, 109, 0.08);
+}
+
+.firstRunNarrativeScreen .firstRunChoiceCard .appChoiceCardText {
+  gap: 5px;
+}
+
+.firstRunNarrativeScreen .firstRunChoiceCard .appChoiceCardTitle {
+  color: rgba(245, 248, 244, 0.94);
+  font-size: 14px;
+}
+
+.firstRunNarrativeScreen .firstRunChoiceCard .appChoiceCardDescription {
+  color: rgba(235, 239, 235, 0.54);
+  font-size: 12px;
+}
+
+.firstRunNarrativeScreen .firstRunChoiceCard .appChoiceCardBadge {
+  border-color: rgba(53, 240, 109, 0.34);
+  background: rgba(53, 240, 109, 0.08);
+  color: var(--first-run-green);
+}
+
+.firstRunNarrativeScreen .firstRunCategoryCard {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012)),
+    rgba(255, 255, 255, 0.02);
+}
+
+.firstRunNarrativeScreen .firstRunCategoryCard.is-disabled {
+  opacity: 0.48;
+}
+
+.firstRunNarrativeScreen .firstRunWindowCard {
+  border-color: rgba(255, 255, 255, 0.09);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.firstRunNarrativeScreen .firstRunWindowCardTitle {
+  color: rgba(245, 248, 244, 0.9);
+}
+
+.firstRunNarrativeScreen .firstRunDayChip {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.025);
+  color: rgba(235, 239, 235, 0.64);
+}
+
+.firstRunNarrativeScreen .firstRunDayChip.is-active {
+  border-color: rgba(53, 240, 109, 0.42);
+  background: rgba(53, 240, 109, 0.09);
+  color: var(--first-run-green);
+}
+
+.firstRunNarrativeScreen .firstRunEmptyHint {
+  border-color: rgba(255, 255, 255, 0.11);
+  background: rgba(255, 255, 255, 0.02);
+  color: rgba(235, 239, 235, 0.54);
+}
+
+.firstRunSecurityStrip {
+  display: flex;
+  gap: 11px;
+  align-items: center;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.032), rgba(255, 255, 255, 0.01)),
+    rgba(255, 255, 255, 0.018);
+}
+
+.firstRunSecurityStrip svg {
+  flex: 0 0 auto;
+  color: var(--first-run-green);
+  filter: drop-shadow(0 0 10px rgba(53, 240, 109, 0.3));
+}
+
+.firstRunSecurityStrip span {
+  display: grid;
+  gap: 2px;
+}
+
+.firstRunSecurityStrip strong {
+  color: var(--first-run-green);
+  font-size: 12px;
+  font-weight: 760;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.firstRunSecurityStrip span span {
+  color: rgba(235, 239, 235, 0.58);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+@keyframes firstRunNarrativeBeamBreathe {
+  0%,
+  100% {
+    opacity: 0.34;
+    box-shadow: 0 0 18px rgba(53, 240, 109, 0.46);
+  }
+  50% {
+    opacity: 0.58;
+    box-shadow: 0 0 30px rgba(53, 240, 109, 0.72);
+  }
+}
+
+@media (max-width: 520px) {
+  .firstRunNarrativeScreen .container {
+    padding-inline:
+      calc(12px + var(--safe-left))
+      calc(12px + var(--safe-right));
+  }
+
+  .firstRunProgressRail {
+    gap: 5px;
+  }
+
+  .firstRunProgressStep {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    gap: 5px;
+    text-align: center;
+  }
+
+  .firstRunProgressIndex {
+    width: 28px;
+    height: 28px;
+  }
+
+  .firstRunProgressDescription {
+    display: none;
+  }
+
+  .firstRunCommandSurface {
+    border-radius: 24px;
+    padding: 22px 18px;
+  }
+
+  .firstRunCommandHeader h1 {
+    max-width: 9.8ch;
+    font-size: clamp(30px, 11vw, 42px);
+  }
+
+  .firstRunIntroContrastGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .firstRunContrastPanel ul {
+    font-size: 12px;
+  }
+
+  .firstRunIntroTransition {
+    width: min(100%, 290px);
+  }
+
+  .firstRunCommandSurface--signals .firstRunCommandHeader h1 {
+    font-size: clamp(29px, 9vw, 36px);
+  }
+
+  .firstRunCommandSurface--signals .firstRunCommandHeader p {
+    font-size: 13px;
+  }
+
+  .firstRunNarrativeScreen .firstRunCommandSurface--signals .firstRunCategoryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .firstRunCapacitySegmentRow {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .firstRunNarrativeScreen .firstRunCapacitySegment {
+    min-height: 60px;
+    padding-inline: 6px;
+  }
+
+  .firstRunNarrativeScreen .firstRunCapacitySegment .appChoiceCardTitle,
+  .firstRunNarrativeScreen .firstRunCommandSurface--signals .firstRunCategoryCard .appChoiceCardTitle {
+    font-size: 12px;
+  }
+
+  .firstRunNarrativeScreen .firstRunCapacitySegment .appChoiceCardDescription,
+  .firstRunNarrativeScreen .firstRunCommandSurface--signals .firstRunCategoryCard .appChoiceCardDescription {
+    font-size: 10px;
+  }
+
+  .firstRunWindowActionRow {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .firstRunNarrativeScreen .firstRunWindowActionButton {
+    width: 100%;
+  }
+
+  .firstRunNarrativeScreen .firstRunCategoryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .firstRunNarrativeScreen .firstRunCapacityGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .firstRunSecurityStrip {
+    align-items: flex-start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .firstRunNarrativeScreen *,
+  .firstRunNarrativeScreen *::before,
+  .firstRunNarrativeScreen *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .firstRunNarrativeBeam {
+    animation: none !important;
+  }
+
+  .firstRunNarrativeScreen .gateButton:active {
+    transform: none !important;
+  }
+}

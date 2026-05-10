@@ -1,4 +1,5 @@
 import React from "react";
+import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import FirstRunCommitScreen from "./FirstRunCommitScreen";
@@ -10,23 +11,54 @@ import FirstRunSignalsScreen from "./FirstRunSignalsScreen";
 import FirstRunWhyScreen from "./FirstRunWhyScreen";
 
 describe("First-run lot 2 screens", () => {
-  it("renders the intro as a short welcome screen with the new visible progression", () => {
+  it("keeps the lot 2 visual layer scoped away from Today and commit/generation engines", () => {
+    const files = [
+      "FirstRunCommandSurface.jsx",
+      "FirstRunNarrativeBackdrop.jsx",
+      "FirstRunProgressRail.jsx",
+      "FirstRunIntroScreen.jsx",
+      "FirstRunWhyScreen.jsx",
+      "FirstRunSignalsScreen.jsx",
+      "firstRun.css",
+    ];
+    const sources = files.map((file) =>
+      readFileSync(new URL(`./${file}`, import.meta.url), "utf8")
+    );
+    const joined = sources.join("\n");
+
+    expect(joined).not.toContain("features/today");
+    expect(joined).not.toContain("components/today");
+    expect(joined).not.toContain("todayDataAdapter");
+    expect(joined).not.toContain("firstRunCommit");
+    expect(joined).not.toContain("aiFirstRunClient");
+    expect(joined).not.toMatch(/#(?:7c3aed|8b5cf6|9333ea|a855f7|c084fc)/i);
+  });
+
+  it("renders the intro as a premium system-building entry screen", () => {
     const html = renderToStaticMarkup(
       <FirstRunIntroScreen data={{ profile: { username: "allan" } }} onStart={() => {}} />
     );
 
-    expect(html).toContain("Premiers pas");
-    expect(html).toContain("1/5");
-    expect(html).toContain("Bienvenue, allan");
-    expect(html).toContain("On pose l’essentiel pour préparer tes deux premiers plans.");
-    expect(html).toContain("Ton pourquoi");
-    expect(html).toContain("Tes signaux réels");
-    expect(html).toContain("Tes 2 plans");
+    expect(html).toContain("Progression first-run");
+    expect(html).toContain("Intro");
+    expect(html).toContain("Pourquoi");
+    expect(html).toContain("Signaux");
+    expect(html).toContain("Tu es ici pour");
+    expect(html).toContain("reprendre le contrôle.");
+    expect(html).toContain("Pas pour être motivé.");
+    expect(html).toContain("Pour construire une discipline qui tient.");
+    expect(html).toContain("Procrastination");
+    expect(html).toContain("Objectifs flous");
+    expect(html).toContain("Exécution");
+    expect(html).toContain("firstRunAccentWord");
+    expect(html).toContain("système");
+    expect(html).toContain("devient ton avantage injuste.");
+    expect(html).not.toContain("Bienvenue, allan");
     expect(html).not.toContain("On prépare ta première vraie semaine");
     expect(html).not.toContain("Deux minutes pour poser ton pourquoi");
   });
 
-  it("renders why with shorter wording and a single honest helper", () => {
+  it("renders why with the corrected system-building language and preserved input", () => {
     const html = renderToStaticMarkup(
       <FirstRunWhyScreen
         data={{}}
@@ -38,17 +70,20 @@ describe("First-run lot 2 screens", () => {
       />
     );
 
-    expect(html).toContain("Premiers pas");
-    expect(html).toContain("2/5");
-    expect(html).toContain("Pourquoi maintenant ?");
-    expect(html).toContain("Quelques mots suffisent pour dire ce qui compte vraiment pour toi.");
-    expect(html).toContain("Pas besoin d’écrire beaucoup. Sois simplement honnête.");
-    expect(html).toContain("Ex. reprendre le contrôle de mes semaines et relancer mon projet");
+    expect(html).toContain("Pourquoi veux-tu créer ton système ?");
+    expect(html).toContain("Rappelle-toi ce que tu veux reprendre en main.");
+    expect(html).toContain("C’est cette raison qui tiendra quand la motivation disparaît.");
+    expect(html).toContain("TA RAISON PROFONDE");
+    expect(html).toContain("Écris pourquoi tu veux construire ce système...");
+    expect(html).toContain("0 / 1200");
+    expect(html).toContain("Ton système doit servir une vraie raison.");
+    expect(html).toContain("La motivation baisse. Une raison claire reste.");
     expect(html).not.toContain("Pourquoi veux-tu te discipliner maintenant ?");
+    expect(html).not.toContain("changer de vie");
     expect(html).not.toContain("Ce texte sert de point de départ");
   });
 
-  it("renders signals with quieter copy and without the repeated category helper text", () => {
+  it("renders signals as a command-signal board while keeping required fields visible", () => {
     const html = renderToStaticMarkup(
       <FirstRunSignalsScreen
         data={{}}
@@ -74,16 +109,20 @@ describe("First-run lot 2 screens", () => {
       />
     );
 
-    expect(html).toContain("Premiers pas");
-    expect(html).toContain("3/5");
-    expect(html).toContain("Quelques signaux utiles");
-    expect(html).toContain("On cadre juste ce qu’il faut pour préparer deux plans crédibles.");
-    expect(html).toContain("Objectif principal");
+    expect(html).toContain("Quels sont tes");
+    expect(html).toContain("plus grands freins");
+    expect(html).toContain("Sélectionne ce qui te correspond.");
+    expect(html).toContain("On construira ton système autour de ça.");
+    expect(html).toContain("Cap principal");
+    expect(html).toContain("Ce que ton système doit faire avancer en premier.");
     expect(html).toContain("Ex. remettre mon projet en mouvement");
-    expect(html).toContain("Le niveau de charge qui te paraît réaliste maintenant.");
-    expect(html).toContain("Choisis jusqu’à 3 domaines à faire avancer d’abord.");
+    expect(html).toContain("Capacité actuelle");
+    expect(html).toContain("Zones à reprendre en main");
+    expect(html).toContain("Contraintes horaires");
+    expect(html).toContain("Créneaux favorables");
     expect(html).toContain("Aucune pour l’instant.");
     expect(html).toContain("Ajoute-en un si tu en as déjà un en tête.");
+    expect(html).toContain("Générer les plans");
     expect(html).not.toContain("Quelques signaux essentiels");
     expect(html).not.toContain("On garde l&#x27;élan");
     expect(html).not.toContain("Utilisé pour structurer la semaine proposée.");
@@ -119,7 +158,8 @@ describe("First-run lot 2 screens", () => {
     expect(html).toContain("#2");
     expect(html).toContain("firstRunCategoryCard is-selected");
     expect(html).toContain("firstRunCategoryCard is-idle");
-    expect(html).toContain("--categoryUiBorder");
+    expect(html).toContain("Projet, revenus, exécution.");
+    expect(html).not.toContain("--categoryUiBorder");
   });
 
   it("keeps signals block order and compact window controls", () => {
@@ -156,10 +196,10 @@ describe("First-run lot 2 screens", () => {
       />
     );
 
-    expect(html.indexOf("Objectif principal")).toBeLessThan(html.indexOf("Capacité actuelle"));
-    expect(html.indexOf("Capacité actuelle")).toBeLessThan(html.indexOf("Catégories prioritaires"));
-    expect(html.indexOf("Catégories prioritaires")).toBeLessThan(html.indexOf("Indisponibilités"));
-    expect(html.indexOf("Indisponibilités")).toBeLessThan(html.indexOf("Créneaux favorables"));
+    expect(html.indexOf("Cap principal")).toBeLessThan(html.indexOf("Capacité actuelle"));
+    expect(html.indexOf("Capacité actuelle")).toBeLessThan(html.indexOf("Zones à reprendre en main"));
+    expect(html.indexOf("Zones à reprendre en main")).toBeLessThan(html.indexOf("Contraintes horaires"));
+    expect(html.indexOf("Contraintes horaires")).toBeLessThan(html.indexOf("Créneaux favorables"));
     expect(html).toContain("Repère");
     expect(html).toContain("Début");
     expect(html).toContain("Fin");

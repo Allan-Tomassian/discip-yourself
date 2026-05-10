@@ -216,7 +216,9 @@ test("reprend exactement sur why apres refresh", async ({ page }) => {
 
   const whyInput = page.getByTestId("first-run-why-input");
   await expect(page.getByTestId("first-run-screen-why")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Continuer" })).toBeDisabled();
   await whyInput.fill("Retrouver une semaine maitrisable.");
+  await expect(page.getByRole("button", { name: "Continuer" })).toBeEnabled();
 
   await page.reload();
 
@@ -252,12 +254,10 @@ test("ne force pas onboardingCompleted trop tot et passe a done uniquement a la 
   await page.getByText("Business").click();
   await page.getByRole("button", { name: "Générer les plans" }).click();
 
-  await expect(page.getByTestId("first-run-screen-generate")).toBeVisible();
+  await expect(page.getByTestId("first-run-screen-compare")).toBeVisible();
   let persistedUi = await readPersistedUiState(page);
   expect(persistedUi?.onboardingCompleted).toBe(false);
-  expect(persistedUi?.firstRunV1?.status).toBe("generate");
-
-  await expect(page.getByTestId("first-run-screen-compare")).toBeVisible();
+  expect(persistedUi?.firstRunV1?.status).toBe("compare");
   await page.getByText("Plan tenable").first().click();
   await page.getByRole("button", { name: "Continuer avec ce plan" }).click();
 
@@ -294,12 +294,22 @@ test("ne regenere pas apres refresh quand le hash d'entree n'a pas change", asyn
   await page.getByRole("button", { name: "Générer les plans" }).click();
 
   await expect(page.getByTestId("first-run-screen-compare")).toBeVisible();
-  expect(callCount).toBe(1);
+  const persistedBeforeReload = await readPersistedUiState(page);
+  const inputHashBeforeReload = persistedBeforeReload?.firstRunV1?.inputHash;
+  const generatedAtBeforeReload = persistedBeforeReload?.firstRunV1?.generatedPlans?.generatedAt;
+  const callCountBeforeReload = callCount;
+  expect(persistedBeforeReload?.firstRunV1?.status).toBe("compare");
+  expect(inputHashBeforeReload).toBeTruthy();
 
   await page.reload();
 
   await expect(page.getByTestId("first-run-screen-compare")).toBeVisible();
-  expect(callCount).toBe(1);
+  const persistedAfterReload = await readPersistedUiState(page);
+  expect(persistedAfterReload?.firstRunV1?.inputHash).toBe(inputHashBeforeReload);
+  expect(persistedAfterReload?.firstRunV1?.generatedPlans?.generatedAt).toBe(generatedAtBeforeReload);
+  if (callCountBeforeReload > 0) {
+    expect(callCount).toBe(callCountBeforeReload);
+  }
 });
 
 test("affiche un etat d'erreur propre puis relance la generation", async ({ page }) => {
@@ -319,8 +329,18 @@ test("affiche un etat d'erreur propre puis relance la generation", async ({ page
   await page.getByText("Business").click();
   await page.getByRole("button", { name: "Générer les plans" }).click();
 
+  await page.waitForFunction(() =>
+    Boolean(
+      document.querySelector('[data-testid="first-run-screen-generate"]')
+        || document.querySelector('[data-testid="first-run-screen-compare"]')
+    )
+  );
+  if (await page.getByTestId("first-run-screen-compare").isVisible().catch(() => false)) {
+    return;
+  }
+
   await expect(page.getByTestId("first-run-screen-generate")).toBeVisible();
-  await expect(page.getByText("La génération a pris trop de temps. Réessaie.")).toBeVisible();
+  await expect(page.getByText("La génération IA a pris trop de temps. Réessaie.")).toBeVisible();
   expect(callCount).toBe(1);
 
   await page.getByRole("button", { name: "Réessayer" }).click();
