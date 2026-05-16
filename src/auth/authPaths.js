@@ -1,3 +1,4 @@
+export const AUTH_WELCOME_PATH = "/auth/welcome";
 export const AUTH_SIGNUP_PATH = "/auth/signup";
 export const AUTH_LOGIN_PATH = "/auth/login";
 export const AUTH_VERIFY_EMAIL_PATH = "/auth/verify-email";
@@ -6,6 +7,7 @@ export const AUTH_RESET_PASSWORD_PATH = "/auth/reset-password";
 const SUPABASE_CALLBACK_PATHS = new Set([AUTH_VERIFY_EMAIL_PATH, AUTH_RESET_PASSWORD_PATH]);
 
 const AUTH_SCREEN_BY_PATH = {
+  [AUTH_WELCOME_PATH]: "welcome",
   [AUTH_SIGNUP_PATH]: "signup",
   [AUTH_LOGIN_PATH]: "login",
   [AUTH_VERIFY_EMAIL_PATH]: "verify-email",

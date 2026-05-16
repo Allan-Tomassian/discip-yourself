@@ -664,3 +664,2331 @@
     grid-template-columns: 1fr;
   }
 }
+
+.firstRunNarrativeScreen {
+  --first-run-green: #35f06d;
+  --first-run-green-soft: rgba(53, 240, 109, 0.15);
+  --first-run-green-dim: rgba(53, 240, 109, 0.07);
+  --first-run-cream: #f5f1e8;
+  --first-run-panel: rgba(5, 8, 8, 0.92);
+  --first-run-panel-strong: rgba(7, 10, 10, 0.96);
+  --first-run-border: rgba(255, 255, 255, 0.13);
+  --first-run-border-soft: rgba(255, 255, 255, 0.08);
+  --first-run-muted: rgba(235, 239, 235, 0.64);
+  --first-run-ai: #8b5cf6;
+  --first-run-ai-soft: rgba(139, 92, 246, 0.16);
+  --first-run-ai-dim: rgba(139, 92, 246, 0.07);
+  --first-run-orange: #f5a524;
+  --first-run-orange-soft: rgba(245, 165, 36, 0.15);
+  --first-run-orange-dim: rgba(245, 165, 36, 0.07);
+  --first-run-danger: #ff4d4d;
+  color: #fbfbf8;
+  background:
+    radial-gradient(circle at 50% 8%, rgba(53, 240, 109, 0.15), transparent 28%),
+    linear-gradient(180deg, #050607 0%, #070909 54%, #030404 100%);
+}
+
+.firstRunNarrativeScreen .bg {
+  background:
+    radial-gradient(circle at 50% 10%, rgba(53, 240, 109, 0.18), transparent 27%),
+    radial-gradient(circle at 16% 26%, rgba(53, 240, 109, 0.06), transparent 30%),
+    linear-gradient(180deg, #050607 0%, #070909 52%, #030404 100%) !important;
+}
+
+.firstRunNarrativeScreen .container {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: none;
+  min-height: 100dvh;
+  overflow: visible;
+  padding:
+    calc(18px + var(--safe-top))
+    calc(14px + var(--safe-right))
+    calc(18px + var(--safe-bottom))
+    calc(14px + var(--safe-left));
+}
+
+.firstRunNarrativeScreen .pageContent {
+  align-items: center;
+  gap: 0;
+  min-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 36px);
+}
+
+.firstRunNarrativeBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.firstRunNarrativeGrid,
+.firstRunNarrativeBeam,
+.firstRunNarrativePath,
+.firstRunNarrativeHalo {
+  position: absolute;
+  pointer-events: none;
+}
+
+.firstRunNarrativeGrid {
+  inset: -2px;
+  background:
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.16) 0 1px, transparent 1px),
+    linear-gradient(90deg, rgba(53, 240, 109, 0.035) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(53, 240, 109, 0.035) 1px, transparent 1px);
+  background-size: 18px 18px, 54px 54px, 54px 54px;
+  opacity: 0.11;
+  mask-image: radial-gradient(circle at 50% 26%, black, transparent 74%);
+}
+
+.firstRunNarrativeBeam {
+  top: -20%;
+  left: 50%;
+  width: 1px;
+  height: 142%;
+  background: linear-gradient(180deg, transparent, rgba(53, 240, 109, 0.92), transparent);
+  box-shadow:
+    0 0 26px rgba(53, 240, 109, 0.62),
+    0 0 70px rgba(53, 240, 109, 0.18);
+  opacity: 0.5;
+  transform: translateX(-50%);
+  animation: firstRunNarrativeBeamBreathe 12s ease-in-out infinite;
+}
+
+.firstRunNarrativePath {
+  top: 16%;
+  left: 50%;
+  width: min(76vw, 440px);
+  height: 55vh;
+  border: 1px solid rgba(53, 240, 109, 0.24);
+  border-left-color: transparent;
+  border-bottom-color: transparent;
+  border-radius: 50%;
+  opacity: 0.22;
+  filter: drop-shadow(0 0 18px rgba(53, 240, 109, 0.24));
+  transform: translateX(-50%) rotate(-38deg) skewX(-12deg);
+  mask-image: linear-gradient(180deg, transparent, black 18%, black 78%, transparent);
+}
+
+.firstRunNarrativeHalo {
+  top: 12%;
+  left: 50%;
+  width: min(92vw, 560px);
+  aspect-ratio: 1;
+  border-radius: 999px;
+  border: 1px solid rgba(53, 240, 109, 0.22);
+  box-shadow:
+    inset 0 0 48px rgba(53, 240, 109, 0.06),
+    0 0 72px rgba(53, 240, 109, 0.07);
+  opacity: 0.32;
+  transform: translateX(-50%);
+  mask-image: radial-gradient(circle, black 0 61%, transparent 72%);
+}
+
+.firstRunNarrativeViewport {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 16px;
+  width: min(100%, 520px);
+  margin-inline: auto;
+}
+
+.firstRunProgressRail {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+  padding: 2px;
+}
+
+.firstRunProgressRail--activation {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.firstRunProgressStep {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  opacity: 0.48;
+}
+
+.firstRunProgressStep.is-complete,
+.firstRunProgressStep.is-active {
+  opacity: 1;
+}
+
+.firstRunProgressIndex {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(53, 240, 109, 0.34);
+  border-radius: 999px;
+  background: rgba(53, 240, 109, 0.06);
+  color: var(--first-run-green);
+  font-size: 12px;
+  font-weight: 760;
+  box-shadow: 0 0 16px rgba(53, 240, 109, 0.1);
+}
+
+.firstRunProgressStep.is-active .firstRunProgressIndex {
+  border-color: rgba(53, 240, 109, 0.68);
+  background: rgba(53, 240, 109, 0.14);
+  box-shadow: 0 0 22px rgba(53, 240, 109, 0.22);
+}
+
+.firstRunProgressText {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.firstRunProgressLabel {
+  overflow: hidden;
+  color: var(--first-run-green);
+  font-size: 10px;
+  font-weight: 760;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.firstRunProgressDescription {
+  overflow: hidden;
+  color: rgba(235, 239, 235, 0.56);
+  font-size: 10px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.firstRunCommandSurface {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: grid;
+  gap: 20px;
+  width: 100%;
+  padding: clamp(22px, 5vw, 30px);
+  border: 1px solid var(--first-run-border);
+  border-radius: 28px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.008)),
+    var(--first-run-panel);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 24px 58px rgba(0, 0, 0, 0.48);
+}
+
+.firstRunCommandSurface--why {
+  gap: 16px;
+}
+
+.firstRunCommandSurface--tone-ai {
+  border-color: color-mix(in srgb, var(--first-run-ai) 30%, rgba(255, 255, 255, 0.13));
+}
+
+.firstRunCommandSurface--tone-ai::before {
+  background:
+    radial-gradient(circle at 50% 8%, rgba(139, 92, 246, 0.2), transparent 30%),
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.14) 0 1px, transparent 1px),
+    linear-gradient(90deg, rgba(139, 92, 246, 0.045) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(139, 92, 246, 0.04) 1px, transparent 1px);
+  background-size: 280px 220px, 17px 17px, 48px 48px, 48px 48px;
+}
+
+.firstRunCommandSurface--tone-critical {
+  border-color: color-mix(in srgb, var(--first-run-danger) 42%, rgba(255, 255, 255, 0.1));
+}
+
+.firstRunCommandSurface::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 8%, rgba(53, 240, 109, 0.15), transparent 29%),
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.14) 0 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 280px 220px, 17px 17px, 48px 48px, 48px 48px;
+  opacity: 0.18;
+  mask-image: linear-gradient(180deg, black, transparent 84%);
+}
+
+.firstRunCommandAura {
+  position: absolute;
+  inset: -20% -18% auto;
+  z-index: -1;
+  height: 230px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(53, 240, 109, 0.18), transparent 58%),
+    linear-gradient(90deg, transparent, rgba(53, 240, 109, 0.1), transparent);
+  opacity: 0.72;
+}
+
+.firstRunCommandSurface--tone-ai .firstRunCommandAura {
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(139, 92, 246, 0.22), transparent 58%),
+    linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.12), transparent);
+}
+
+.firstRunCommandSurface--tone-critical .firstRunCommandAura {
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 77, 77, 0.18), transparent 58%),
+    linear-gradient(90deg, transparent, rgba(255, 77, 77, 0.08), transparent);
+}
+
+.firstRunCommandBrand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.firstRunCommandBrandMark {
+  position: relative;
+  flex: 0 0 auto;
+  width: 24px;
+  height: 29px;
+  filter: drop-shadow(0 0 14px rgba(53, 240, 109, 0.22));
+}
+
+.firstRunCommandBrandMark::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(53, 240, 109, 0.72);
+  border-radius: 8px 8px 10px 10px;
+  clip-path: polygon(50% 100%, 5% 70%, 5% 0, 50% 22%, 95% 0, 95% 70%);
+}
+
+.firstRunCommandBrandMark span {
+  position: absolute;
+  inset: 7px 7px 9px;
+  border-left: 2px solid var(--first-run-green);
+  border-bottom: 2px solid var(--first-run-green);
+  transform: rotate(-45deg);
+  transform-origin: center;
+}
+
+.firstRunCommandBrandText {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  text-transform: uppercase;
+}
+
+.firstRunCommandBrandText strong {
+  overflow: hidden;
+  color: #fbfbf8;
+  font-size: 15px;
+  font-weight: 760;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.firstRunCommandBrandText span {
+  overflow: hidden;
+  color: var(--first-run-green);
+  font-size: 8px;
+  font-weight: 720;
+  line-height: 1.2;
+  letter-spacing: 0.19em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.firstRunCommandHeader {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.firstRunCommandEyebrow {
+  color: var(--first-run-green);
+  font-size: 11px;
+  font-weight: 760;
+  line-height: 1.1;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.firstRunCommandSurface--tone-ai .firstRunCommandEyebrow {
+  color: color-mix(in srgb, var(--first-run-ai) 86%, #ffffff);
+}
+
+.firstRunCommandSurface--tone-critical .firstRunCommandEyebrow {
+  color: color-mix(in srgb, var(--first-run-danger) 86%, #ffffff);
+}
+
+.firstRunCommandHeader h1 {
+  max-width: 10ch;
+  margin: 0;
+  color: #fbfbf8;
+  font-size: clamp(32px, 9vw, 48px);
+  font-weight: 790;
+  line-height: 1.04;
+  letter-spacing: 0;
+  text-wrap: balance;
+}
+
+.firstRunCommandSurface--why .firstRunCommandHeader h1 {
+  max-width: 12ch;
+  font-size: clamp(30px, 8.6vw, 42px);
+}
+
+.firstRunCommandHeader h1 strong {
+  color: var(--first-run-green);
+  font-weight: inherit;
+}
+
+.firstRunCommandHeader p {
+  max-width: 34ch;
+  margin: 0;
+  color: var(--first-run-muted);
+  font-size: 15px;
+  line-height: 1.5;
+  text-wrap: balance;
+}
+
+.firstRunCommandBody {
+  display: grid;
+  gap: 18px;
+}
+
+.firstRunCommandFooter {
+  display: flex;
+  gap: 10px;
+}
+
+.firstRunCommandFooter > * {
+  flex: 1 1 0;
+}
+
+.firstRunNarrativeScreen .gateButton {
+  min-height: 52px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 790;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.firstRunNarrativeScreen .gateButton--primary {
+  border-color: rgba(255, 255, 255, 0.62);
+  background: linear-gradient(90deg, #fbfaf5 0%, #eff3ea 58%, #cdf8d4 100%);
+  color: #071007;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 0 28px rgba(53, 240, 109, 0.16);
+}
+
+.firstRunNarrativeScreen .gateButton--ghost {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.035);
+  color: rgba(245, 248, 244, 0.88);
+  box-shadow: none;
+}
+
+.firstRunNarrativeScreen .gateButton--primary:hover:not(:disabled),
+.firstRunNarrativeScreen .gateButton--primary:focus-visible:not(:disabled) {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 0 34px rgba(53, 240, 109, 0.24);
+}
+
+.firstRunNarrativeScreen .gateButton--ghost:hover:not(:disabled),
+.firstRunNarrativeScreen .gateButton--ghost:focus-visible:not(:disabled) {
+  border-color: rgba(53, 240, 109, 0.28);
+  background: rgba(53, 240, 109, 0.06);
+  color: var(--first-run-green);
+}
+
+.firstRunIntroTransition {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(92px, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  width: min(100%, 330px);
+  margin: -2px auto 0;
+  color: rgba(235, 239, 235, 0.58);
+  font-size: 9px;
+  font-weight: 760;
+  letter-spacing: 0.16em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.firstRunIntroTransition i {
+  position: relative;
+  display: block;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, rgba(235, 239, 235, 0.12), rgba(53, 240, 109, 0.86)),
+    rgba(255, 255, 255, 0.04);
+  box-shadow:
+    0 0 18px rgba(53, 240, 109, 0.22),
+    0 0 34px rgba(53, 240, 109, 0.12);
+}
+
+.firstRunIntroTransition i::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid var(--first-run-green);
+  border-right: 2px solid var(--first-run-green);
+  transform: translateY(-50%) rotate(45deg);
+  filter: drop-shadow(0 0 8px rgba(53, 240, 109, 0.58));
+}
+
+.firstRunIntroContrastGrid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+  min-height: 0;
+  padding: 8px 0 2px;
+}
+
+.firstRunIntroContrastGrid::before {
+  content: "";
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: -14px;
+  height: calc(100% + 20px);
+  border-radius: 999px;
+  background:
+    radial-gradient(ellipse at 50% 44%, rgba(53, 240, 109, 0.12), transparent 58%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025), rgba(53, 240, 109, 0.045), rgba(255, 255, 255, 0.025));
+  filter: blur(1px);
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.firstRunContrastPanel {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 9px;
+}
+
+.firstRunContrastTitle {
+  color: var(--first-run-green);
+  font-size: 10px;
+  font-weight: 760;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.firstRunContrastPanel ul {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: rgba(235, 239, 235, 0.66);
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.firstRunCommandInsight {
+  display: flex;
+  gap: 13px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.014)),
+    rgba(255, 255, 255, 0.025);
+}
+
+.firstRunCommandInsightIcon {
+  position: relative;
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(53, 240, 109, 0.42);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(53, 240, 109, 0.18), transparent 64%),
+    rgba(53, 240, 109, 0.04);
+  box-shadow:
+    inset 0 0 18px rgba(53, 240, 109, 0.08),
+    0 0 20px rgba(53, 240, 109, 0.12);
+}
+
+.firstRunCommandInsightIcon::before,
+.firstRunCommandInsightIcon::after {
+  content: "";
+  position: absolute;
+  inset: 50% auto auto 50%;
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+}
+
+.firstRunCommandInsightIcon::before {
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--first-run-green);
+}
+
+.firstRunCommandInsightIcon::after {
+  width: 6px;
+  height: 6px;
+  background: var(--first-run-green);
+  box-shadow: 0 0 14px rgba(53, 240, 109, 0.62);
+}
+
+.firstRunCommandInsightIcon--target {
+  background:
+    linear-gradient(
+      90deg,
+      transparent 0 calc(50% - 0.5px),
+      rgba(53, 240, 109, 0.42) calc(50% - 0.5px) calc(50% + 0.5px),
+      transparent calc(50% + 0.5px)
+    ),
+    linear-gradient(
+      180deg,
+      transparent 0 calc(50% - 0.5px),
+      rgba(53, 240, 109, 0.42) calc(50% - 0.5px) calc(50% + 0.5px),
+      transparent calc(50% + 0.5px)
+    ),
+    radial-gradient(circle at 50% 50%, rgba(53, 240, 109, 0.18), transparent 64%),
+    rgba(53, 240, 109, 0.04);
+}
+
+.firstRunCommandInsight .firstRunAccentWord {
+  display: inline;
+  color: var(--first-run-green);
+}
+
+.firstRunCommandInsight strong,
+.firstRunCommandInsight span {
+  display: block;
+}
+
+.firstRunCommandInsight strong {
+  color: rgba(245, 248, 244, 0.94);
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.firstRunCommandInsight span {
+  margin-top: 4px;
+  color: rgba(235, 239, 235, 0.58);
+  font-size: 13px;
+  line-height: 1.42;
+}
+
+.firstRunWhyPanel {
+  max-width: none;
+}
+
+.firstRunNarrativeScreen .appFieldGroup {
+  gap: 10px;
+}
+
+.firstRunNarrativeScreen .appFieldLabel {
+  color: rgba(235, 239, 235, 0.78);
+  font-size: 11px;
+  font-weight: 760;
+  line-height: 1;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.firstRunNarrativeScreen .AppInput,
+.firstRunNarrativeScreen .AppTextarea {
+  border-color: rgba(255, 255, 255, 0.11);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015)),
+    rgba(255, 255, 255, 0.035);
+  color: #fbfbf8;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 12px 24px rgba(0, 0, 0, 0.16);
+}
+
+.firstRunNarrativeScreen .AppInput::placeholder,
+.firstRunNarrativeScreen .AppTextarea::placeholder {
+  color: rgba(235, 239, 235, 0.36);
+}
+
+.firstRunNarrativeScreen .AppInput:focus,
+.firstRunNarrativeScreen .AppTextarea:focus {
+  border-color: rgba(53, 240, 109, 0.48);
+  box-shadow:
+    0 0 0 1px rgba(53, 240, 109, 0.22),
+    0 0 22px rgba(53, 240, 109, 0.08);
+}
+
+.firstRunNarrativeScreen .firstRunWhyInput {
+  min-height: 150px;
+  border-radius: 16px;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.firstRunCommandSurface--why .firstRunCommandInsight {
+  padding: 12px;
+}
+
+.firstRunWhyMetaRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.firstRunWhyMetaRow.is-count-only {
+  justify-content: flex-end;
+}
+
+.firstRunWhyMetaRow .firstRunWhyHelper,
+.firstRunCharacterCount {
+  color: rgba(235, 239, 235, 0.52);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.firstRunWhyMetaRow .firstRunWhyHelper.is-error {
+  color: #ff9a9a;
+}
+
+.firstRunCharacterCount {
+  flex: 0 0 auto;
+}
+
+.firstRunNarrativeScreen .firstRunSectionStack {
+  gap: 12px;
+}
+
+.firstRunCommandSurface--signals {
+  gap: 14px;
+}
+
+.firstRunCommandSurface--signals .firstRunCommandBrand {
+  margin-bottom: 2px;
+}
+
+.firstRunCommandSurface--signals .firstRunCommandHeader {
+  gap: 9px;
+}
+
+.firstRunCommandSurface--signals .firstRunCommandHeader h1 {
+  max-width: 13ch;
+  font-size: clamp(30px, 8.6vw, 40px);
+  line-height: 1.02;
+}
+
+.firstRunCommandSurface--signals .firstRunCommandHeader p {
+  max-width: 32ch;
+  font-size: 14px;
+  line-height: 1.38;
+}
+
+.firstRunSignalsBody {
+  gap: 11px;
+}
+
+.firstRunSignalBoardSection {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.034), rgba(255, 255, 255, 0.01)),
+    rgba(255, 255, 255, 0.018);
+}
+
+.firstRunSignalBoardHeader {
+  display: grid;
+  gap: 4px;
+}
+
+.firstRunSignalBoardHeader h2,
+.firstRunSignalBoardHeader p {
+  margin: 0;
+}
+
+.firstRunSignalBoardHeader h2 {
+  color: #fbfbf8;
+  font-size: 14px;
+  font-weight: 760;
+  line-height: 1.15;
+}
+
+.firstRunSignalBoardHeader p {
+  color: rgba(235, 239, 235, 0.56);
+  font-size: 12px;
+  line-height: 1.34;
+}
+
+.firstRunSignalBoardBody {
+  display: grid;
+  gap: 9px;
+}
+
+.firstRunSignalSection--goal {
+  padding-bottom: 13px;
+}
+
+.firstRunNarrativeScreen .firstRunSignalSection--goal .firstRunPrimaryGoalInput {
+  min-height: 46px;
+  border-radius: 14px;
+  font-size: 14px;
+}
+
+.firstRunCapacitySegmentRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.firstRunNarrativeScreen .firstRunCapacitySegment {
+  min-height: 66px;
+  justify-content: center;
+  padding: 10px 8px;
+  text-align: center;
+}
+
+.firstRunNarrativeScreen .firstRunCapacitySegment .appChoiceCardText {
+  gap: 4px;
+}
+
+.firstRunNarrativeScreen .firstRunCapacitySegment .appChoiceCardTitle {
+  font-size: 13px;
+  line-height: 1.1;
+}
+
+.firstRunNarrativeScreen .firstRunCapacitySegment .appChoiceCardDescription {
+  display: -webkit-box;
+  overflow: hidden;
+  color: rgba(235, 239, 235, 0.48);
+  font-size: 10.5px;
+  line-height: 1.22;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.firstRunNarrativeScreen .firstRunCapacitySegment.isSelected {
+  border-color: rgba(53, 240, 109, 0.54);
+  background:
+    linear-gradient(180deg, rgba(53, 240, 109, 0.14), rgba(53, 240, 109, 0.035)),
+    rgba(255, 255, 255, 0.025);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 1px rgba(53, 240, 109, 0.18);
+}
+
+.firstRunNarrativeScreen .firstRunCommandSurface--signals .firstRunCategoryGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.firstRunNarrativeScreen .firstRunCommandSurface--signals .firstRunCategoryCard {
+  min-height: 64px;
+  padding: 10px 9px 9px 12px;
+  border-color: rgba(255, 255, 255, 0.1);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012)),
+    rgba(255, 255, 255, 0.02);
+}
+
+.firstRunNarrativeScreen .firstRunCommandSurface--signals .firstRunCategoryCard::before {
+  top: 12px;
+  bottom: 12px;
+  width: 3px;
+  background: rgba(53, 240, 109, 0.7);
+}
+
+.firstRunNarrativeScreen .firstRunCommandSurface--signals .firstRunCategoryCard .appChoiceCardText {
+  gap: 3px;
+}
+
+.firstRunNarrativeScreen .firstRunCommandSurface--signals .firstRunCategoryCard .appChoiceCardTitle {
+  font-size: 13px;
+  line-height: 1.15;
+}
+
+.firstRunNarrativeScreen .firstRunCommandSurface--signals .firstRunCategoryCard .appChoiceCardDescription {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 10.5px;
+  line-height: 1.22;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.firstRunNarrativeScreen .firstRunCommandSurface--signals .firstRunCategoryCard.isSelected,
+.firstRunNarrativeScreen .firstRunCommandSurface--signals .firstRunCategoryCard.is-selected.isSelected {
+  border-color: rgba(53, 240, 109, 0.52);
+  background:
+    linear-gradient(135deg, rgba(53, 240, 109, 0.14), rgba(255, 255, 255, 0.018) 58%),
+    rgba(255, 255, 255, 0.025);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 1px rgba(53, 240, 109, 0.18),
+    0 0 18px rgba(53, 240, 109, 0.08);
+}
+
+.firstRunWindowCommandGrid,
+.firstRunWindowActionGroup {
+  display: grid;
+  gap: 8px;
+}
+
+.firstRunWindowActionGroup {
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.016);
+}
+
+.firstRunWindowActionRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.firstRunWindowActionText {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.firstRunWindowActionText strong {
+  color: rgba(245, 248, 244, 0.92);
+  font-size: 13px;
+  line-height: 1.15;
+}
+
+.firstRunWindowActionText span {
+  color: rgba(235, 239, 235, 0.5);
+  font-size: 11px;
+  line-height: 1.24;
+}
+
+.firstRunNarrativeScreen .firstRunWindowActionButton {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.firstRunNarrativeScreen .firstRunWindowList {
+  gap: 8px;
+}
+
+.firstRunNarrativeScreen .firstRunWindowCard {
+  gap: 10px;
+  padding: 10px;
+}
+
+.firstRunNarrativeScreen .firstRunWindowCardHeader .gateButton {
+  min-height: 32px;
+  padding: 7px 9px;
+  border-radius: 9px;
+  font-size: 10px;
+}
+
+.firstRunNarrativeScreen .firstRunWindowTopRow {
+  gap: 7px;
+}
+
+.firstRunNarrativeScreen .firstRunEmptyHint {
+  padding: 8px 10px;
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.firstRunNarrativeScreen .firstRunFormSection {
+  --gate-card-padding: 14px;
+  --gate-card-gap: 10px;
+  --gate-section-body-gap: 12px;
+  border-color: rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012)),
+    rgba(255, 255, 255, 0.02);
+  box-shadow: none;
+}
+
+.firstRunNarrativeScreen .firstRunFormSection .gateSectionTitle {
+  color: #fbfbf8;
+  font-size: 14px;
+  font-weight: 760;
+  letter-spacing: 0;
+}
+
+.firstRunNarrativeScreen .firstRunFormSection .gateSectionDescription {
+  color: rgba(235, 239, 235, 0.56);
+  font-size: 12px;
+}
+
+.firstRunNarrativeScreen .firstRunChoiceGrid {
+  gap: 8px;
+}
+
+.firstRunNarrativeScreen .firstRunChoiceCard {
+  min-height: 78px;
+  padding: 12px;
+  border-color: rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012)),
+    rgba(255, 255, 255, 0.02);
+  box-shadow: none;
+}
+
+.firstRunNarrativeScreen .firstRunChoiceCard::before {
+  background: rgba(53, 240, 109, 0.68);
+  opacity: 0.58;
+}
+
+.firstRunNarrativeScreen .firstRunChoiceCard.isSelected {
+  border-color: rgba(53, 240, 109, 0.46);
+  background:
+    linear-gradient(135deg, rgba(53, 240, 109, 0.14), rgba(255, 255, 255, 0.018) 58%),
+    rgba(255, 255, 255, 0.025);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 1px rgba(53, 240, 109, 0.18),
+    0 0 22px rgba(53, 240, 109, 0.08);
+}
+
+.firstRunNarrativeScreen .firstRunChoiceCard .appChoiceCardText {
+  gap: 5px;
+}
+
+.firstRunNarrativeScreen .firstRunChoiceCard .appChoiceCardTitle {
+  color: rgba(245, 248, 244, 0.94);
+  font-size: 14px;
+}
+
+.firstRunNarrativeScreen .firstRunChoiceCard .appChoiceCardDescription {
+  color: rgba(235, 239, 235, 0.54);
+  font-size: 12px;
+}
+
+.firstRunNarrativeScreen .firstRunChoiceCard .appChoiceCardBadge {
+  border-color: rgba(53, 240, 109, 0.34);
+  background: rgba(53, 240, 109, 0.08);
+  color: var(--first-run-green);
+}
+
+.firstRunNarrativeScreen .firstRunCategoryCard {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012)),
+    rgba(255, 255, 255, 0.02);
+}
+
+.firstRunNarrativeScreen .firstRunCategoryCard.is-disabled {
+  opacity: 0.48;
+}
+
+.firstRunNarrativeScreen .firstRunWindowCard {
+  border-color: rgba(255, 255, 255, 0.09);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.firstRunNarrativeScreen .firstRunWindowCardTitle {
+  color: rgba(245, 248, 244, 0.9);
+}
+
+.firstRunNarrativeScreen .firstRunDayChip {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.025);
+  color: rgba(235, 239, 235, 0.64);
+}
+
+.firstRunNarrativeScreen .firstRunDayChip.is-active {
+  border-color: rgba(53, 240, 109, 0.42);
+  background: rgba(53, 240, 109, 0.09);
+  color: var(--first-run-green);
+}
+
+.firstRunNarrativeScreen .firstRunEmptyHint {
+  border-color: rgba(255, 255, 255, 0.11);
+  background: rgba(255, 255, 255, 0.02);
+  color: rgba(235, 239, 235, 0.54);
+}
+
+.firstRunActivationBody {
+  gap: 14px;
+}
+
+.firstRunCommandSurface--generate .firstRunCommandHeader h1,
+.firstRunCommandSurface--generateError .firstRunCommandHeader h1,
+.firstRunCommandSurface--compare .firstRunCommandHeader h1,
+.firstRunCommandSurface--commit .firstRunCommandHeader h1 {
+  max-width: 12ch;
+  font-size: clamp(28px, 8vw, 40px);
+}
+
+.firstRunCommandSurface--compare,
+.firstRunCommandSurface--commit,
+.firstRunCommandSurface--generate {
+  gap: 17px;
+}
+
+.firstRunGenerateChamber,
+.firstRunGenerateRecovery,
+.firstRunCommitApplyingPanel,
+.firstRunCommitFailurePanel {
+  display: grid;
+  gap: 14px;
+}
+
+.firstRunGenerateChamber {
+  justify-items: stretch;
+}
+
+.firstRunAiChamber,
+.firstRunSystemChamber {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 202px;
+  overflow: hidden;
+  border: 1px solid rgba(139, 92, 246, 0.22);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 50% 52%, rgba(139, 92, 246, 0.24), transparent 30%),
+    radial-gradient(circle at 50% 74%, rgba(139, 92, 246, 0.1), transparent 36%),
+    linear-gradient(180deg, rgba(139, 92, 246, 0.06), rgba(255, 255, 255, 0.012)),
+    rgba(255, 255, 255, 0.016);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    inset 0 0 34px rgba(139, 92, 246, 0.06);
+}
+
+.firstRunSystemChamber {
+  border-color: rgba(53, 240, 109, 0.22);
+  background:
+    radial-gradient(circle at 50% 60%, rgba(53, 240, 109, 0.24), transparent 30%),
+    radial-gradient(circle at 50% 76%, rgba(53, 240, 109, 0.1), transparent 36%),
+    linear-gradient(180deg, rgba(53, 240, 109, 0.06), rgba(255, 255, 255, 0.012)),
+    rgba(255, 255, 255, 0.016);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    inset 0 0 34px rgba(53, 240, 109, 0.06);
+}
+
+.firstRunAiChamber::before,
+.firstRunSystemChamber::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, transparent 0 calc(50% - 0.5px), rgba(139, 92, 246, 0.2) calc(50% - 0.5px) calc(50% + 0.5px), transparent calc(50% + 0.5px)),
+    linear-gradient(180deg, transparent 0 calc(50% - 0.5px), rgba(139, 92, 246, 0.18) calc(50% - 0.5px) calc(50% + 0.5px), transparent calc(50% + 0.5px)),
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.16) 0 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 18px 18px;
+  opacity: 0.22;
+  mask-image: radial-gradient(circle at center, black, transparent 76%);
+}
+
+.firstRunSystemChamber::before {
+  background:
+    linear-gradient(90deg, transparent 0 calc(50% - 0.5px), rgba(53, 240, 109, 0.2) calc(50% - 0.5px) calc(50% + 0.5px), transparent calc(50% + 0.5px)),
+    linear-gradient(180deg, transparent 0 calc(50% - 0.5px), rgba(53, 240, 109, 0.18) calc(50% - 0.5px) calc(50% + 0.5px), transparent calc(50% + 0.5px)),
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.16) 0 1px, transparent 1px);
+}
+
+.firstRunAiRing,
+.firstRunAiWave,
+.firstRunAiCore {
+  position: absolute;
+}
+
+.firstRunSystemChamber .firstRunAiRing {
+  border-color: rgba(53, 240, 109, 0.36);
+  box-shadow: 0 0 26px rgba(53, 240, 109, 0.14);
+}
+
+.firstRunSystemChamber .firstRunAiWave {
+  border-color: rgba(53, 240, 109, 0.34);
+  box-shadow:
+    0 0 22px rgba(53, 240, 109, 0.22),
+    inset 0 0 18px rgba(53, 240, 109, 0.1);
+}
+
+.firstRunSystemChamber .firstRunAiCore {
+  border-color: rgba(53, 240, 109, 0.45);
+  background:
+    radial-gradient(circle, rgba(53, 240, 109, 0.18), transparent 68%),
+    rgba(4, 5, 7, 0.78);
+  color: var(--first-run-green);
+  box-shadow:
+    inset 0 0 22px rgba(53, 240, 109, 0.1),
+    0 0 36px rgba(53, 240, 109, 0.18);
+}
+
+.firstRunAiRing {
+  border: 1px solid rgba(139, 92, 246, 0.36);
+  border-radius: 999px;
+  box-shadow: 0 0 26px rgba(139, 92, 246, 0.14);
+}
+
+.firstRunAiRing--outer {
+  width: 152px;
+  height: 152px;
+  opacity: 0.72;
+  animation: firstRunAiRingPulse 4.8s ease-in-out infinite;
+}
+
+.firstRunAiRing--inner {
+  width: 104px;
+  height: 104px;
+  opacity: 0.9;
+  animation: firstRunAiRingPulse 4.8s ease-in-out infinite reverse;
+}
+
+.firstRunAiWave {
+  bottom: 36px;
+  left: 50%;
+  width: 156px;
+  height: 34px;
+  border: 1px solid rgba(139, 92, 246, 0.34);
+  border-radius: 50%;
+  box-shadow:
+    0 0 22px rgba(139, 92, 246, 0.22),
+    inset 0 0 18px rgba(139, 92, 246, 0.1);
+  opacity: 0.72;
+  transform: translateX(-50%);
+  animation: firstRunAiWaveBreathe 3.8s ease-in-out infinite;
+}
+
+.firstRunAiCore {
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  border: 1px solid rgba(139, 92, 246, 0.45);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, rgba(139, 92, 246, 0.18), transparent 68%),
+    rgba(4, 5, 7, 0.78);
+  color: color-mix(in srgb, var(--first-run-ai) 84%, #ffffff);
+  box-shadow:
+    inset 0 0 22px rgba(139, 92, 246, 0.1),
+    0 0 36px rgba(139, 92, 246, 0.18);
+}
+
+.firstRunActivationStatusList {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.032), rgba(255, 255, 255, 0.01)),
+    rgba(255, 255, 255, 0.018);
+}
+
+.firstRunActivationStatusList--ai {
+  border-color: rgba(139, 92, 246, 0.2);
+}
+
+.firstRunActivationStatusList--commit {
+  border-color: rgba(53, 240, 109, 0.2);
+}
+
+.firstRunActivationStatusList--system {
+  border-color: rgba(53, 240, 109, 0.2);
+}
+
+.firstRunActivationStatusStep {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: center;
+  padding: 11px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.075);
+  color: rgba(245, 248, 244, 0.88);
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.firstRunActivationStatusStep:first-child {
+  border-top: 0;
+}
+
+.firstRunActivationStatusList--ai .firstRunActivationStatusStep svg {
+  color: color-mix(in srgb, var(--first-run-ai) 86%, #ffffff);
+}
+
+.firstRunActivationStatusList--commit .firstRunActivationStatusStep svg {
+  color: var(--first-run-green);
+}
+
+.firstRunActivationStatusList--system .firstRunActivationStatusStep svg {
+  color: var(--first-run-green);
+}
+
+.firstRunActivationStatusStep.is-idle {
+  color: rgba(235, 239, 235, 0.45);
+}
+
+.firstRunActivationStatusStep.is-idle svg {
+  color: rgba(235, 239, 235, 0.32);
+}
+
+.firstRunActivationStatusStep.is-active svg {
+  animation: firstRunStatusPulse 1.9s ease-in-out infinite;
+}
+
+.firstRunActivationStatusStep em {
+  color: rgba(235, 239, 235, 0.48);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 720;
+  letter-spacing: 0.08em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.firstRunActivationStatusStep.is-done em {
+  color: rgba(53, 240, 109, 0.82);
+}
+
+.firstRunActivationNote {
+  color: rgba(235, 239, 235, 0.56);
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.firstRunGenerateRecovery,
+.firstRunCommitFailurePanel {
+  padding: 14px;
+  border: 1px solid rgba(255, 77, 77, 0.24);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 77, 77, 0.12), transparent 48%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.032), rgba(255, 255, 255, 0.01)),
+    rgba(255, 255, 255, 0.018);
+}
+
+.firstRunCriticalSignal {
+  display: grid;
+  place-items: center;
+  width: 82px;
+  height: 82px;
+  margin-inline: auto;
+  border: 1px solid rgba(255, 77, 77, 0.38);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, rgba(255, 77, 77, 0.16), transparent 62%),
+    rgba(255, 77, 77, 0.035);
+  color: var(--first-run-danger);
+  box-shadow:
+    inset 0 0 22px rgba(255, 77, 77, 0.08),
+    0 0 32px rgba(255, 77, 77, 0.12);
+}
+
+.firstRunRecoveryCopy {
+  display: grid;
+  gap: 5px;
+  text-align: center;
+}
+
+.firstRunRecoveryCopy strong {
+  color: rgba(245, 248, 244, 0.94);
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.firstRunRecoveryCopy span,
+.firstRunRecoveryCopy em {
+  color: rgba(235, 239, 235, 0.58);
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.42;
+}
+
+.firstRunRecoveryActionRows {
+  display: grid;
+  gap: 8px;
+}
+
+.firstRunRecoveryActionRow {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.022);
+  color: rgba(245, 248, 244, 0.86);
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.firstRunRecoveryActionRow svg {
+  flex: 0 0 auto;
+  color: var(--first-run-danger);
+}
+
+.firstRunGenerateRecovery .firstRunRecoveryActionRow:nth-child(2) svg {
+  color: var(--first-run-green);
+}
+
+.firstRunGenerateMeta {
+  color: rgba(235, 239, 235, 0.46);
+  font-size: 11px;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.firstRunLocalFallbackBanner {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px;
+  border: 1px solid rgba(245, 165, 36, 0.25);
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, rgba(245, 165, 36, 0.12), rgba(255, 255, 255, 0.018) 62%),
+    rgba(255, 255, 255, 0.018);
+}
+
+.firstRunLocalFallbackBanner svg {
+  flex: 0 0 auto;
+  color: var(--first-run-orange);
+}
+
+.firstRunLocalFallbackBanner span {
+  display: grid;
+  gap: 3px;
+}
+
+.firstRunLocalFallbackBanner strong {
+  color: var(--first-run-orange);
+  font-size: 12px;
+  font-weight: 760;
+  letter-spacing: 0.1em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.firstRunLocalFallbackBanner span span {
+  color: rgba(235, 239, 235, 0.62);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.firstRunPlanDecisionGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.firstRunNarrativeScreen .firstRunPlanDecisionCard {
+  display: block;
+  min-height: 0;
+  padding: 0;
+  border-color: rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012)),
+    rgba(255, 255, 255, 0.02);
+}
+
+.firstRunNarrativeScreen .firstRunPlanDecisionCard.isSelected {
+  border-color: rgba(53, 240, 109, 0.58);
+  background:
+    linear-gradient(135deg, rgba(53, 240, 109, 0.14), rgba(255, 255, 255, 0.018) 60%),
+    rgba(255, 255, 255, 0.025);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 1px rgba(53, 240, 109, 0.2),
+    0 0 22px rgba(53, 240, 109, 0.08);
+}
+
+.firstRunPlanDecisionCard .appChoiceCardText {
+  display: grid;
+  gap: 11px;
+  width: 100%;
+  padding: 13px;
+}
+
+.firstRunPlanDecisionTop {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: start;
+}
+
+.firstRunPlanDecisionIcon,
+.firstRunPlanDecisionCheck {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 999px;
+}
+
+.firstRunPlanDecisionIcon {
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(53, 240, 109, 0.28);
+  background: rgba(53, 240, 109, 0.06);
+  color: var(--first-run-green);
+}
+
+.firstRunPlanDecisionCard--ambitious .firstRunPlanDecisionIcon {
+  border-color: rgba(245, 165, 36, 0.32);
+  background: rgba(245, 165, 36, 0.07);
+  color: var(--first-run-orange);
+}
+
+.firstRunPlanDecisionTitleBlock {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.firstRunPlanDecisionTitleBlock strong {
+  color: rgba(245, 248, 244, 0.94);
+  font-size: 13px;
+  font-weight: 780;
+  line-height: 1.18;
+  text-transform: uppercase;
+}
+
+.firstRunPlanDecisionTitleBlock span {
+  color: rgba(235, 239, 235, 0.54);
+  font-size: 11px;
+  line-height: 1.28;
+}
+
+.firstRunPlanDecisionCheck {
+  width: 24px;
+  height: 24px;
+  border: 1px solid rgba(53, 240, 109, 0.32);
+  background: rgba(53, 240, 109, 0.08);
+  color: var(--first-run-green);
+}
+
+.firstRunPlanMetricGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.firstRunPlanMetricGrid span {
+  min-width: 0;
+  padding: 6px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.018);
+  color: rgba(235, 239, 235, 0.58);
+  font-size: 10px;
+  line-height: 1.15;
+}
+
+.firstRunPlanSignalList {
+  display: grid;
+  gap: 7px;
+}
+
+.firstRunPlanSignalList span {
+  display: flex;
+  gap: 7px;
+  align-items: flex-start;
+  color: rgba(235, 239, 235, 0.62);
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.firstRunPlanSignalList svg {
+  flex: 0 0 auto;
+  color: var(--first-run-green);
+}
+
+.firstRunPlanDecisionCard--ambitious .firstRunPlanSignalList svg {
+  color: color-mix(in srgb, var(--first-run-orange) 80%, #ffffff);
+}
+
+.firstRunSelectedPlanPanel {
+  display: grid;
+  gap: 12px;
+  padding: 13px;
+  border: 1px solid rgba(53, 240, 109, 0.18);
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, rgba(53, 240, 109, 0.09), rgba(255, 255, 255, 0.016) 66%),
+    rgba(255, 255, 255, 0.018);
+}
+
+.firstRunSelectedPlanHeader {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.firstRunSelectedPlanHeader svg {
+  flex: 0 0 auto;
+  color: var(--first-run-green);
+}
+
+.firstRunSelectedPlanHeader span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.firstRunSelectedPlanHeader strong {
+  color: rgba(245, 248, 244, 0.94);
+  font-size: 13px;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.firstRunSelectedPlanHeader span span {
+  color: rgba(235, 239, 235, 0.56);
+  font-size: 12px;
+  line-height: 1.35;
+  text-transform: none;
+}
+
+.firstRunNarrativeScreen .firstRunCompareCategoryChip,
+.firstRunNarrativeScreen .firstRunCompareCategoryChip.is-primary {
+  border-color: rgba(53, 240, 109, 0.22);
+  background: rgba(53, 240, 109, 0.065);
+  color: rgba(245, 248, 244, 0.88);
+}
+
+.firstRunPlanPreviewList--compact {
+  gap: 8px;
+}
+
+.firstRunPlanPreviewList--compact .firstRunPlanPreviewItem {
+  padding-left: 10px;
+  color: rgba(235, 239, 235, 0.7);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.firstRunCompareReminder {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  padding: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.015);
+  color: rgba(235, 239, 235, 0.56);
+  font-size: 11px;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.firstRunCompareReminder svg {
+  flex: 0 0 auto;
+  color: var(--first-run-green);
+}
+
+.firstRunRecommendedBody {
+  gap: 13px;
+}
+
+.firstRunRecommendedSourceBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 7px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(53, 240, 109, 0.2);
+  background: rgba(53, 240, 109, 0.055);
+  color: rgba(211, 255, 222, 0.9);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+.firstRunRecommendedSourceBadge svg {
+  flex: 0 0 auto;
+}
+
+.firstRunRecommendedSourceBadge--ai {
+  border-color: rgba(139, 92, 246, 0.28);
+  background: rgba(139, 92, 246, 0.09);
+  color: rgba(221, 204, 255, 0.92);
+}
+
+.firstRunRecommendedPlanGrid {
+  display: grid;
+  gap: 10px;
+}
+
+.firstRunRecommendedInfoCard,
+.firstRunAiLockedCard,
+.firstRunRecommendedCreationTile {
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.032), rgba(255, 255, 255, 0.01)),
+    rgba(255, 255, 255, 0.018);
+}
+
+.firstRunRecommendedInfoCard {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 13px;
+  border-radius: 16px;
+}
+
+.firstRunRecommendedInfoCard > svg {
+  color: var(--first-run-green);
+  filter: drop-shadow(0 0 10px rgba(53, 240, 109, 0.26));
+}
+
+.firstRunRecommendedInfoCard > span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.firstRunRecommendedInfoCard strong,
+.firstRunAiLockedHeader strong {
+  color: rgba(245, 248, 244, 0.94);
+  font-size: 11px;
+  font-weight: 760;
+  letter-spacing: 0.08em;
+  line-height: 1.18;
+  text-transform: uppercase;
+}
+
+.firstRunRecommendedInfoCard em,
+.firstRunAiLockedHeader em {
+  color: rgba(235, 239, 235, 0.64);
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.35;
+}
+
+.firstRunRecommendedInfoCard--today {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.firstRunRecommendedInfoCard--today b {
+  align-self: center;
+  padding: 5px 8px;
+  border: 1px solid rgba(53, 240, 109, 0.24);
+  border-radius: 999px;
+  background: rgba(53, 240, 109, 0.08);
+  color: var(--first-run-green);
+  font-size: 9px;
+  font-weight: 780;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.firstRunRecommendedInfoCard--week,
+.firstRunRecommendedInfoCard--actions,
+.firstRunRecommendedInfoCard--rationale {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.firstRunRecommendedWeek,
+.firstRunRecommendedActionList {
+  grid-column: 1 / -1;
+}
+
+.firstRunRecommendedWeek {
+  display: grid;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.firstRunRecommendedWeekBars {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
+  align-items: end;
+}
+
+.firstRunRecommendedWeekBars span {
+  display: grid;
+  gap: 5px;
+  justify-items: center;
+  min-width: 0;
+}
+
+.firstRunRecommendedWeekBars i {
+  display: block;
+  width: 100%;
+  min-height: 10px;
+  max-height: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  border-radius: 6px 6px 3px 3px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.firstRunRecommendedWeekBars .is-active i {
+  border-color: rgba(53, 240, 109, 0.3);
+  background:
+    linear-gradient(180deg, rgba(53, 240, 109, 0.55), rgba(53, 240, 109, 0.16)),
+    rgba(53, 240, 109, 0.08);
+  box-shadow: 0 0 14px rgba(53, 240, 109, 0.12);
+}
+
+.firstRunRecommendedWeekBars em {
+  color: rgba(235, 239, 235, 0.48);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 740;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.firstRunRecommendedWeek p {
+  margin: 0;
+  color: rgba(235, 239, 235, 0.55);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.firstRunRecommendedActionList {
+  display: grid;
+  gap: 8px;
+}
+
+.firstRunRecommendedActionList span {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.018);
+  color: rgba(245, 248, 244, 0.86);
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.firstRunRecommendedActionList svg {
+  color: var(--first-run-green);
+}
+
+.firstRunRecommendedActionList em {
+  color: rgba(235, 239, 235, 0.48);
+  font-size: 10px;
+  font-style: normal;
+}
+
+.firstRunRecommendedCreationGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.firstRunRecommendedCreationTile {
+  display: grid;
+  gap: 5px;
+  min-height: 76px;
+  padding: 11px;
+  border-radius: 15px;
+}
+
+.firstRunRecommendedCreationTile svg {
+  color: var(--first-run-green);
+}
+
+.firstRunRecommendedCreationTile span {
+  color: rgba(235, 239, 235, 0.5);
+  font-size: 9px;
+  font-weight: 740;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.firstRunRecommendedCreationTile strong {
+  color: rgba(245, 248, 244, 0.9);
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.firstRunAiLockedCard {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-color: rgba(139, 92, 246, 0.2);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(139, 92, 246, 0.11), transparent 42%),
+    linear-gradient(180deg, rgba(139, 92, 246, 0.045), rgba(255, 255, 255, 0.012)),
+    rgba(255, 255, 255, 0.018);
+}
+
+.firstRunAiLockedHeader {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.firstRunAiLockedHeader > span:last-child {
+  display: grid;
+  gap: 3px;
+}
+
+.firstRunAiLockedIcon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(139, 92, 246, 0.28);
+  border-radius: 999px;
+  background: rgba(139, 92, 246, 0.07);
+  color: color-mix(in srgb, var(--first-run-ai) 82%, #ffffff);
+}
+
+.firstRunAiLockedIcon svg:last-child {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  padding: 2px;
+  border-radius: 999px;
+  background: rgba(9, 8, 13, 0.94);
+  color: var(--first-run-orange);
+}
+
+.firstRunAiLockedCard p {
+  margin: 0;
+  color: rgba(235, 239, 235, 0.62);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.firstRunAiLockedMissingList {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(245, 165, 36, 0.22);
+  border-radius: 14px;
+  background: rgba(245, 165, 36, 0.045);
+}
+
+.firstRunAiLockedMissingList span {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: rgba(245, 248, 244, 0.8);
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.firstRunAiLockedMissingList svg {
+  color: var(--first-run-orange);
+}
+
+.firstRunAiLockedButton {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid rgba(139, 92, 246, 0.24);
+  border-radius: 13px;
+  background: rgba(139, 92, 246, 0.09);
+  color: rgba(245, 248, 244, 0.58);
+  cursor: not-allowed;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.firstRunCommitSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.firstRunCommitSummaryTile {
+  display: grid;
+  gap: 6px;
+  min-height: 84px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 15px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.032), rgba(255, 255, 255, 0.01)),
+    rgba(255, 255, 255, 0.018);
+}
+
+.firstRunCommitSummaryTile svg {
+  color: var(--first-run-green);
+}
+
+.firstRunCommitSummaryTile span {
+  color: rgba(235, 239, 235, 0.54);
+  font-size: 10px;
+  font-weight: 720;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.firstRunCommitSummaryTile strong {
+  color: rgba(245, 248, 244, 0.94);
+  font-size: 14px;
+  line-height: 1.18;
+}
+
+.firstRunCommitApplyingPanel {
+  padding: 14px;
+  border: 1px solid rgba(53, 240, 109, 0.2);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 50% 22%, rgba(53, 240, 109, 0.18), transparent 38%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.032), rgba(255, 255, 255, 0.01)),
+    rgba(255, 255, 255, 0.018);
+}
+
+.firstRunCommitValidationOrb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 150px;
+  height: 150px;
+  margin: 2px auto;
+  color: var(--first-run-green);
+}
+
+.firstRunCommitValidationOrb::before,
+.firstRunCommitValidationOrb::after,
+.firstRunCommitValidationOrb span {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(53, 240, 109, 0.32);
+  border-radius: 999px;
+  box-shadow: 0 0 26px rgba(53, 240, 109, 0.1);
+}
+
+.firstRunCommitValidationOrb::after {
+  inset: 22px;
+  opacity: 0.72;
+}
+
+.firstRunCommitValidationOrb span {
+  inset: 44px;
+  background: rgba(53, 240, 109, 0.06);
+  opacity: 0.82;
+}
+
+.firstRunCommitValidationOrb svg {
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 0 14px rgba(53, 240, 109, 0.32));
+}
+
+.firstRunCommitFailurePanel .firstRunRecoveryActionRow svg {
+  color: var(--first-run-danger);
+}
+
+.firstRunSecurityStrip {
+  display: flex;
+  gap: 11px;
+  align-items: center;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.032), rgba(255, 255, 255, 0.01)),
+    rgba(255, 255, 255, 0.018);
+}
+
+.firstRunSecurityStrip svg {
+  flex: 0 0 auto;
+  color: var(--first-run-green);
+  filter: drop-shadow(0 0 10px rgba(53, 240, 109, 0.3));
+}
+
+.firstRunSecurityStrip span {
+  display: grid;
+  gap: 2px;
+}
+
+.firstRunSecurityStrip strong {
+  color: var(--first-run-green);
+  font-size: 12px;
+  font-weight: 760;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.firstRunSecurityStrip span span {
+  color: rgba(235, 239, 235, 0.58);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+@keyframes firstRunNarrativeBeamBreathe {
+  0%,
+  100% {
+    opacity: 0.34;
+    box-shadow: 0 0 18px rgba(53, 240, 109, 0.46);
+  }
+  50% {
+    opacity: 0.58;
+    box-shadow: 0 0 30px rgba(53, 240, 109, 0.72);
+  }
+}
+
+@keyframes firstRunAiRingPulse {
+  0%,
+  100% {
+    opacity: 0.52;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes firstRunAiWaveBreathe {
+  0%,
+  100% {
+    opacity: 0.48;
+    transform: translateX(-50%) scaleX(0.9);
+  }
+  50% {
+    opacity: 0.86;
+    transform: translateX(-50%) scaleX(1.08);
+  }
+}
+
+@keyframes firstRunStatusPulse {
+  0%,
+  100% {
+    opacity: 0.58;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+
+@media (max-width: 520px) {
+  .firstRunNarrativeScreen .container {
+    padding-inline:
+      calc(12px + var(--safe-left))
+      calc(12px + var(--safe-right));
+  }
+
+  .firstRunProgressRail {
+    gap: 5px;
+  }
+
+  .firstRunProgressRail--activation {
+    gap: 3px;
+  }
+
+  .firstRunProgressStep {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    gap: 5px;
+    text-align: center;
+  }
+
+  .firstRunProgressIndex {
+    width: 28px;
+    height: 28px;
+  }
+
+  .firstRunProgressDescription {
+    display: none;
+  }
+
+  .firstRunProgressRail--activation .firstRunProgressLabel {
+    font-size: 8px;
+  }
+
+  .firstRunCommandSurface {
+    border-radius: 24px;
+    padding: 22px 18px;
+  }
+
+  .firstRunCommandHeader h1 {
+    max-width: 9.8ch;
+    font-size: clamp(30px, 11vw, 42px);
+  }
+
+  .firstRunIntroContrastGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .firstRunContrastPanel ul {
+    font-size: 12px;
+  }
+
+  .firstRunIntroTransition {
+    width: min(100%, 290px);
+  }
+
+  .firstRunCommandSurface--signals .firstRunCommandHeader h1 {
+    font-size: clamp(29px, 9vw, 36px);
+  }
+
+  .firstRunCommandSurface--generate .firstRunCommandHeader h1,
+  .firstRunCommandSurface--generateError .firstRunCommandHeader h1,
+  .firstRunCommandSurface--compare .firstRunCommandHeader h1,
+  .firstRunCommandSurface--commit .firstRunCommandHeader h1 {
+    max-width: 11ch;
+    font-size: clamp(28px, 9.5vw, 36px);
+  }
+
+  .firstRunCommandSurface--signals .firstRunCommandHeader p {
+    font-size: 13px;
+  }
+
+  .firstRunNarrativeScreen .firstRunCommandSurface--signals .firstRunCategoryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .firstRunCapacitySegmentRow {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .firstRunNarrativeScreen .firstRunCapacitySegment {
+    min-height: 60px;
+    padding-inline: 6px;
+  }
+
+  .firstRunNarrativeScreen .firstRunCapacitySegment .appChoiceCardTitle,
+  .firstRunNarrativeScreen .firstRunCommandSurface--signals .firstRunCategoryCard .appChoiceCardTitle {
+    font-size: 12px;
+  }
+
+  .firstRunNarrativeScreen .firstRunCapacitySegment .appChoiceCardDescription,
+  .firstRunNarrativeScreen .firstRunCommandSurface--signals .firstRunCategoryCard .appChoiceCardDescription {
+    font-size: 10px;
+  }
+
+  .firstRunWindowActionRow {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .firstRunNarrativeScreen .firstRunWindowActionButton {
+    width: 100%;
+  }
+
+  .firstRunNarrativeScreen .firstRunCategoryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .firstRunNarrativeScreen .firstRunCapacityGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .firstRunAiChamber,
+  .firstRunSystemChamber {
+    min-height: 178px;
+  }
+
+  .firstRunPlanDecisionGrid {
+    gap: 8px;
+  }
+
+  .firstRunPlanDecisionCard .appChoiceCardText {
+    padding: 11px;
+  }
+
+  .firstRunPlanDecisionTop {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .firstRunPlanDecisionIcon {
+    display: none;
+  }
+
+  .firstRunPlanMetricGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .firstRunCommitSummaryGrid {
+    gap: 8px;
+  }
+
+  .firstRunCommitSummaryTile {
+    min-height: 76px;
+    padding: 10px;
+  }
+
+  .firstRunActivationStatusStep {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .firstRunActivationStatusStep em {
+    grid-column: 2;
+  }
+
+  .firstRunSecurityStrip {
+    align-items: flex-start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .firstRunNarrativeScreen *,
+  .firstRunNarrativeScreen *::before,
+  .firstRunNarrativeScreen *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .firstRunNarrativeBeam {
+    animation: none !important;
+  }
+
+  .firstRunNarrativeScreen .gateButton:active {
+    transform: none !important;
+  }
+}

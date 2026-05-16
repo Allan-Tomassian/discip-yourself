@@ -60,9 +60,12 @@ describe("create flow visual contract", () => {
     expect(firstRunStepScreenSource).toContain('eyebrow = "Premiers pas"');
     expect(firstRunStepScreenSource).not.toContain("createFlowScope");
     expect(firstRunStepScreenSource).not.toContain("createFlowHeader");
-    expect(firstRunIntroSource).toContain('badge="1/5"');
-    expect(firstRunWhySource).toContain('badge="2/5"');
-    expect(firstRunSignalsSource).toContain('badge="3/5"');
+    expect(firstRunIntroSource).toContain("FirstRunCommandSurface");
+    expect(firstRunWhySource).toContain("FirstRunCommandSurface");
+    expect(firstRunSignalsSource).toContain("FirstRunCommandSurface");
+    expect(firstRunIntroSource).toContain('activeStep="intro"');
+    expect(firstRunWhySource).toContain('activeStep="why"');
+    expect(firstRunSignalsSource).toContain('activeStep="signals"');
     expect(onboardingSource).not.toContain("CreateChoiceCard");
     expect(onboardingSource).not.toContain("CreateButton");
     expect(pageSource).not.toContain("CreateFlowModal");

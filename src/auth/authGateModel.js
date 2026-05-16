@@ -1,7 +1,7 @@
 import {
   AUTH_RESET_PASSWORD_PATH,
-  AUTH_SIGNUP_PATH,
   AUTH_VERIFY_EMAIL_PATH,
+  AUTH_WELCOME_PATH,
   getAuthScreenFromPath,
 } from "./authPaths";
 
@@ -43,7 +43,7 @@ export function resolveAuthGateState({
     if (authScreen) {
       return { kind: "screen", screen: authScreen };
     }
-    return { kind: "redirect", to: AUTH_SIGNUP_PATH };
+    return { kind: "redirect", to: AUTH_WELCOME_PATH };
   }
 
   if (recoveryMode) {

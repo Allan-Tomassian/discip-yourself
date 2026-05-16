@@ -1,7 +1,9 @@
 import React from "react";
 import { AppTextarea, FieldGroup, GhostButton, PrimaryButton } from "../../shared/ui/app";
 import { isFirstRunWhyReady } from "./firstRunModel";
-import FirstRunStepScreen from "./FirstRunStepScreen";
+import FirstRunCommandSurface from "./FirstRunCommandSurface";
+
+const WHY_MAX_LENGTH = 1200;
 
 export default function FirstRunWhyScreen({
   data,
@@ -11,13 +13,22 @@ export default function FirstRunWhyScreen({
   onBack,
   onContinue,
 }) {
+  const safeValue = String(value || "");
+
   return (
-    <FirstRunStepScreen
+    <FirstRunCommandSurface
       data={data}
       testId="first-run-screen-why"
-      title="Pourquoi maintenant ?"
-      subtitle="Quelques mots suffisent pour dire ce qui compte vraiment pour toi."
-      badge="2/5"
+      activeStep="why"
+      eyebrow="Ta raison"
+      title="Pourquoi veux-tu créer ton système ?"
+      subtitle={
+        <>
+          Rappelle-toi ce que tu veux reprendre en main.
+          <br />
+          C’est cette raison qui tiendra quand la motivation disparaît.
+        </>
+      }
       footer={
         <>
           <GhostButton onClick={onBack}>Retour</GhostButton>
@@ -27,25 +38,41 @@ export default function FirstRunWhyScreen({
         </>
       }
       bodyClassName="firstRunWhyBody"
-      footerSurfaceClassName="firstRunFooterSurface--quiet"
+      className="firstRunCommandSurface--why"
     >
       <div className="firstRunWhyPanel">
-        <FieldGroup label="Ton pourquoi" className="firstRunWhyField">
+        <FieldGroup label="TA RAISON PROFONDE" className="firstRunWhyField">
           <AppTextarea
             className="firstRunWhyInput"
             aria-invalid={Boolean(error)}
             data-testid="first-run-why-input"
-            value={value}
+            value={safeValue}
             rows={8}
-            placeholder="Ex. reprendre le contrôle de mes semaines et relancer mon projet"
+            maxLength={WHY_MAX_LENGTH}
+            placeholder="Écris pourquoi tu veux construire ce système..."
             onChange={(event) => onChange(event.target.value)}
           />
         </FieldGroup>
 
-        <div className={`firstRunWhyHelper${error ? " is-error" : ""}`} role={error ? "alert" : undefined}>
-          {error || "Pas besoin d’écrire beaucoup. Sois simplement honnête."}
+        <div className={`firstRunWhyMetaRow${error ? "" : " is-count-only"}`}>
+          {error ? (
+            <span className="firstRunWhyHelper is-error" role="alert">
+              {error}
+            </span>
+          ) : null}
+          <span className="firstRunCharacterCount">
+            {safeValue.length} / {WHY_MAX_LENGTH}
+          </span>
+        </div>
+
+        <div className="firstRunCommandInsight">
+          <div className="firstRunCommandInsightIcon firstRunCommandInsightIcon--target" aria-hidden="true" />
+          <div>
+            <strong>Ton système doit servir une vraie raison.</strong>
+            <span>La motivation baisse. Une raison claire reste.</span>
+          </div>
         </div>
       </div>
-    </FirstRunStepScreen>
+    </FirstRunCommandSurface>
   );
 }

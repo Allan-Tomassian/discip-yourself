@@ -187,6 +187,77 @@ export const firstRunPlanRequestSchema = z
   })
   .strict();
 
+const firstRunContextPackSchema = z
+  .object({
+    type: z.string().trim().min(1).max(40),
+    label: z.string().trim().max(120).optional().default(""),
+    summary: z.string().trim().min(1).max(1000),
+    signals: z.array(z.string().trim().min(1).max(160)).max(8).optional().default([]),
+    updatedAt: z.string().trim().max(80).optional().default(""),
+  })
+  .strict();
+
+export const firstRunStarterHintsRequestSchema = firstRunPlanRequestSchema
+  .extend({
+    constraints: z.array(z.string().trim().min(1).max(160)).max(8).optional().default([]),
+    contextPacks: z.array(firstRunContextPackSchema).max(4).optional().default([]),
+  })
+  .strict();
+
+export const firstRunStarterHintsPlanStrategySchema = z
+  .object({
+    planTitle: z.string().trim().min(1).max(120),
+    summary: z.string().trim().min(1).max(240),
+    weekGoal: z.string().trim().min(1).max(180),
+    weekBenefit: z.string().trim().min(1).max(180),
+    reasoningBullets: z.array(z.string().trim().min(1).max(160)).min(1).max(3),
+  })
+  .strict();
+
+export const firstRunStarterActionHintSchema = z
+  .object({
+    id: z.string().trim().min(1).max(80),
+    categoryId: firstRunCategoryTemplateSchema,
+    title: z.string().trim().min(1).max(90),
+    purpose: z.string().trim().min(1).max(180),
+    outcomeLink: z.string().trim().min(1).max(180),
+    suggestedDurationMinutes: z.number().int().min(5).max(90),
+    cadence: z.enum(["once", "twice", "3x", "daily-lite"]),
+    priority: z.number().int().min(1).max(5),
+    preferredWindowTag: z.enum(["morning", "midday", "evening", "any"]),
+    avoidWindowTags: z.array(z.enum(["morning", "midday", "evening", "work", "late"])).max(4),
+    todayCandidate: z.boolean(),
+  })
+  .strict();
+
+export const firstRunStarterRiskRitualSchema = z
+  .object({
+    categoryId: firstRunCategoryTemplateSchema,
+    title: z.string().trim().min(1).max(90),
+    durationMinutes: z.number().int().min(5).max(30),
+    trigger: z.string().trim().min(1).max(120),
+    purpose: z.string().trim().min(1).max(180),
+  })
+  .strict();
+
+export const firstRunStarterHintsResponseSchema = z
+  .object({
+    version: z.literal(1),
+    source: z.literal("ai_starter_hints"),
+    inputHash: z.string().trim().min(1).max(256),
+    generatedAt: z.string().trim().min(1).max(64),
+    planStrategy: firstRunStarterHintsPlanStrategySchema,
+    actionHints: z.array(firstRunStarterActionHintSchema).min(1).max(6),
+    riskRituals: z.array(firstRunStarterRiskRitualSchema).max(4),
+    ai: z
+      .object({
+        status: z.literal("succeeded"),
+        missingInformation: z.array(z.string().trim().min(1).max(80)).max(8),
+      })
+      .strict(),
+  })
+  .strict();
+
 export const firstRunPlanComparisonMetricsSchema = z
   .object({
     weeklyMinutes: z.number().int().min(0).max(7 * 24 * 60),

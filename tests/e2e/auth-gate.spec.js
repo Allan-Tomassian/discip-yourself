@@ -1,9 +1,20 @@
 import { test, expect } from "@playwright/test";
 import { buildBaseState, buildMockAuthSession, clearAuthSession, seedState } from "./utils/seed.js";
 
-test("sans session: affiche signup et bloque l'app", async ({ page }) => {
+test("sans session: affiche welcome et bloque l'app", async ({ page }) => {
   await clearAuthSession(page);
   await page.goto("/");
+
+  await expect(page).toHaveURL(/\/auth\/welcome$/);
+  await expect(page.getByTestId("auth-welcome-screen")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Commencer" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Se connecter" })).toBeVisible();
+  await expect(page.locator("[data-tour-id=\"topnav-tabs\"]")).toHaveCount(0);
+});
+
+test("sans session sur /auth/signup: affiche signup", async ({ page }) => {
+  await clearAuthSession(page);
+  await page.goto("/auth/signup");
 
   await expect(page.getByTestId("auth-signup-screen")).toBeVisible();
   await expect(page.locator("[data-tour-id=\"topnav-tabs\"]")).toHaveCount(0);
@@ -34,6 +45,24 @@ test("session mockee non verifiee: blocage sur verify email", async ({ page }) =
   await page.goto("/");
 
   await expect(page.getByTestId("auth-verify-email-screen")).toBeVisible();
+  await expect(page.locator("[data-tour-id=\"topnav-tabs\"]")).toHaveCount(0);
+});
+
+test("sans session sur /auth/forgot-password: affiche forgot password", async ({ page }) => {
+  await clearAuthSession(page);
+  await page.goto("/auth/forgot-password");
+
+  await expect(page.getByTestId("auth-forgot-password-screen")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Envoyer le lien" })).toBeVisible();
+  await expect(page.locator("[data-tour-id=\"topnav-tabs\"]")).toHaveCount(0);
+});
+
+test("sans recovery sur /auth/reset-password: affiche le lien invalide", async ({ page }) => {
+  await clearAuthSession(page);
+  await page.goto("/auth/reset-password");
+
+  await expect(page.getByTestId("auth-reset-password-screen")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Demander un nouveau lien" })).toBeVisible();
   await expect(page.locator("[data-tour-id=\"topnav-tabs\"]")).toHaveCount(0);
 });
 

@@ -2,12 +2,13 @@ import React, { useEffect, useMemo, useState } from "react";
 import { isValidEmail } from "./loginAvailability";
 import {
   AppInput,
-  AppStandaloneScreen,
   AppTextButton,
   FeedbackMessage,
   FieldGroup,
   PrimaryButton,
 } from "../shared/ui/app";
+import FirstAccessShell from "../features/first-access/FirstAccessShell";
+import AuthCommandSurface, { AuthSecureNote } from "../features/first-access/AuthCommandSurface";
 
 function getErrorMessage(error) {
   return String(error?.message || "").trim() || "Impossible de créer le compte.";
@@ -48,62 +49,68 @@ export default function Signup({ initialEmail = "", onNavigate, onSignedUp }) {
   }
 
   return (
-    <AppStandaloneScreen
-      data-testid="auth-signup-screen"
-      title="Créer un compte"
-      subtitle="Crée ton accès, puis valide ton email pour ouvrir l’app."
-      footer={(
-        <p className="appMetaText">
-          Déjà inscrit ?{" "}
-          <AppTextButton type="button" onClick={() => onNavigate("/auth/login")}>
-            J’ai déjà un compte
-          </AppTextButton>
-        </p>
-      )}
-    >
-      <form onSubmit={handleSubmit} className="appSimpleStack">
-        <FieldGroup
-          label="Email"
-          htmlFor="auth-signup-email"
-          error={!emailOk && normalizedEmail ? "Adresse email invalide." : ""}
-        >
-          <AppInput
-            id="auth-signup-email"
-            data-testid="auth-email-input"
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="email@exemple.com"
-            autoComplete="email"
-            required
-          />
-        </FieldGroup>
-        <FieldGroup label="Mot de passe" htmlFor="auth-signup-password">
-          <AppInput
-            id="auth-signup-password"
-            data-testid="auth-password-input"
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            placeholder="Mot de passe"
-            autoComplete="new-password"
-            required
-          />
-        </FieldGroup>
-        <PrimaryButton data-testid="auth-submit-button" type="submit" disabled={!canSubmit}>
-          {submitting ? "Création…" : "Créer mon compte"}
-        </PrimaryButton>
-      </form>
+    <FirstAccessShell variant="signup">
+      <AuthCommandSurface
+        data-testid="auth-signup-screen"
+        eyebrow="Créer l’accès"
+        title="Créer ton compte"
+        subtitle="Un système qui te remet d’aplomb commence par un accès sécurisé."
+        footer={(
+          <>
+            <p className="appMetaText">
+              Déjà un compte ?{" "}
+              <AppTextButton type="button" onClick={() => onNavigate("/auth/login")}>
+                Se connecter
+              </AppTextButton>
+            </p>
+            <AuthSecureNote>Données sécurisées. Ton système t’appartient.</AuthSecureNote>
+          </>
+        )}
+      >
+        <form onSubmit={handleSubmit} className="authFormStack">
+          <FieldGroup
+            label="Email"
+            htmlFor="auth-signup-email"
+            error={!emailOk && normalizedEmail ? "Adresse email invalide." : ""}
+          >
+            <AppInput
+              id="auth-signup-email"
+              data-testid="auth-email-input"
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="email@exemple.com"
+              autoComplete="email"
+              required
+            />
+          </FieldGroup>
+          <FieldGroup label="Mot de passe" htmlFor="auth-signup-password">
+            <AppInput
+              id="auth-signup-password"
+              data-testid="auth-password-input"
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="Mot de passe"
+              autoComplete="new-password"
+              required
+            />
+          </FieldGroup>
+          <PrimaryButton data-testid="auth-submit-button" type="submit" disabled={!canSubmit}>
+            {submitting ? "Création…" : "Créer mon compte"}
+          </PrimaryButton>
+        </form>
 
-      {status.message ? (
-        <FeedbackMessage
-          data-testid="auth-status"
-          role={status.type === "error" ? "alert" : "status"}
-          tone={status.type === "error" ? "error" : "success"}
-        >
-          {status.message}
-        </FeedbackMessage>
-      ) : null}
-    </AppStandaloneScreen>
+        {status.message ? (
+          <FeedbackMessage
+            data-testid="auth-status"
+            role={status.type === "error" ? "alert" : "status"}
+            tone={status.type === "error" ? "error" : "success"}
+          >
+            {status.message}
+          </FeedbackMessage>
+        ) : null}
+      </AuthCommandSurface>
+    </FirstAccessShell>
   );
 }

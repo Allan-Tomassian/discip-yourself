@@ -11,10 +11,17 @@ const VERIFIED_SESSION = {
 };
 
 describe("authGateModel", () => {
-  it("redirige vers signup sans session hors routes auth", () => {
+  it("redirige vers welcome sans session hors routes auth", () => {
     expect(resolveAuthGateState({ loading: false, pathname: "/", session: null })).toEqual({
       kind: "redirect",
-      to: "/auth/signup",
+      to: "/auth/welcome",
+    });
+  });
+
+  it("rend la route welcome sans session", () => {
+    expect(resolveAuthGateState({ loading: false, pathname: "/auth/welcome", session: null })).toEqual({
+      kind: "screen",
+      screen: "welcome",
     });
   });
 

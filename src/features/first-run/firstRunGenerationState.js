@@ -2,6 +2,13 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+function resolveAutoSelectedPlanId(generatedPlans, fallback = null) {
+  const plans = Array.isArray(generatedPlans?.plans) ? generatedPlans.plans : [];
+  if (plans.some((plan) => plan?.id === "recommended")) return "recommended";
+  if (plans.length === 1 && plans[0]?.id) return plans[0].id;
+  return fallback;
+}
+
 export function shouldReuseFirstRunGeneratedPlans({ generatedPlans, inputHash }) {
   return Boolean(generatedPlans?.inputHash && generatedPlans.inputHash === inputHash);
 }
@@ -30,6 +37,7 @@ export function reuseFirstRunGeneratedPlans(current, inputHash, timestamp = nowI
     ...current,
     inputHash,
     generationError: null,
+    selectedPlanId: resolveAutoSelectedPlanId(current.generatedPlans, current.selectedPlanId),
     status: "compare",
     lastUpdatedAt: timestamp,
   };
@@ -65,7 +73,20 @@ export function applyFirstRunGenerationSuccess(current, { inputHash, payload, ti
     ...current,
     generatedPlans: payload,
     generationError: null,
-    selectedPlanId: null,
+    selectedPlanId: resolveAutoSelectedPlanId(payload, null),
+    status: "compare",
+    lastUpdatedAt: timestamp,
+  };
+}
+
+export function applyFirstRunRecommendedPlanSuccess(current, { inputHash, payload, timestamp = nowIso() }) {
+  if (current?.status !== "generate") return current;
+  return {
+    ...current,
+    inputHash,
+    generatedPlans: payload,
+    generationError: null,
+    selectedPlanId: resolveAutoSelectedPlanId(payload, "recommended"),
     status: "compare",
     lastUpdatedAt: timestamp,
   };
