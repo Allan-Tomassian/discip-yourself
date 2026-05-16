@@ -10,6 +10,8 @@ import {
   normalizeFirstRunV1,
   patchFirstRunDraftWindow,
   removeFirstRunDraftWindow,
+  buildAiAssistedRecommendedGeneratedPlans,
+  buildDeterministicRecommendedGeneratedPlans,
   buildLocalStubGeneratedPlans,
 } from "./firstRunModel";
 
@@ -240,6 +242,113 @@ describe("firstRunModel", () => {
     expect(normalized.generatedPlans?.plans[0]?.commitDraft?.occurrences[0]?.actionId).toBe("action_1");
   });
 
+  it("normalizes v3 recommended plans into plans=[recommended] and auto-selects them", () => {
+    const normalized = normalizeFirstRunV1({
+      status: "compare",
+      inputHash: "hash-v3",
+      generatedPlans: {
+        version: 3,
+        source: "deterministic_starter",
+        inputHash: "hash-v3",
+        generatedAt: "2026-04-19T08:00:00.000Z",
+        plan: {
+          id: "recommended",
+          variant: "recommended",
+          title: "Plan recommandé",
+          summary: "Une première semaine concrète.",
+          weekGoal: "Relancer le projet",
+          weekBenefit: "Créer une preuve.",
+          comparisonMetrics: {
+            weeklyMinutes: 150,
+            totalBlocks: 5,
+            activeDays: 4,
+            recoverySlots: 3,
+            dailyDensity: "respirable",
+            engagementLevel: "recommended",
+          },
+          categories: [{ id: "cat_1", label: "Business", role: "primary", blockCount: 3 }],
+          preview: [
+            {
+              dayKey: "2026-04-19",
+              dayLabel: "DIM 19/04",
+              slotLabel: "08:00 - 08:25",
+              categoryId: "cat_1",
+              categoryLabel: "Business",
+              title: "Focus profond",
+              minutes: 25,
+            },
+          ],
+          todayPreview: [
+            {
+              dayKey: "2026-04-19",
+              dayLabel: "DIM 19/04",
+              slotLabel: "08:00 - 08:25",
+              categoryId: "cat_1",
+              categoryLabel: "Business",
+              title: "Focus profond",
+              minutes: 25,
+            },
+          ],
+          weekSchedule: [
+            {
+              dayKey: "2026-04-19",
+              dayLabel: "DIM",
+              blockCount: 1,
+              totalMinutes: 25,
+              loadLabel: "1 bloc",
+              primarySlotLabel: "08:00 - 08:25",
+              headline: "Focus profond",
+            },
+          ],
+          rhythmGuidance: { title: "Rythme", description: "Simple", startWindow: "08:00", shutdownWindow: "Soir", confidence: "bonne" },
+          rationale: {
+            whyFit: "Plan sobre.",
+            capacityFit: "Charge stable.",
+            constraintFit: "Contraintes respectées.",
+          },
+          commitDraft: {
+            version: 1,
+            categories: [{ id: "cat_1", templateId: "business", name: "Business", color: "#0ea5e9", order: 0 }],
+            goals: [{ id: "goal_1", categoryId: "cat_1", title: "Relancer le projet", type: "OUTCOME", order: 0 }],
+            actions: [
+              {
+                id: "action_1",
+                categoryId: "cat_1",
+                parentGoalId: "goal_1",
+                title: "Focus profond",
+                type: "PROCESS",
+                order: 0,
+                repeat: "weekly",
+                daysOfWeek: [1, 3, 5],
+                timeMode: "FIXED",
+                startTime: "08:00",
+                timeSlots: ["08:00"],
+                durationMinutes: 25,
+                sessionMinutes: 25,
+              },
+            ],
+            occurrences: [
+              { id: "occ_1", actionId: "action_1", date: "2026-04-19", start: "08:00", durationMinutes: 25, status: "planned" },
+            ],
+          },
+        },
+        ai: {
+          status: "locked",
+          missingInformation: ["Horaires précis"],
+        },
+      },
+    });
+
+    expect(normalized.generatedPlans?.version).toBe(3);
+    expect(normalized.generatedPlans?.source).toBe("deterministic_starter");
+    expect(normalized.generatedPlans?.plans).toHaveLength(1);
+    expect(normalized.generatedPlans?.plans[0]?.id).toBe("recommended");
+    expect(normalized.generatedPlans?.plans[0]?.variant).toBe("recommended");
+    expect(normalized.generatedPlans?.plans[0]?.weekSchedule).toHaveLength(1);
+    expect(normalized.generatedPlans?.ai?.status).toBe("locked");
+    expect(normalized.selectedPlanId).toBe("recommended");
+  });
+
   it("reste compatible avec les anciens payloads qui stockent occurrence.goalId", () => {
     const normalized = normalizeFirstRunV1({
       status: "compare",
@@ -369,5 +478,191 @@ describe("firstRunModel", () => {
     expect(fallback.plans[0].commitDraft.goals.length).toBeGreaterThan(0);
     expect(fallback.plans[0].commitDraft.actions.length).toBeGreaterThan(0);
     expect(fallback.plans[0].commitDraft.occurrences.some((occurrence) => occurrence.date === "2026-04-29")).toBe(true);
+  });
+
+  it("builds an instant deterministic recommended plan with Today and 7-day structure", () => {
+    const generated = buildDeterministicRecommendedGeneratedPlans(
+      {
+        whyText: "Reprendre le contrôle sans attendre la motivation.",
+        primaryGoal: "Relancer le projet",
+        currentCapacity: "stable",
+        priorityCategoryIds: ["business", "productivity"],
+        preferredWindows: [{ id: "p1", daysOfWeek: [3], startTime: "08:00", endTime: "10:00", label: "Matin" }],
+        unavailableWindows: [{ id: "u1", daysOfWeek: [3], startTime: "12:00", endTime: "18:00", label: "Travail" }],
+        locale: "fr-FR",
+        timezone: "Europe/Paris",
+        referenceDateKey: "2026-04-29",
+      },
+      { inputHash: "hash-recommended", now: new Date(2026, 3, 29, 10, 0, 0, 0) }
+    );
+
+    const recommended = generated.plans[0];
+    expect(generated.version).toBe(3);
+    expect(generated.source).toBe("deterministic_starter");
+    expect(generated.inputHash).toBe("hash-recommended");
+    expect(generated.plans).toHaveLength(1);
+    expect(recommended.id).toBe("recommended");
+    expect(recommended.title).toBe("Plan recommandé");
+    expect(recommended.summary).not.toMatch(/fallback|IA génér/i);
+    expect(recommended.commitDraft.categories.length).toBeGreaterThan(0);
+    expect(recommended.commitDraft.goals.length).toBeGreaterThan(0);
+    expect(recommended.commitDraft.actions.length).toBeGreaterThanOrEqual(2);
+    expect(recommended.commitDraft.occurrences.some((occurrence) => occurrence.date === "2026-04-29")).toBe(true);
+    expect(recommended.todayPreview.length).toBeGreaterThan(0);
+    expect(recommended.weekSchedule).toHaveLength(7);
+    expect(generated.ai.status).toBe("locked");
+    expect(generated.ai.missingInformation).toContain("Horaires précis");
+  });
+
+  it("turns AI starter hints into a concrete v3 recommended plan without letting AI build commitDraft", () => {
+    const generated = buildAiAssistedRecommendedGeneratedPlans(
+      {
+        whyText: "Je veux publier mon application avant juin. Améliorer ma routine sportive. Arrêter de fumer.",
+        primaryGoal: "Finir l’application",
+        currentCapacity: "stable",
+        priorityCategoryIds: ["business", "health", "personal"],
+        unavailableWindows: [{ id: "u1", daysOfWeek: [1, 2, 3, 4, 5], startTime: "09:30", endTime: "17:30", label: "Work" }],
+        locale: "fr-FR",
+        timezone: "Europe/Paris",
+        referenceDateKey: "2026-04-29",
+      },
+      {
+        version: 1,
+        source: "ai_starter_hints",
+        inputHash: "hash-ai-hints",
+        generatedAt: "2026-04-29T08:00:00.000Z",
+        planStrategy: {
+          planTitle: "Plan recommandé",
+          summary: "Finir le parcours critique sans lâcher la santé.",
+          weekGoal: "Finaliser l’application et tester le parcours first-run cette semaine.",
+          weekBenefit: "Une app plus proche de la publication, avec un rythme sport et anti-cigarette réaliste.",
+          reasoningBullets: ["Le plan cible le parcours app avant juin.", "Les blocs restent hors horaires de travail."],
+        },
+        actionHints: [
+          {
+            id: "finish-first-access",
+            categoryId: "business",
+            title: "Finaliser le parcours First Access",
+            purpose: "Terminer le parcours d’entrée qui débloque la publication.",
+            outcomeLink: "Finir l’application",
+            suggestedDurationMinutes: 45,
+            cadence: "3x",
+            priority: 5,
+            preferredWindowTag: "morning",
+            avoidWindowTags: ["work"],
+            todayCandidate: true,
+          },
+          {
+            id: "test-signup-first-run",
+            categoryId: "business",
+            title: "Tester inscription + first-run complet",
+            purpose: "Valider le chemin critique utilisateur.",
+            outcomeLink: "Finir l’application",
+            suggestedDurationMinutes: 30,
+            cadence: "twice",
+            priority: 4,
+            preferredWindowTag: "evening",
+            avoidWindowTags: ["work"],
+            todayCandidate: false,
+          },
+          {
+            id: "sport-light",
+            categoryId: "health",
+            title: "Séance sport légère",
+            purpose: "Relancer la routine sportive sans casser l’énergie.",
+            outcomeLink: "Routine sportive",
+            suggestedDurationMinutes: 25,
+            cadence: "3x",
+            priority: 3,
+            preferredWindowTag: "evening",
+            avoidWindowTags: ["work"],
+            todayCandidate: false,
+          },
+        ],
+        riskRituals: [
+          {
+            categoryId: "personal",
+            title: "Revue anti-cigarette",
+            durationMinutes: 5,
+            trigger: "Envie de fumer",
+            purpose: "Noter le déclencheur et choisir une action de remplacement.",
+          },
+        ],
+        ai: { status: "succeeded", missingInformation: [] },
+      },
+      { inputHash: "hash-ai-hints", now: new Date(2026, 3, 29, 8, 0, 0, 0) }
+    );
+
+    const recommended = generated.plans[0];
+    const actionTitles = recommended.commitDraft.actions.map((action) => action.title);
+    expect(generated.source).toBe("ai_assisted_starter");
+    expect(generated.ai.status).toBe("succeeded");
+    expect(recommended.summary).toContain("Finir le parcours critique");
+    expect(actionTitles).toContain("Finaliser le parcours First Access");
+    expect(actionTitles).toContain("Tester inscription + first-run complet");
+    expect(actionTitles).toContain("Séance sport légère");
+    expect(actionTitles).toContain("Revue anti-cigarette");
+    expect(actionTitles).not.toContain("Focus profond");
+    expect(actionTitles).not.toContain("Mouvement");
+    expect(recommended.commitDraft.occurrences.length).toBeGreaterThan(0);
+    expect(recommended.commitDraft.occurrences.every((occurrence) => occurrence.start < "09:30" || occurrence.start >= "17:30")).toBe(true);
+    expect(recommended.todayPreview.length).toBeGreaterThan(0);
+    expect(recommended.weekSchedule).toHaveLength(7);
+  });
+
+  it("repairs vague starter hint titles before building the recommended commitDraft", () => {
+    const generated = buildAiAssistedRecommendedGeneratedPlans(
+      {
+        whyText: "Je veux publier mon application avant juin et reprendre le sport.",
+        primaryGoal: "Finir l’application",
+        currentCapacity: "stable",
+        priorityCategoryIds: ["business", "health"],
+        locale: "fr-FR",
+        timezone: "Europe/Paris",
+        referenceDateKey: "2026-04-29",
+      },
+      {
+        planStrategy: {
+          summary: "Plan concret.",
+          weekGoal: "Finir l’application.",
+          weekBenefit: "Publication plus proche.",
+          reasoningBullets: ["Actions réparées."],
+        },
+        actionHints: [
+          {
+            id: "generic-focus",
+            categoryId: "business",
+            title: "Focus profond",
+            purpose: "Avancer.",
+            suggestedDurationMinutes: 30,
+            cadence: "3x",
+            priority: 5,
+            preferredWindowTag: "morning",
+            avoidWindowTags: [],
+            todayCandidate: true,
+          },
+          {
+            id: "generic-move",
+            categoryId: "health",
+            title: "Mouvement",
+            purpose: "Bouger.",
+            suggestedDurationMinutes: 25,
+            cadence: "twice",
+            priority: 3,
+            preferredWindowTag: "evening",
+            avoidWindowTags: [],
+            todayCandidate: false,
+          },
+        ],
+        riskRituals: [],
+      },
+      { inputHash: "hash-vague", now: new Date(2026, 3, 29, 8, 0, 0, 0) }
+    );
+
+    const actionTitles = generated.plans[0].commitDraft.actions.map((action) => action.title);
+    expect(actionTitles).toContain("Finaliser l’application");
+    expect(actionTitles).toContain("Séance sport légère");
+    expect(actionTitles).not.toContain("Focus profond");
+    expect(actionTitles).not.toContain("Mouvement");
   });
 });

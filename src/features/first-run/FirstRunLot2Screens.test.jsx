@@ -10,8 +10,8 @@ import FirstRunIntroScreen from "./FirstRunIntroScreen";
 import FirstRunSignalsScreen from "./FirstRunSignalsScreen";
 import FirstRunWhyScreen from "./FirstRunWhyScreen";
 
-describe("First-run lot 2 screens", () => {
-  it("keeps the lot 2 visual layer scoped away from Today and commit/generation engines", () => {
+describe("First-run narrative screens", () => {
+  it("keeps the first-run visual layer scoped away from Today and protected engines", () => {
     const files = [
       "FirstRunCommandSurface.jsx",
       "FirstRunNarrativeBackdrop.jsx",
@@ -21,17 +21,17 @@ describe("First-run lot 2 screens", () => {
       "FirstRunSignalsScreen.jsx",
       "firstRun.css",
     ];
-    const sources = files.map((file) =>
-      readFileSync(new URL(`./${file}`, import.meta.url), "utf8")
-    );
+    const sources = files.map((file) => readFileSync(new URL(`./${file}`, import.meta.url), "utf8"));
     const joined = sources.join("\n");
+    const cssSource = readFileSync(new URL("./firstRun.css", import.meta.url), "utf8");
+    const primaryButtonRule = cssSource.match(/\.firstRunNarrativeScreen \.gateButton--primary[\s\S]*?\}/)?.[0] || "";
 
     expect(joined).not.toContain("features/today");
     expect(joined).not.toContain("components/today");
     expect(joined).not.toContain("todayDataAdapter");
-    expect(joined).not.toContain("firstRunCommit");
-    expect(joined).not.toContain("aiFirstRunClient");
-    expect(joined).not.toMatch(/#(?:7c3aed|8b5cf6|9333ea|a855f7|c084fc)/i);
+    expect(joined).not.toMatch(/from\s+["'][^"']*firstRunCommit/i);
+    expect(joined).not.toMatch(/from\s+["'][^"']*aiFirstRunClient/i);
+    expect(primaryButtonRule).not.toMatch(/#(?:7c3aed|8b5cf6|9333ea|a855f7|c084fc)|139,\s*92,\s*246|first-run-ai/i);
   });
 
   it("renders the intro as a premium system-building entry screen", () => {
@@ -206,7 +206,7 @@ describe("First-run lot 2 screens", () => {
     expect(html).toContain("Ajouter une indisponibilité");
   });
 
-  it("maps visible progression to 4/5 and 5/5, then hides it after compare", () => {
+  it("maps activation progression to generate, compare, and commit", () => {
     const generateHtml = renderToStaticMarkup(
       <FirstRunGenerateScreen data={{}} isLoading error={null} goalLabel="" onBack={() => {}} onRetry={() => {}} />
     );
@@ -234,18 +234,252 @@ describe("First-run lot 2 screens", () => {
       />
     );
     const commitHtml = renderToStaticMarkup(
-      <FirstRunCommitScreen data={{}} selectedPlan={null} onBack={() => {}} onContinue={() => {}} />
+      <FirstRunCommitScreen
+        data={{}}
+        selectedPlan={{
+          id: "tenable",
+          title: "Plan tenable",
+          summary: "Version respirable",
+          preview: [],
+          commitDraft: {
+            categories: [{ id: "cat_business" }],
+            goals: [{ id: "goal_business" }],
+            actions: [{ id: "action_business" }],
+            occurrences: [{ id: "occ_1", date: "2026-04-19" }],
+          },
+        }}
+        onBack={() => {}}
+        onContinue={() => {}}
+      />
     );
     const discoveryHtml = renderToStaticMarkup(
       <FirstRunDiscoveryScreen data={{}} onComplete={() => {}} />
     );
 
-    expect(generateHtml).toContain("4/5");
-    expect(compareHtml).toContain("5/5");
-    expect(commitHtml).toContain("On applique ton choix dans ton vrai système");
+    expect(generateHtml).toContain("Générer");
+    expect(generateHtml).toContain("Préparer");
+    expect(compareHtml).toContain("Plan");
+    expect(compareHtml).toContain("Choisis ton plan");
+    expect(commitHtml).toContain("Activer");
+    expect(commitHtml).toContain("Prêt à activer ton plan");
+    expect(commitHtml).toContain("Activer mon plan");
     expect(commitHtml).not.toContain("ne crée pas encore le vrai système produit");
-    expect(commitHtml).not.toContain("6/7");
-    expect(discoveryHtml).not.toContain("7/7");
+    expect(discoveryHtml).not.toContain("Découverte");
+  });
+
+  it("renders v3 recommended plan review as one plan with a locked AI precision card", () => {
+    const html = renderToStaticMarkup(
+      <FirstRunCompareScreen
+        data={{}}
+        generatedPlans={{
+          version: 3,
+          source: "deterministic_starter",
+          plans: [
+            {
+              id: "recommended",
+              variant: "recommended",
+              title: "Plan recommandé",
+              summary: "Une première semaine concrète.",
+              weekGoal: "Relancer mon projet principal",
+              weekBenefit: "Créer une preuve d’exécution dès aujourd’hui.",
+              comparisonMetrics: { weeklyMinutes: 165, totalBlocks: 6, activeDays: 4, recoverySlots: 3, dailyDensity: "respirable" },
+              categories: [{ id: "recommended_business", label: "Business", role: "primary", blockCount: 4 }],
+              preview: [
+                {
+                  dayKey: "2026-04-19",
+                  dayLabel: "DIM 19/04",
+                  slotLabel: "09:00 - 09:30",
+                  categoryId: "recommended_business",
+                  categoryLabel: "Business",
+                  title: "Focus profond",
+                  minutes: 30,
+                },
+              ],
+              todayPreview: [
+                {
+                  dayKey: "2026-04-19",
+                  dayLabel: "DIM 19/04",
+                  slotLabel: "09:00 - 09:30",
+                  categoryId: "recommended_business",
+                  categoryLabel: "Business",
+                  title: "Focus profond",
+                  minutes: 30,
+                },
+              ],
+              weekSchedule: [
+                { dayKey: "2026-04-19", dayLabel: "DIM", blockCount: 2, totalMinutes: 45, loadLabel: "2 blocs", headline: "Focus profond" },
+                { dayKey: "2026-04-20", dayLabel: "LUN", blockCount: 1, totalMinutes: 30, loadLabel: "1 bloc", headline: "Focus profond" },
+              ],
+              rationale: {
+                whyFit: "Ton pourquoi sert de point d’ancrage.",
+                capacityFit: "Charge réaliste.",
+                constraintFit: "Contraintes évitées autant que possible.",
+              },
+              commitDraft: {
+                categories: [{ id: "recommended_business", templateId: "business", name: "Business", color: "#0ea5e9", order: 0 }],
+                goals: [{ id: "recommended_goal", categoryId: "recommended_business", title: "Relancer mon projet principal", type: "OUTCOME", order: 0 }],
+                actions: [
+                  {
+                    id: "recommended_action_focus",
+                    categoryId: "recommended_business",
+                    parentGoalId: "recommended_goal",
+                    title: "Focus profond",
+                    type: "PROCESS",
+                    repeat: "weekly",
+                    daysOfWeek: [1],
+                    timeMode: "FIXED",
+                    startTime: "09:00",
+                    timeSlots: ["09:00"],
+                    durationMinutes: 30,
+                    sessionMinutes: 30,
+                  },
+                ],
+                occurrences: [{ id: "recommended_occ", actionId: "recommended_action_focus", date: "2026-04-19", start: "09:00", durationMinutes: 30, status: "planned" }],
+              },
+            },
+          ],
+          ai: {
+            status: "locked",
+            missingInformation: ["Horaires précis", "Niveau d’énergie", "Habitudes actuelles", "Contraintes fixes"],
+          },
+        }}
+        selectedPlanId="recommended"
+        onBack={() => {}}
+        onSelectPlan={() => {}}
+        onContinue={() => {}}
+      />
+    );
+
+    expect(html).toContain("PLAN RECOMMANDÉ");
+    expect(html).toContain("Ton plan recommandé est prêt.");
+    expect(html).toContain("Créé à partir de tes signaux. Tu peux l’activer maintenant.");
+    expect(html).toContain("Objectif principal");
+    expect(html).toContain("Premier bloc Today");
+    expect(html).toContain("Structure 7 jours");
+    expect(html).toContain("Actions prévues");
+    expect(html).toContain("Pourquoi ce plan est réaliste");
+    expect(html).toContain("Plan plus précis avec IA");
+    expect(html).toContain("Verrouillé");
+    expect(html).toContain("Ajouter les infos manquantes");
+    expect(html).toContain("disabled=\"\"");
+    expect(html).not.toContain("firstRunPlanDecisionCard");
+    expect(html).not.toContain("local fallback");
+    expect(html).not.toContain("Ton système est généré localement.");
+  });
+
+  it("labels v3 AI-assisted recommended plans without switching back to two-card compare", () => {
+    const html = renderToStaticMarkup(
+      <FirstRunCompareScreen
+        data={{}}
+        generatedPlans={{
+          version: 3,
+          source: "ai_assisted_starter",
+          plans: [
+            {
+              id: "recommended",
+              variant: "recommended",
+              title: "Plan recommandé",
+              summary: "Une première semaine concrète.",
+              weekGoal: "Finaliser l’application",
+              weekBenefit: "Premier parcours prêt.",
+              comparisonMetrics: { weeklyMinutes: 165, totalBlocks: 6, activeDays: 4, recoverySlots: 3, dailyDensity: "respirable" },
+              categories: [{ id: "recommended_business", label: "Business", role: "primary", blockCount: 4 }],
+              preview: [
+                {
+                  dayKey: "2026-04-19",
+                  dayLabel: "DIM 19/04",
+                  slotLabel: "09:00 - 09:30",
+                  categoryId: "recommended_business",
+                  categoryLabel: "Business",
+                  title: "Finaliser le parcours First Access",
+                  minutes: 30,
+                },
+              ],
+              todayPreview: [
+                {
+                  dayKey: "2026-04-19",
+                  dayLabel: "DIM 19/04",
+                  slotLabel: "09:00 - 09:30",
+                  categoryId: "recommended_business",
+                  categoryLabel: "Business",
+                  title: "Finaliser le parcours First Access",
+                  minutes: 30,
+                },
+              ],
+              weekSchedule: [
+                { dayKey: "2026-04-19", dayLabel: "DIM", blockCount: 1, totalMinutes: 30, loadLabel: "1 bloc", headline: "Finaliser le parcours First Access" },
+              ],
+              rationale: {
+                whyFit: "Ton pourquoi sert de point d’ancrage.",
+                capacityFit: "Charge réaliste.",
+                constraintFit: "Contraintes évitées autant que possible.",
+              },
+              commitDraft: {
+                categories: [{ id: "recommended_business", templateId: "business", name: "Business", color: "#0ea5e9", order: 0 }],
+                goals: [{ id: "recommended_goal", categoryId: "recommended_business", title: "Finaliser l’application", type: "OUTCOME", order: 0 }],
+                actions: [
+                  {
+                    id: "recommended_action_focus",
+                    categoryId: "recommended_business",
+                    parentGoalId: "recommended_goal",
+                    title: "Finaliser le parcours First Access",
+                    type: "PROCESS",
+                    repeat: "weekly",
+                    daysOfWeek: [1],
+                    timeMode: "FIXED",
+                    startTime: "09:00",
+                    timeSlots: ["09:00"],
+                    durationMinutes: 30,
+                    sessionMinutes: 30,
+                  },
+                ],
+                occurrences: [{ id: "recommended_occ", actionId: "recommended_action_focus", date: "2026-04-19", start: "09:00", durationMinutes: 30, status: "planned" }],
+              },
+            },
+          ],
+          ai: { status: "succeeded", missingInformation: [] },
+        }}
+        selectedPlanId="recommended"
+        onBack={() => {}}
+        onSelectPlan={() => {}}
+        onContinue={() => {}}
+      />
+    );
+
+    expect(html).toContain("Affiné par l’IA à partir de tes signaux.");
+    expect(html).toContain("firstRunRecommendedSourceBadge--ai");
+    expect(html).not.toContain("firstRunPlanDecisionCard");
+  });
+
+  it("labels local fallback compare mode without presenting it as AI-generated", () => {
+    const html = renderToStaticMarkup(
+      <FirstRunCompareScreen
+        data={{}}
+        generatedPlans={{
+          source: "local_fallback",
+          plans: [
+            {
+              id: "tenable",
+              title: "Plan tenable",
+              summary: "Version respirable",
+              comparisonMetrics: { weeklyMinutes: 120, totalBlocks: 3, recoverySlots: 1, dailyDensity: "respirable" },
+              categories: [],
+              rationale: {},
+              preview: [],
+              todayPreview: [],
+            },
+          ],
+        }}
+        selectedPlanId="tenable"
+        onBack={() => {}}
+        onSelectPlan={() => {}}
+        onContinue={() => {}}
+      />
+    );
+
+    expect(html).toContain("IA indisponible");
+    expect(html).toContain("Ton système est généré localement.");
+    expect(html).not.toContain("généré par l’IA");
   });
 
   it("keeps commit failure on the commit screen with conservative copy", () => {
@@ -266,7 +500,38 @@ describe("First-run lot 2 screens", () => {
       />
     );
 
-    expect(html).toContain("Impossible d’appliquer ce plan pour le moment");
-    expect(html).toContain("Valider ce choix");
+    expect(html).toContain("Échec de l’activation");
+    expect(html).toContain("Ton système n’a pas pu être activé. Tu peux relancer sans perdre tes réponses.");
+    expect(html).toContain("Réessayer");
+    expect(html).toContain("Vérifier la connexion");
+    expect(html).toContain("Contacter le support");
+    expect(html).not.toContain("Valider ce choix");
+  });
+
+  it("shows the applying activation state without exposing actions", () => {
+    const html = renderToStaticMarkup(
+      <FirstRunCommitScreen
+        data={{}}
+        selectedPlan={{
+          id: "tenable",
+          title: "Plan tenable",
+          summary: "Plan de départ",
+          preview: [],
+          variant: "tenable",
+        }}
+        errorCode={null}
+        isApplying
+        onBack={() => {}}
+        onContinue={() => {}}
+      />
+    );
+
+    expect(html).toContain("Activation de ton système…");
+    expect(html).toContain("Création des actions");
+    expect(html).toContain("Organisation des 7 jours");
+    expect(html).toContain("Préparation de Today");
+    expect(html).toContain("Synchronisation");
+    expect(html).toContain("Ne ferme pas l’app.");
+    expect(html).toContain("Activation...");
   });
 });

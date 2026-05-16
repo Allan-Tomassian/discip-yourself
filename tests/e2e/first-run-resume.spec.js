@@ -242,7 +242,6 @@ test("reprend exactement sur signals apres refresh", async ({ page }) => {
 });
 
 test("ne force pas onboardingCompleted trop tot et passe a done uniquement a la fin", async ({ page }) => {
-  await installFirstRunPlanMock(page, { delayMs: 120 });
   await bootFirstRunUser(page);
   await page.getByRole("button", { name: "Commencer" }).click();
   await page.getByTestId("first-run-why-input").fill("Je veux reprendre le controle.");
@@ -255,18 +254,20 @@ test("ne force pas onboardingCompleted trop tot et passe a done uniquement a la 
   await page.getByRole("button", { name: "Générer les plans" }).click();
 
   await expect(page.getByTestId("first-run-screen-compare")).toBeVisible();
+  await expect(page.getByText("Ton plan recommandé est prêt.")).toBeVisible();
   let persistedUi = await readPersistedUiState(page);
   expect(persistedUi?.onboardingCompleted).toBe(false);
   expect(persistedUi?.firstRunV1?.status).toBe("compare");
-  await page.getByText("Plan tenable").first().click();
-  await page.getByRole("button", { name: "Continuer avec ce plan" }).click();
+  expect(persistedUi?.firstRunV1?.generatedPlans?.version).toBe(3);
+  expect(persistedUi?.firstRunV1?.selectedPlanId).toBe("recommended");
+  await page.getByRole("button", { name: "Activer ce plan" }).click();
 
   await expect(page.getByTestId("first-run-screen-commit")).toBeVisible();
   persistedUi = await readPersistedUiState(page);
   expect(persistedUi?.onboardingCompleted).toBe(false);
   expect(persistedUi?.firstRunV1?.status).toBe("commit");
 
-  await page.getByRole("button", { name: "Valider ce choix" }).click();
+  await page.getByRole("button", { name: "Activer mon plan" }).click();
   await expect(page.getByTestId("first-run-screen-discovery")).toBeVisible();
   await page.getByRole("button", { name: "Entrer dans l'app" }).click();
 
@@ -299,6 +300,8 @@ test("ne regenere pas apres refresh quand le hash d'entree n'a pas change", asyn
   const generatedAtBeforeReload = persistedBeforeReload?.firstRunV1?.generatedPlans?.generatedAt;
   const callCountBeforeReload = callCount;
   expect(persistedBeforeReload?.firstRunV1?.status).toBe("compare");
+  expect(persistedBeforeReload?.firstRunV1?.generatedPlans?.source).toBe("deterministic_starter");
+  expect(persistedBeforeReload?.firstRunV1?.selectedPlanId).toBe("recommended");
   expect(inputHashBeforeReload).toBeTruthy();
 
   await page.reload();
@@ -307,15 +310,14 @@ test("ne regenere pas apres refresh quand le hash d'entree n'a pas change", asyn
   const persistedAfterReload = await readPersistedUiState(page);
   expect(persistedAfterReload?.firstRunV1?.inputHash).toBe(inputHashBeforeReload);
   expect(persistedAfterReload?.firstRunV1?.generatedPlans?.generatedAt).toBe(generatedAtBeforeReload);
-  if (callCountBeforeReload > 0) {
-    expect(callCount).toBe(callCountBeforeReload);
-  }
+  expect(callCount).toBe(callCountBeforeReload);
+  expect(callCount).toBe(0);
 });
 
-test("affiche un etat d'erreur propre puis relance la generation", async ({ page }) => {
+test("affiche le plan recommande sans attendre le backend IA", async ({ page }) => {
   let callCount = 0;
   await installFirstRunPlanMock(page, {
-    failOnce: true,
+    delayMs: 10_000,
     onCall: () => {
       callCount += 1;
     },
@@ -329,21 +331,10 @@ test("affiche un etat d'erreur propre puis relance la generation", async ({ page
   await page.getByText("Business").click();
   await page.getByRole("button", { name: "Générer les plans" }).click();
 
-  await page.waitForFunction(() =>
-    Boolean(
-      document.querySelector('[data-testid="first-run-screen-generate"]')
-        || document.querySelector('[data-testid="first-run-screen-compare"]')
-    )
-  );
-  if (await page.getByTestId("first-run-screen-compare").isVisible().catch(() => false)) {
-    return;
-  }
-
-  await expect(page.getByTestId("first-run-screen-generate")).toBeVisible();
-  await expect(page.getByText("La génération IA a pris trop de temps. Réessaie.")).toBeVisible();
-  expect(callCount).toBe(1);
-
-  await page.getByRole("button", { name: "Réessayer" }).click();
   await expect(page.getByTestId("first-run-screen-compare")).toBeVisible();
-  expect(callCount).toBe(2);
+  await expect(page.getByText("Ton plan recommandé est prêt.")).toBeVisible();
+  const persistedUi = await readPersistedUiState(page);
+  expect(persistedUi?.firstRunV1?.generatedPlans?.version).toBe(3);
+  expect(persistedUi?.firstRunV1?.generatedPlans?.source).toBe("deterministic_starter");
+  expect(callCount).toBe(0);
 });

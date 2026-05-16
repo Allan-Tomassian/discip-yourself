@@ -3,14 +3,19 @@ import { ensureAiBackendWarm } from "./aiBackendWarmup";
 import { fetchJsonWithTimeout } from "./aiRequest";
 import { readAiBackendBaseUrl } from "./aiNowClient";
 import {
+  FIRST_RUN_STARTER_HINTS_RESPONSE_VERSION,
+  FIRST_RUN_STARTER_HINTS_SOURCE,
   FIRST_RUN_PLAN_RESPONSE_VERSION,
   FIRST_RUN_PLAN_VARIANTS,
   normalizeFirstRunPlanRequestPayload,
+  normalizeFirstRunStarterHintsRequestPayload,
   serializeFirstRunPlanInput,
+  serializeFirstRunStarterHintsInput,
 } from "../features/first-run/firstRunPlanContract";
 
 const AI_SURFACE = "onboarding";
 export const DEFAULT_AI_FIRST_RUN_TIMEOUT_MS = 60000;
+export const DEFAULT_AI_FIRST_RUN_STARTER_HINTS_TIMEOUT_MS = 8000;
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -45,13 +50,16 @@ async function sha256Hex(value) {
 function normalizeBackendErrorCode(status, backendErrorCode) {
   const code = String(backendErrorCode || "").trim().toUpperCase();
   if (code === "FIRST_RUN_PLAN_PROVIDER_TIMEOUT") return "TIMEOUT";
+  if (code === "FIRST_RUN_STARTER_HINTS_PROVIDER_TIMEOUT") return "TIMEOUT";
   if (code === "FIRST_RUN_PLAN_BACKEND_UNAVAILABLE") return "BACKEND_UNAVAILABLE";
+  if (code === "FIRST_RUN_STARTER_HINTS_BACKEND_UNAVAILABLE") return "BACKEND_UNAVAILABLE";
   if (code === "AUTH_MISSING") return "AUTH_MISSING";
   if (code === "AUTH_INVALID" || code === "UNAUTHORIZED") return "AUTH_INVALID";
   if (code === "RATE_LIMITED") return "RATE_LIMITED";
   if (code === "QUOTA_EXCEEDED") return "QUOTA_EXCEEDED";
   if (code === "BACKEND_SCHEMA_MISSING") return "BACKEND_UNAVAILABLE";
   if (code === "INVALID_FIRST_RUN_PLAN_RESPONSE" || code === "INVALID_RESPONSE") return "INVALID_RESPONSE";
+  if (code === "INVALID_FIRST_RUN_STARTER_HINTS_RESPONSE") return "INVALID_RESPONSE";
   if (code === "BACKEND_ERROR") return "BACKEND_UNAVAILABLE";
   if (
     code === "SNAPSHOT_LOAD_FAILED" ||
@@ -190,6 +198,71 @@ function isPlan(value) {
   );
 }
 
+function isStringArray(value, maxLength = 8) {
+  return Array.isArray(value) && value.length <= maxLength && value.every((entry) => typeof entry === "string");
+}
+
+function isStarterPlanStrategy(value) {
+  return (
+    isPlainObject(value) &&
+    typeof value.planTitle === "string" &&
+    typeof value.summary === "string" &&
+    typeof value.weekGoal === "string" &&
+    typeof value.weekBenefit === "string" &&
+    isStringArray(value.reasoningBullets, 3)
+  );
+}
+
+function isStarterActionHint(value) {
+  return (
+    isPlainObject(value) &&
+    typeof value.id === "string" &&
+    typeof value.categoryId === "string" &&
+    typeof value.title === "string" &&
+    typeof value.purpose === "string" &&
+    typeof value.outcomeLink === "string" &&
+    Number.isInteger(value.suggestedDurationMinutes) &&
+    typeof value.cadence === "string" &&
+    Number.isInteger(value.priority) &&
+    typeof value.preferredWindowTag === "string" &&
+    Array.isArray(value.avoidWindowTags) &&
+    value.avoidWindowTags.every((entry) => typeof entry === "string") &&
+    typeof value.todayCandidate === "boolean"
+  );
+}
+
+function isStarterRiskRitual(value) {
+  return (
+    isPlainObject(value) &&
+    typeof value.categoryId === "string" &&
+    typeof value.title === "string" &&
+    Number.isInteger(value.durationMinutes) &&
+    typeof value.trigger === "string" &&
+    typeof value.purpose === "string"
+  );
+}
+
+export function isAiFirstRunStarterHintsResponse(value) {
+  return (
+    isPlainObject(value) &&
+    Number(value.version) === FIRST_RUN_STARTER_HINTS_RESPONSE_VERSION &&
+    value.source === FIRST_RUN_STARTER_HINTS_SOURCE &&
+    typeof value.inputHash === "string" &&
+    typeof value.generatedAt === "string" &&
+    isStarterPlanStrategy(value.planStrategy) &&
+    Array.isArray(value.actionHints) &&
+    value.actionHints.length >= 1 &&
+    value.actionHints.length <= 6 &&
+    value.actionHints.every(isStarterActionHint) &&
+    Array.isArray(value.riskRituals) &&
+    value.riskRituals.length <= 4 &&
+    value.riskRituals.every(isStarterRiskRitual) &&
+    isPlainObject(value.ai) &&
+    value.ai.status === "succeeded" &&
+    isStringArray(value.ai.missingInformation, 8)
+  );
+}
+
 export function isAiFirstRunPlanResponse(value) {
   return (
     isPlainObject(value) &&
@@ -212,8 +285,220 @@ export async function buildAiFirstRunPlanRequest(input) {
   return { payload, inputHash };
 }
 
+export async function buildAiFirstRunStarterHintsRequest(input) {
+  const payload = normalizeFirstRunStarterHintsRequestPayload(input);
+  const inputHash = await sha256Hex(serializeFirstRunStarterHintsInput(payload));
+  return { payload, inputHash };
+}
+
 export function normalizeAiFirstRunPayloadForTest(input) {
   return normalizeFirstRunPlanRequestPayload(input);
+}
+
+export function normalizeAiFirstRunStarterHintsPayloadForTest(input) {
+  return normalizeFirstRunStarterHintsRequestPayload(input);
+}
+
+export async function requestAiFirstRunStarterHints({
+  accessToken,
+  payload,
+  baseUrl,
+  fetchImpl = globalThis.fetch,
+  timeoutMs = DEFAULT_AI_FIRST_RUN_STARTER_HINTS_TIMEOUT_MS,
+}) {
+  const resolvedBaseUrl = readAiBackendBaseUrl(baseUrl);
+  const buildTransport = (errorCode = null, probableCause = null) =>
+    buildAiTransportMeta({
+      baseUrl: resolvedBaseUrl,
+      errorCode,
+      warmupState: null,
+      probableCause,
+    });
+  const buildResultMeta = (transportMeta) => ({
+    surface: AI_SURFACE,
+    probableCause: transportMeta?.probableCause || null,
+    baseUrlUsed: transportMeta?.backendBaseUrl || resolvedBaseUrl || "",
+    originUsed: transportMeta?.frontendOrigin || "",
+  });
+
+  if (!resolvedBaseUrl) {
+    const transportMeta = buildTransport("DISABLED");
+    return {
+      ok: false,
+      errorCode: "DISABLED",
+      payload: null,
+      status: null,
+      requestId: null,
+      errorMessage: null,
+      errorDetails: null,
+      backendErrorCode: null,
+      transportMeta,
+      ...buildResultMeta(transportMeta),
+    };
+  }
+
+  if (typeof fetchImpl !== "function") {
+    const transportMeta = buildTransport("NETWORK_ERROR");
+    logAiTransportIssue({ endpoint: "/ai/first-run-starter-hints", errorCode: "NETWORK_ERROR", transportMeta });
+    return {
+      ok: false,
+      errorCode: "NETWORK_ERROR",
+      payload: null,
+      status: null,
+      requestId: null,
+      errorMessage: null,
+      errorDetails: null,
+      backendErrorCode: null,
+      transportMeta,
+      ...buildResultMeta(transportMeta),
+    };
+  }
+
+  if (!String(accessToken || "").trim()) {
+    const transportMeta = buildTransport("AUTH_MISSING");
+    return {
+      ok: false,
+      errorCode: "AUTH_MISSING",
+      payload: null,
+      status: 401,
+      requestId: null,
+      errorMessage: null,
+      errorDetails: null,
+      backendErrorCode: "AUTH_MISSING",
+      transportMeta,
+      ...buildResultMeta(transportMeta),
+    };
+  }
+
+  let normalizedPayload;
+  try {
+    normalizedPayload = normalizeFirstRunStarterHintsRequestPayload(payload);
+  } catch {
+    const transportMeta = buildTransport("INVALID_RESPONSE");
+    return {
+      ok: false,
+      errorCode: "INVALID_RESPONSE",
+      payload: null,
+      status: null,
+      requestId: null,
+      errorMessage: null,
+      errorDetails: null,
+      backendErrorCode: null,
+      transportMeta,
+      ...buildResultMeta(transportMeta),
+    };
+  }
+
+  const requestResult = await fetchJsonWithTimeout({
+    fetchImpl,
+    url: `${resolvedBaseUrl}/ai/first-run-starter-hints`,
+    timeoutMs,
+    defaultTimeoutMs: DEFAULT_AI_FIRST_RUN_STARTER_HINTS_TIMEOUT_MS,
+    options: {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+        "x-discip-surface": AI_SURFACE,
+      },
+      body: JSON.stringify(normalizedPayload),
+    },
+  });
+
+  if (!requestResult.ok) {
+    const errorCode = requestResult.timedOut ? "TIMEOUT" : "NETWORK_ERROR";
+    const transportMeta = buildTransport(errorCode);
+    logAiTransportIssue({ endpoint: "/ai/first-run-starter-hints", errorCode, transportMeta });
+    return {
+      ok: false,
+      errorCode,
+      payload: null,
+      status: null,
+      requestId: null,
+      errorMessage: null,
+      errorDetails: null,
+      backendErrorCode: null,
+      transportMeta,
+      ...buildResultMeta(transportMeta),
+    };
+  }
+
+  const response = requestResult.response;
+  const body = await safeParseJson(response);
+  const requestId =
+    typeof body?.requestId === "string"
+      ? body.requestId
+      : typeof body?.meta?.requestId === "string"
+        ? body.meta.requestId
+        : null;
+  const rawBackendErrorCode =
+    typeof body?.error === "string" ? body.error
+    : typeof body?.errorCode === "string" ? body.errorCode
+    : null;
+  const errorCode = normalizeBackendErrorCode(response.status, rawBackendErrorCode);
+  const transportMeta = buildTransport(response.ok ? null : errorCode);
+
+  if (!response.ok) {
+    logAiTransportIssue({
+      endpoint: "/ai/first-run-starter-hints",
+      errorCode,
+      status: response.status,
+      requestId,
+      backendErrorCode: rawBackendErrorCode,
+      bodyKeys: isPlainObject(body) ? Object.keys(body) : [],
+      mode: "first_run_starter_hints",
+      transportMeta,
+    });
+    return {
+      ok: false,
+      errorCode,
+      payload: null,
+      status: response.status,
+      requestId,
+      errorMessage: typeof body?.message === "string" ? body.message : null,
+      errorDetails: isPlainObject(body?.details) ? body.details : null,
+      backendErrorCode: rawBackendErrorCode,
+      transportMeta,
+      ...buildResultMeta(transportMeta),
+    };
+  }
+
+  if (!isAiFirstRunStarterHintsResponse(body)) {
+    logAiTransportIssue({
+      endpoint: "/ai/first-run-starter-hints",
+      errorCode: "INVALID_RESPONSE",
+      status: response.status,
+      requestId,
+      bodyKeys: isPlainObject(body) ? Object.keys(body) : [],
+      mode: "first_run_starter_hints",
+      transportMeta,
+    });
+    return {
+      ok: false,
+      errorCode: "INVALID_RESPONSE",
+      payload: null,
+      status: response.status,
+      requestId,
+      errorMessage: null,
+      errorDetails: null,
+      backendErrorCode: null,
+      transportMeta,
+      ...buildResultMeta(transportMeta),
+    };
+  }
+
+  return {
+    ok: true,
+    errorCode: null,
+    payload: body,
+    status: response.status,
+    requestId,
+    errorMessage: null,
+    errorDetails: null,
+    backendErrorCode: null,
+    transportMeta,
+    ...buildResultMeta(transportMeta),
+  };
 }
 
 export async function requestAiFirstRunPlan({

@@ -6,15 +6,25 @@ const LOT2_STEPS = Object.freeze([
   { id: "signals", index: 3, label: "Signaux", description: "Structure utile" },
 ]);
 
-export default function FirstRunProgressRail({ activeStep = "intro" }) {
-  const activeIndex = LOT2_STEPS.findIndex((step) => step.id === activeStep);
+const ACTIVATION_STEPS = Object.freeze([
+  { id: "generate", index: 4, label: "Générer", description: "Préparer" },
+  { id: "compare", index: 5, label: "Plan", description: "Revoir" },
+  { id: "commit", index: 6, label: "Activer", description: "Déployer" },
+  { id: "discovery", index: 7, label: "Découverte", description: "Explorer" },
+  { id: "today", index: 8, label: "Today", description: "Cockpit" },
+]);
+
+export default function FirstRunProgressRail({ activeStep = "intro", mode = "foundation" }) {
+  const steps = mode === "activation" ? ACTIVATION_STEPS : LOT2_STEPS;
+  const activeIndex = steps.findIndex((step) => step.id === activeStep);
+  const resolvedActiveIndex = activeIndex >= 0 ? activeIndex : 0;
 
   return (
-    <nav className="firstRunProgressRail" aria-label="Progression first-run">
-      {LOT2_STEPS.map((step, index) => {
+    <nav className={`firstRunProgressRail firstRunProgressRail--${mode}`} aria-label="Progression first-run">
+      {steps.map((step, index) => {
         const stateClass =
-          index < activeIndex ? "is-complete"
-          : index === activeIndex ? "is-active"
+          index < resolvedActiveIndex ? "is-complete"
+          : index === resolvedActiveIndex ? "is-active"
           : "is-upcoming";
         return (
           <div key={step.id} className={`firstRunProgressStep ${stateClass}`}>

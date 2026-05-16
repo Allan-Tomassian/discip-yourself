@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { initialData, normalizeCategory } from "../../logic/state";
 import { addDaysLocal } from "../../utils/datetime";
-import { buildLocalStubGeneratedPlans, getNextFirstRunStatus, normalizeFirstRunV1 } from "./firstRunModel";
+import {
+  buildDeterministicRecommendedGeneratedPlans,
+  buildLocalStubGeneratedPlans,
+  getNextFirstRunStatus,
+  normalizeFirstRunV1,
+} from "./firstRunModel";
 import { applyFirstRunCommitDraft } from "./firstRunCommit";
 
 const NOW = new Date(2026, 3, 29, 10, 0, 0, 0);
@@ -189,6 +194,35 @@ describe("applyFirstRunCommitDraft", () => {
     expect(generatedPlans.source).toBe("local_fallback");
     expect(result.ok).toBe(true);
     expect(result.commitV1.selectedPlanSource).toBe("local_fallback");
+    expect(result.nextState.categories.length).toBeGreaterThan(0);
+    expect(result.nextState.occurrences.some((occ) => occ.date === TODAY)).toBe(true);
+  });
+
+  it("commits v3 deterministic recommended plans through the same path", () => {
+    const generatedPlans = buildDeterministicRecommendedGeneratedPlans(
+      {
+        whyText: "Reprendre le contrôle de mes semaines",
+        primaryGoal: "Relancer le projet",
+        currentCapacity: "stable",
+        priorityCategoryIds: ["business"],
+        preferredWindows: [{ id: "p1", daysOfWeek: [3], startTime: "08:00", endTime: "10:00", label: "Matin" }],
+        unavailableWindows: [{ id: "u1", daysOfWeek: [1], startTime: "09:00", endTime: "18:00", label: "Travail" }],
+        referenceDateKey: TODAY,
+      },
+      { inputHash: "recommended-hash", now: NOW }
+    );
+    const recommendedPlan = generatedPlans.plans[0];
+    const fr = firstRun({
+      generatedPlans,
+      selectedPlanId: "recommended",
+      inputHash: "recommended-hash",
+    });
+    const result = apply(baseState(), fr, recommendedPlan);
+
+    expect(generatedPlans.source).toBe("deterministic_starter");
+    expect(result.ok).toBe(true);
+    expect(result.commitV1.selectedPlanId).toBe("recommended");
+    expect(result.commitV1.selectedPlanSource).toBe("deterministic_starter");
     expect(result.nextState.categories.length).toBeGreaterThan(0);
     expect(result.nextState.occurrences.some((occ) => occ.date === TODAY)).toBe(true);
   });

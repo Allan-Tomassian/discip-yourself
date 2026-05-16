@@ -1,5 +1,15 @@
 export const FIRST_RUN_PLAN_RESPONSE_VERSION = 2;
+export const FIRST_RUN_RECOMMENDED_PLAN_RESPONSE_VERSION = 3;
+export const FIRST_RUN_RECOMMENDED_PLAN_ID = "recommended";
+export const FIRST_RUN_DETERMINISTIC_SOURCE = "deterministic_starter";
+export const FIRST_RUN_AI_ASSISTED_SOURCE = "ai_assisted_starter";
+export const FIRST_RUN_STARTER_HINTS_RESPONSE_VERSION = 1;
+export const FIRST_RUN_STARTER_HINTS_SOURCE = "ai_starter_hints";
 export const FIRST_RUN_PLAN_VARIANTS = Object.freeze(["tenable", "ambitious"]);
+export const FIRST_RUN_SUPPORTED_PLAN_VARIANTS = Object.freeze([
+  FIRST_RUN_RECOMMENDED_PLAN_ID,
+  ...FIRST_RUN_PLAN_VARIANTS,
+]);
 export const FIRST_RUN_PLAN_CATEGORY_IDS = Object.freeze([
   "health",
   "business",
@@ -88,6 +98,43 @@ function normalizePriorityCategoryIds(value) {
   return out.slice(0, 3);
 }
 
+function normalizeConstraints(value) {
+  if (!Array.isArray(value)) return [];
+  const out = [];
+  const seen = new Set();
+  value.forEach((rawValue) => {
+    const normalized = trimString(rawValue, 160);
+    const key = normalized.toLowerCase();
+    if (!normalized || seen.has(key)) return;
+    seen.add(key);
+    out.push(normalized);
+  });
+  return out.slice(0, 8);
+}
+
+function normalizeContextPacks(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => {
+      const source = isPlainObject(entry) ? entry : {};
+      const type = trimString(source.type, 40);
+      const label = trimString(source.label, 120);
+      const summary = trimString(source.summary, 1000);
+      const signals = normalizeConstraints(source.signals).slice(0, 8);
+      const updatedAt = trimString(source.updatedAt, 80);
+      if (!type || !summary) return null;
+      return {
+        type,
+        label,
+        summary,
+        signals,
+        updatedAt,
+      };
+    })
+    .filter(Boolean)
+    .slice(0, 4);
+}
+
 function normalizeSubmitDraftAnswers(value) {
   const source = isPlainObject(value) ? value : {};
   return {
@@ -130,10 +177,25 @@ export function normalizeFirstRunPlanRequestPayload(input) {
   };
 }
 
+export function normalizeFirstRunStarterHintsRequestPayload(input) {
+  const source = isPlainObject(input) ? input : {};
+  const basePayload = normalizeFirstRunPlanRequestPayload(source);
+  return {
+    ...basePayload,
+    constraints: normalizeConstraints(source.constraints),
+    contextPacks: normalizeContextPacks(source.contextPacks),
+  };
+}
+
 export function serializeFirstRunPlanInput(payload) {
   return stableSerialize(normalizeFirstRunPlanRequestPayload(payload));
 }
 
+export function serializeFirstRunStarterHintsInput(payload) {
+  return stableSerialize(normalizeFirstRunStarterHintsRequestPayload(payload));
+}
+
 export function getFirstRunPlanTitle(variant) {
+  if (variant === FIRST_RUN_RECOMMENDED_PLAN_ID) return "Plan recommandé";
   return variant === "ambitious" ? "Plan ambitieux" : "Plan tenable";
 }

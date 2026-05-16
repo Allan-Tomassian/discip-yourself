@@ -20,6 +20,8 @@ const TEST_CONFIG = {
   OPENAI_DEFAULT_TIMEOUT_MS: 20000,
   FIRST_RUN_PLAN_OPENAI_MODEL: "",
   FIRST_RUN_PLAN_OPENAI_TIMEOUT_MS: 55000,
+  FIRST_RUN_STARTER_HINTS_OPENAI_MODEL: "",
+  FIRST_RUN_STARTER_HINTS_OPENAI_TIMEOUT_MS: 10000,
   SESSION_GUIDANCE_PREPARE_OPENAI_MODEL: "",
   SESSION_GUIDANCE_PREPARE_OPENAI_TIMEOUT_MS: 60000,
   AI_QUOTA_MODE: "normal",
@@ -590,6 +592,57 @@ function createValidFirstRunPlanRequest(overrides = {}) {
     timezone: "Europe/Paris",
     locale: "fr-FR",
     referenceDateKey: TODAY_KEY,
+    ...overrides,
+  };
+}
+
+function createValidFirstRunStarterHintsProvider(overrides = {}) {
+  return {
+    planStrategy: {
+      planTitle: "Plan recommandé",
+      summary: "Finir le parcours critique sans perdre le rythme.",
+      weekGoal: "Finaliser l’application et tester l’entrée.",
+      weekBenefit: "Une publication plus proche avec un système activable.",
+      reasoningBullets: ["Le plan cible le parcours app.", "Les blocs évitent les horaires de travail."],
+    },
+    actionHints: [
+      {
+        id: "finish-first-access",
+        categoryId: "business",
+        title: "Finaliser le parcours First Access",
+        purpose: "Terminer le parcours d’entrée.",
+        outcomeLink: "Finir l’application",
+        suggestedDurationMinutes: 45,
+        cadence: "3x",
+        priority: 5,
+        preferredWindowTag: "morning",
+        avoidWindowTags: ["work"],
+        todayCandidate: true,
+      },
+      {
+        id: "sport-light",
+        categoryId: "health",
+        title: "Séance sport légère",
+        purpose: "Relancer la routine sportive.",
+        outcomeLink: "Routine sportive",
+        suggestedDurationMinutes: 25,
+        cadence: "twice",
+        priority: 3,
+        preferredWindowTag: "evening",
+        avoidWindowTags: ["work"],
+        todayCandidate: false,
+      },
+    ],
+    riskRituals: [
+      {
+        categoryId: "personal",
+        title: "Revue anti-cigarette",
+        durationMinutes: 5,
+        trigger: "Envie de fumer",
+        purpose: "Noter le déclencheur.",
+      },
+    ],
+    missingInformation: [],
     ...overrides,
   };
 }
@@ -1378,6 +1431,117 @@ test("POST /ai/first-run-plan returns backend unavailable when OpenAI is missing
 
   assert.equal(response.statusCode, 503);
   assert.equal(response.json().error, "FIRST_RUN_PLAN_BACKEND_UNAVAILABLE");
+  await app.close();
+});
+
+test("POST /ai/first-run-starter-hints returns compact hints without commitDraft or occurrences", async () => {
+  let requestedModel = null;
+  let requestedTimeout = null;
+  let requestedUserPrompt = null;
+  const insertedLogs = [];
+  const app = await buildApp({
+    config: TEST_CONFIG_WITH_OPENAI,
+    verifyAccessToken: async () => ({ id: "user-first-run-starter-hints" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: null,
+    dailyCount: 0,
+    monthlyCount: 0,
+    insertedLogs,
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async (input, options) => {
+          requestedModel = input?.model || null;
+          requestedTimeout = options?.timeout ?? null;
+          requestedUserPrompt = input?.messages?.[1]?.content || null;
+          return {
+            choices: [
+              {
+                message: {
+                  parsed: createValidFirstRunStarterHintsProvider(),
+                },
+              },
+            ],
+          };
+        },
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/first-run-starter-hints",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.31" },
+    payload: createValidFirstRunPlanRequest({
+      whyText: "Je veux publier mon application avant juin. Améliorer ma routine sportive. Arrêter de fumer.",
+      primaryGoal: "Finir l’application",
+      priorityCategoryIds: ["business", "health", "personal"],
+      constraints: ["Pas après 22h"],
+      contextPacks: [{ type: "github", label: "Repo", summary: "First Access et auth à finaliser.", signals: ["auth"] }],
+    }),
+  });
+
+  const body = response.json();
+  assert.equal(response.statusCode, 200);
+  assert.equal(body.version, 1);
+  assert.equal(body.source, "ai_starter_hints");
+  assert.equal(body.actionHints.length, 2);
+  assert.equal(body.actionHints[0].title, "Finaliser le parcours First Access");
+  assert.equal(body.actionHints[1].title, "Séance sport légère");
+  assert.equal(body.riskRituals[0].title, "Revue anti-cigarette");
+  assert.equal(body.commitDraft, undefined);
+  assert.equal(body.occurrences, undefined);
+  assert.equal(requestedModel, "gpt-4.1-mini");
+  assert.equal(requestedTimeout, 10000);
+  assert.match(requestedUserPrompt, /No dates, no schedule, no occurrence ids, no commitDraft/);
+  assert.match(requestedUserPrompt, /First Access et auth/);
+  assert.equal(insertedLogs[0]?.coach_kind, "first-run-starter-hints");
+  assert.equal(insertedLogs[0]?.route, "/ai/first-run-starter-hints");
+  await app.close();
+});
+
+test("POST /ai/first-run-starter-hints returns a structured timeout error", async () => {
+  const insertedLogs = [];
+  const app = await buildApp({
+    config: {
+      ...TEST_CONFIG_WITH_OPENAI,
+      FIRST_RUN_STARTER_HINTS_OPENAI_TIMEOUT_MS: 12000,
+    },
+    verifyAccessToken: async () => ({ id: "user-first-run-starter-timeout" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: null,
+    dailyCount: 0,
+    monthlyCount: 0,
+    insertedLogs,
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async () => {
+          throw new APIConnectionTimeoutError({ message: "request timed out" });
+        },
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/first-run-starter-hints",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.32" },
+    payload: createValidFirstRunPlanRequest(),
+  });
+
+  const body = response.json();
+  assert.equal(response.statusCode, 504);
+  assert.equal(body.error, "FIRST_RUN_STARTER_HINTS_PROVIDER_TIMEOUT");
+  assert.equal(body.details.timeoutMs, 12000);
+  assert.equal(insertedLogs[0]?.coach_kind, "first-run-starter-hints");
+  assert.equal(insertedLogs[0]?.provider_status, "timeout");
   await app.close();
 });
 

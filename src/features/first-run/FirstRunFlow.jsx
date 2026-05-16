@@ -11,12 +11,16 @@ import {
 } from "../../shared/ui/app";
 import { saveState } from "../../utils/storage";
 import { todayLocalKey } from "../../utils/datetime";
+import {
+  buildAiFirstRunStarterHintsRequest,
+  requestAiFirstRunStarterHints,
+} from "../../infra/aiFirstRunClient";
 import { useAuth } from "../../auth/useAuth";
-import { buildAiFirstRunPlanRequest, requestAiFirstRunPlan } from "../../infra/aiFirstRunClient";
 import { TOUR_VERSION } from "../../tour/tourSpec";
 import {
   addFirstRunDraftWindow,
-  buildLocalStubGeneratedPlans,
+  buildAiAssistedRecommendedGeneratedPlans,
+  buildDeterministicRecommendedGeneratedPlans,
   createInitialFirstRunState,
   getNextFirstRunStatus,
   getPreviousFirstRunStatus,
@@ -26,13 +30,10 @@ import {
   removeFirstRunDraftWindow,
 } from "./firstRunModel";
 import {
-  applyFirstRunGenerationSuccess,
-  buildFirstRunGenerationError,
-  markFirstRunGenerationPending,
+  applyFirstRunRecommendedPlanSuccess,
   retryFirstRunGenerationState,
   reuseFirstRunGeneratedPlans,
   shouldReuseFirstRunGeneratedPlans,
-  shouldStartFirstRunGeneration,
 } from "./firstRunGenerationState";
 import { applyFirstRunCommitDraft } from "./firstRunCommit";
 import FirstRunCommitScreen from "./FirstRunCommitScreen";
@@ -146,10 +147,8 @@ function PlanOnlyScreen({ data, selectedPlan, onSelectPlan, onContinue }) {
 }
 
 export default function FirstRunFlow({ data, setData, onDone, planOnly = false }) {
-  const { session } = useAuth();
   const safeData = isPlainObject(data) ? data : {};
   const safeUi = isPlainObject(safeData.ui) ? safeData.ui : {};
-  const generationRequestRef = useRef({ token: 0, inputHash: null });
   const isUnmountedRef = useRef(false);
   const commitApplyingRef = useRef(false);
   const firstRun = useMemo(
@@ -161,6 +160,8 @@ export default function FirstRunFlow({ data, setData, onDone, planOnly = false }
   );
   const [planChoice, setPlanChoice] = useState(safeData?.profile?.plan === "premium" ? "premium" : "free");
   const [isCommitApplying, setIsCommitApplying] = useState(false);
+  const { session } = useAuth();
+  const accessToken = session?.access_token || "";
 
   const updateFirstRun = useCallback(
     (updater) => {
@@ -277,9 +278,6 @@ export default function FirstRunFlow({ data, setData, onDone, planOnly = false }
 
   const goToSignalsFromGenerate = useCallback(() => {
     updateFirstRun((current) => {
-      if (current.status === "generate") {
-        generationRequestRef.current = { token: generationRequestRef.current.token + 1, inputHash: null };
-      }
       if (current.status !== "generate") {
         return {
           ...current,
@@ -316,7 +314,6 @@ export default function FirstRunFlow({ data, setData, onDone, planOnly = false }
   const retryGeneration = useCallback(() => {
     updateFirstRun((current) => {
       if (current.status !== "generate") return current;
-      generationRequestRef.current = { token: generationRequestRef.current.token + 1, inputHash: null };
       return retryFirstRunGenerationState(current);
     });
   }, [updateFirstRun]);
@@ -324,7 +321,6 @@ export default function FirstRunFlow({ data, setData, onDone, planOnly = false }
   useEffect(
     () => () => {
       isUnmountedRef.current = true;
-      generationRequestRef.current = { token: generationRequestRef.current.token + 1, inputHash: null };
     },
     []
   );
@@ -333,7 +329,7 @@ export default function FirstRunFlow({ data, setData, onDone, planOnly = false }
     if (planOnly || firstRun.status !== "generate") return;
 
     async function runGeneration() {
-      const { payload, inputHash } = await buildAiFirstRunPlanRequest({
+      const { payload, inputHash } = await buildAiFirstRunStarterHintsRequest({
         ...firstRun.draftAnswers,
         locale: readRuntimeLocale(),
         timezone: readRuntimeTimezone(),
@@ -349,61 +345,36 @@ export default function FirstRunFlow({ data, setData, onDone, planOnly = false }
         return;
       }
 
-      if (
-        !shouldStartFirstRunGeneration({
-          firstRun: {
-            status: firstRun.status,
-            generationError: firstRun.generationError,
-            inputHash: firstRun.inputHash,
-          },
-          inputHash,
-          inFlightInputHash: generationRequestRef.current.inputHash,
-        })
-      ) {
-        return;
-      }
-
-      const requestToken = generationRequestRef.current.token + 1;
-      generationRequestRef.current = { token: requestToken, inputHash };
-
-      commitFirstRunFromLatest((current) => {
-        return markFirstRunGenerationPending(current, inputHash);
+      const generatedAt = new Date();
+      const deterministicPlans = buildDeterministicRecommendedGeneratedPlans(payload, {
+        inputHash,
+        now: generatedAt,
       });
+      let recommendedPlans = deterministicPlans;
 
-      const result = await requestAiFirstRunPlan({
-        accessToken: session?.access_token || "",
+      const hintsResult = await requestAiFirstRunStarterHints({
+        accessToken,
         payload,
+        timeoutMs: 8000,
       });
-      if (isUnmountedRef.current) return;
-      if (generationRequestRef.current.token !== requestToken || generationRequestRef.current.inputHash !== inputHash) return;
-
-      generationRequestRef.current = { token: requestToken, inputHash: null };
-
-      if (!result.ok) {
-        const generationError = buildFirstRunGenerationError(result);
-        const fallbackPlans = buildLocalStubGeneratedPlans(firstRun.draftAnswers, new Date());
-        commitFirstRunFromLatest((current) => {
-          if (current?.status !== "generate" || current?.inputHash !== inputHash) return current;
-          return {
-            ...current,
-            inputHash,
-            generatedPlans: {
-              ...fallbackPlans,
-              inputHash,
-            },
-            generationError,
-            selectedPlanId: null,
-            status: "compare",
-            lastUpdatedAt: new Date().toISOString(),
-          };
+      if (hintsResult?.ok && hintsResult.payload) {
+        recommendedPlans = buildAiAssistedRecommendedGeneratedPlans(payload, hintsResult.payload, {
+          inputHash,
+          now: new Date(),
         });
-        return;
+      } else if (hintsResult?.errorCode === "TIMEOUT" || hintsResult?.errorCode === "NETWORK_ERROR") {
+        recommendedPlans = buildDeterministicRecommendedGeneratedPlans(payload, {
+          inputHash,
+          now: generatedAt,
+          aiStatus: hintsResult.errorCode === "TIMEOUT" ? "timeout" : "failed",
+          aiErrorCode: hintsResult.errorCode,
+        });
       }
 
       commitFirstRunFromLatest((current) => {
-        return applyFirstRunGenerationSuccess(current, {
+        return applyFirstRunRecommendedPlanSuccess(current, {
           inputHash,
-          payload: result.payload,
+          payload: recommendedPlans,
         });
       });
     }
@@ -412,12 +383,10 @@ export default function FirstRunFlow({ data, setData, onDone, planOnly = false }
   }, [
     firstRun.draftAnswers,
     firstRun.generatedPlans,
-    firstRun.generationError,
-    firstRun.inputHash,
     firstRun.status,
     planOnly,
     commitFirstRunFromLatest,
-    session?.access_token,
+    accessToken,
   ]);
 
   const selectedPlan = useMemo(() => {
@@ -505,6 +474,7 @@ export default function FirstRunFlow({ data, setData, onDone, planOnly = false }
         isLoading={!firstRun.generatedPlans && !firstRun.generationError}
         error={firstRun.generationError}
         goalLabel={firstRun.draftAnswers?.primaryGoal || ""}
+        isAiRefining={Boolean(accessToken)}
         onBack={goToSignalsFromGenerate}
         onRetry={retryGeneration}
       />

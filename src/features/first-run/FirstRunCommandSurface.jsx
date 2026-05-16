@@ -9,23 +9,32 @@ export default function FirstRunCommandSurface({
   data,
   testId,
   activeStep,
+  progressMode = "foundation",
   eyebrow,
   title,
   subtitle,
   children,
   footer,
+  tone = "execution",
+  securityTitle = "Système sécurisé",
+  securityText = "Ton système sera créé à partir de ce que tu es. 100% privé.",
   className = "",
   bodyClassName = "",
 }) {
+  const screenClassName = ["firstRunNarrativeScreen", `firstRunNarrativeScreen--${tone}`].filter(Boolean).join(" ");
+  const surfaceClassName = ["firstRunCommandSurface", `firstRunCommandSurface--tone-${tone}`, className]
+    .filter(Boolean)
+    .join(" ");
+
   return (
-    <AppScreen data={data} pageId="onboarding" className="firstRunNarrativeScreen">
+    <AppScreen data={data} pageId="onboarding" className={screenClassName}>
       <FirstRunNarrativeBackdrop />
 
       <div className="firstRunNarrativeViewport">
-        <FirstRunProgressRail activeStep={activeStep} />
+        <FirstRunProgressRail activeStep={activeStep} mode={progressMode} />
 
         <section
-          className={["firstRunCommandSurface", className].filter(Boolean).join(" ")}
+          className={surfaceClassName}
           data-testid={testId}
         >
           <div className="firstRunCommandAura" aria-hidden="true" />
@@ -56,8 +65,8 @@ export default function FirstRunCommandSurface({
         <div className="firstRunSecurityStrip" aria-label="Système sécurisé">
           <ShieldCheck size={18} strokeWidth={1.9} aria-hidden="true" />
           <span>
-            <strong>Système sécurisé</strong>
-            <span>Ton système sera créé à partir de ce que tu es. 100% privé.</span>
+            <strong>{securityTitle}</strong>
+            <span>{securityText}</span>
           </span>
         </div>
       </div>

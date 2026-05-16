@@ -1,8 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  buildAiFirstRunStarterHintsRequest,
+  DEFAULT_AI_FIRST_RUN_STARTER_HINTS_TIMEOUT_MS,
   buildAiFirstRunPlanRequest,
   DEFAULT_AI_FIRST_RUN_TIMEOUT_MS,
+  isAiFirstRunStarterHintsResponse,
+  normalizeAiFirstRunStarterHintsPayloadForTest,
   normalizeAiFirstRunPayloadForTest,
+  requestAiFirstRunStarterHints,
   requestAiFirstRunPlan,
 } from "./aiFirstRunClient";
 import { resetAiBackendWarmupStateForTests } from "./aiBackendWarmup";
@@ -149,6 +154,61 @@ const VALID_RESPONSE = {
   ],
 };
 
+const VALID_STARTER_HINTS_RESPONSE = {
+  version: 1,
+  source: "ai_starter_hints",
+  inputHash: "hash-starter-hints",
+  generatedAt: "2026-04-19T08:00:00.000Z",
+  planStrategy: {
+    planTitle: "Plan recommandé",
+    summary: "Finir le parcours critique sans perdre le rythme.",
+    weekGoal: "Finaliser l’application et tester l’entrée.",
+    weekBenefit: "Une publication plus proche avec un système activable.",
+    reasoningBullets: ["Le plan cible le parcours app.", "Les blocs évitent les horaires de travail."],
+  },
+  actionHints: [
+    {
+      id: "finish-first-access",
+      categoryId: "business",
+      title: "Finaliser le parcours First Access",
+      purpose: "Terminer le parcours d’entrée.",
+      outcomeLink: "Finir l’application",
+      suggestedDurationMinutes: 45,
+      cadence: "3x",
+      priority: 5,
+      preferredWindowTag: "morning",
+      avoidWindowTags: ["work"],
+      todayCandidate: true,
+    },
+    {
+      id: "sport-light",
+      categoryId: "health",
+      title: "Séance sport légère",
+      purpose: "Relancer la routine sportive.",
+      outcomeLink: "Routine sportive",
+      suggestedDurationMinutes: 25,
+      cadence: "twice",
+      priority: 3,
+      preferredWindowTag: "evening",
+      avoidWindowTags: ["work"],
+      todayCandidate: false,
+    },
+  ],
+  riskRituals: [
+    {
+      categoryId: "personal",
+      title: "Revue anti-cigarette",
+      durationMinutes: 5,
+      trigger: "Envie de fumer",
+      purpose: "Noter le déclencheur.",
+    },
+  ],
+  ai: {
+    status: "succeeded",
+    missingInformation: [],
+  },
+};
+
 describe("aiFirstRunClient", () => {
   afterEach(() => {
     resetAiBackendWarmupStateForTests();
@@ -208,6 +268,120 @@ describe("aiFirstRunClient", () => {
     });
 
     expect(left.inputHash).toBe(right.inputHash);
+  });
+
+  it("normalise le payload compact starter hints sans demander de commitDraft", async () => {
+    const normalized = normalizeAiFirstRunStarterHintsPayloadForTest({
+      whyText: "  Publier mon app  ",
+      primaryGoal: "  Finir l’application  ",
+      currentCapacity: "stable",
+      priorityCategoryIds: ["business", "health", "unknown"],
+      unavailableWindows: [{ id: "u1", daysOfWeek: [1], startTime: "09:30", endTime: "17:30", label: "Work" }],
+      constraints: ["  Pas après 22h  ", "Pas après 22h"],
+      contextPacks: [
+        {
+          type: "github",
+          label: "Repo",
+          summary: "Issues First Access à finir.",
+          signals: ["signup", "first-run"],
+          raw: "must-not-pass-through",
+        },
+      ],
+      locale: "fr-FR",
+      timezone: "Europe/Paris",
+      referenceDateKey: "2026-04-19",
+    });
+    const request = await buildAiFirstRunStarterHintsRequest(normalized);
+
+    expect(normalized).toEqual({
+      whyText: "Publier mon app",
+      primaryGoal: "Finir l’application",
+      unavailableWindows: [{ id: "u1", daysOfWeek: [1], startTime: "09:30", endTime: "17:30", label: "Work" }],
+      preferredWindows: [],
+      currentCapacity: "stable",
+      priorityCategoryIds: ["business", "health"],
+      timezone: "Europe/Paris",
+      locale: "fr-FR",
+      referenceDateKey: "2026-04-19",
+      constraints: ["Pas après 22h"],
+      contextPacks: [
+        {
+          type: "github",
+          label: "Repo",
+          summary: "Issues First Access à finir.",
+          signals: ["signup", "first-run"],
+          updatedAt: "",
+        },
+      ],
+    });
+    expect(request.payload).not.toHaveProperty("commitDraft");
+    expect(request.payload).not.toHaveProperty("occurrences");
+  });
+
+  it("validates the compact AI starter hints response shape", () => {
+    expect(isAiFirstRunStarterHintsResponse(VALID_STARTER_HINTS_RESPONSE)).toBe(true);
+    expect(isAiFirstRunStarterHintsResponse({ ...VALID_STARTER_HINTS_RESPONSE, commitDraft: {} })).toBe(true);
+    expect(isAiFirstRunStarterHintsResponse({ ...VALID_STARTER_HINTS_RESPONSE, actionHints: [] })).toBe(false);
+  });
+
+  it("requests starter hints from the lightweight endpoint without backend warmup", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => VALID_STARTER_HINTS_RESPONSE,
+    });
+
+    const result = await requestAiFirstRunStarterHints({
+      accessToken: "token",
+      baseUrl: "https://ai.example.test",
+      payload: {
+        whyText: "Publier mon app",
+        primaryGoal: "Finir l’application",
+        currentCapacity: "stable",
+        priorityCategoryIds: ["business", "health"],
+        locale: "fr-FR",
+        timezone: "Europe/Paris",
+        referenceDateKey: "2026-04-19",
+      },
+      fetchImpl,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.payload).toEqual(VALID_STARTER_HINTS_RESPONSE);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(fetchImpl.mock.calls[0][0]).toBe("https://ai.example.test/ai/first-run-starter-hints");
+    expect(fetchImpl.mock.calls[0][1].body).not.toContain("commitDraft");
+    expect(fetchImpl.mock.calls[0][1].body).not.toContain("occurrences");
+  });
+
+  it("times out starter hints quickly so deterministic generation can continue", async () => {
+    const fetchImpl = vi.fn((_url, options) =>
+      new Promise((_resolve, reject) => {
+        options.signal.addEventListener("abort", () => {
+          reject(Object.assign(new Error("aborted"), { name: "AbortError" }));
+        });
+      })
+    );
+
+    const result = await requestAiFirstRunStarterHints({
+      accessToken: "token",
+      baseUrl: "https://ai.example.test",
+      payload: {
+        whyText: "Publier mon app",
+        primaryGoal: "Finir l’application",
+        currentCapacity: "stable",
+        priorityCategoryIds: ["business"],
+        locale: "fr-FR",
+        timezone: "Europe/Paris",
+        referenceDateKey: "2026-04-19",
+      },
+      fetchImpl,
+      timeoutMs: 1,
+    });
+
+    expect(DEFAULT_AI_FIRST_RUN_STARTER_HINTS_TIMEOUT_MS).toBe(8000);
+    expect(result.ok).toBe(false);
+    expect(result.errorCode).toBe("TIMEOUT");
   });
 
   it("envoie la requête backend first-run", async () => {
