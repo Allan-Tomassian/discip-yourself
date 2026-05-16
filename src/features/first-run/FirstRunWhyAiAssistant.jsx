@@ -78,6 +78,7 @@ export default function FirstRunWhyAiAssistant({
   const isLoading = status === "loading";
   const hasResult = status === "ready" && result;
   const hasError = status === "error";
+  const showExpandedSurface = isLoading || hasResult || hasError || accepted;
 
   const chips = useMemo(
     () =>
@@ -140,80 +141,87 @@ export default function FirstRunWhyAiAssistant({
   }
 
   return (
-    <section className={`firstRunWhyAiCard${accepted ? " is-accepted" : ""}${hasError ? " is-error" : ""}`}>
-      <div className="firstRunWhyAiHeader">
-        <div className="firstRunWhyAiGlyph" aria-hidden="true">
-          {accepted ? <Check size={16} /> : <Sparkles size={16} />}
-        </div>
-        <div>
-          <p className="firstRunWhyAiLabel">Assistance IA</p>
-          <h3>Formuler une raison plus claire</h3>
-        </div>
-      </div>
+    <div className={`firstRunWhyAiRoot${showExpandedSurface ? " is-expanded" : ""}`}>
+      <button
+        type="button"
+        className="firstRunWhyAiInlineAction"
+        disabled={isLoading}
+        onClick={handleRequest}
+        data-testid="first-run-why-ai-cta"
+      >
+        {isLoading ? "Analyse..." : getFirstRunWhyAiCta(safeValue)}
+        <Sparkles size={13} aria-hidden="true" />
+      </button>
 
-      <div className="firstRunWhyAiCompact">
-        <p>
-          {mode === "clarify"
-            ? "Garde ton intention. L’IA aide seulement à la rendre plus nette."
-            : "Choisis une piste ou demande une formulation pour démarrer."}
-        </p>
-        <PrimaryButton
-          className="firstRunWhyAiButton"
-          disabled={isLoading}
-          onClick={handleRequest}
-          data-testid="first-run-why-ai-cta"
-        >
-          {isLoading ? "Analyse en cours..." : getFirstRunWhyAiCta(safeValue)}
-        </PrimaryButton>
-      </div>
-
-      {mode === "inspiration" ? (
-        <div className="firstRunWhyInspirationChips" aria-label="Pistes d’inspiration">
-          {chips}
-        </div>
-      ) : null}
-
-      {hasError ? (
-        <p className="firstRunWhyAiFeedback is-error" role="status">
-          {FAILURE_COPY}
-        </p>
-      ) : null}
-
-      {accepted ? (
-        <p className="firstRunWhyAiFeedback is-accepted" role="status">
-          Version utilisée. Tu peux encore la modifier avant de continuer.
-        </p>
-      ) : null}
-
-      {hasResult ? (
-        <div className="firstRunWhyAiResult" data-testid="first-run-why-ai-suggestion">
-          <div className="firstRunWhyAiClarified">
-            <span>Version proposée</span>
-            <p>{suggestionText}</p>
+      {showExpandedSurface ? (
+        <section className={`firstRunWhyAiCard${accepted ? " is-accepted" : ""}${hasError ? " is-error" : ""}`}>
+          <div className="firstRunWhyAiHeader">
+            <div className="firstRunWhyAiGlyph" aria-hidden="true">
+              {accepted ? <Check size={16} /> : <Sparkles size={16} />}
+            </div>
+            <div>
+              <p className="firstRunWhyAiLabel">Assistance IA</p>
+              <h3>Formuler une raison plus claire</h3>
+            </div>
           </div>
 
-          <div className="firstRunWhyAiDetailsGrid">
-            <SuggestionList label="Intention principale" values={[clarification.primaryIntent]} />
-            <SuggestionList label="Intentions secondaires" values={clarification.secondaryIntents} />
-            <SuggestionList label="Frictions" values={clarification.frictions} />
-            <SuggestionList label="Identité visée" values={[clarification.desiredIdentity]} />
-            <SuggestionList label="Risques d’exécution" values={clarification.executionRisks} />
-            <SuggestionList label="Domaines suggérés" values={clarification.suggestedDomains} />
+          <div className="firstRunWhyAiCompact">
+            <p>
+              {mode === "clarify"
+                ? "Garde ton intention. L’IA aide seulement à la rendre plus nette."
+                : "Choisis une piste ou demande une formulation pour démarrer."}
+            </p>
           </div>
 
-          <div className="firstRunWhyAiActions">
-            <PrimaryButton onClick={() => handleUseSuggestion()} data-testid="first-run-why-ai-use">
-              Utiliser cette version
-            </PrimaryButton>
-            <GhostButton onClick={() => handleUseSuggestion({ focus: true })} data-testid="first-run-why-ai-edit">
-              Modifier
-            </GhostButton>
-            <GhostButton onClick={handleKeepOriginal} data-testid="first-run-why-ai-keep">
-              Garder ma version
-            </GhostButton>
-          </div>
-        </div>
+          {mode === "inspiration" && (isLoading || hasResult || hasError) ? (
+            <div className="firstRunWhyInspirationChips" aria-label="Pistes d’inspiration">
+              {chips}
+            </div>
+          ) : null}
+
+          {hasError ? (
+            <p className="firstRunWhyAiFeedback is-error" role="status">
+              {FAILURE_COPY}
+            </p>
+          ) : null}
+
+          {accepted ? (
+            <p className="firstRunWhyAiFeedback is-accepted" role="status">
+              Version utilisée. Tu peux encore la modifier avant de continuer.
+            </p>
+          ) : null}
+
+          {hasResult ? (
+            <div className="firstRunWhyAiResult" data-testid="first-run-why-ai-suggestion">
+              <div className="firstRunWhyAiClarified">
+                <span>Version proposée</span>
+                <p>{suggestionText}</p>
+              </div>
+
+              <div className="firstRunWhyAiDetailsGrid">
+                <SuggestionList label="Intention principale" values={[clarification.primaryIntent]} />
+                <SuggestionList label="Intentions secondaires" values={clarification.secondaryIntents} />
+                <SuggestionList label="Frictions" values={clarification.frictions} />
+                <SuggestionList label="Identité visée" values={[clarification.desiredIdentity]} />
+                <SuggestionList label="Risques d’exécution" values={clarification.executionRisks} />
+                <SuggestionList label="Domaines suggérés" values={clarification.suggestedDomains} />
+              </div>
+
+              <div className="firstRunWhyAiActions">
+                <PrimaryButton onClick={() => handleUseSuggestion()} data-testid="first-run-why-ai-use">
+                  Utiliser cette version
+                </PrimaryButton>
+                <GhostButton onClick={() => handleUseSuggestion({ focus: true })} data-testid="first-run-why-ai-edit">
+                  Modifier
+                </GhostButton>
+                <GhostButton onClick={handleKeepOriginal} data-testid="first-run-why-ai-keep">
+                  Garder ma version
+                </GhostButton>
+              </div>
+            </div>
+          ) : null}
+        </section>
       ) : null}
-    </section>
+    </div>
   );
 }

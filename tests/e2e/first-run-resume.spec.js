@@ -1,163 +1,43 @@
 import { test, expect } from "@playwright/test";
 import { buildMockAuthSession, buildMockProfile, seedAuthSession, seedProfile } from "./utils/seed.js";
 
-function buildFirstRunPlanResponse() {
+function buildFirstRunStarterHintsResponse() {
   return {
-    version: 2,
-    source: "ai_backend",
-    inputHash: "e2e-first-run-hash",
+    version: 1,
+    source: "ai_starter_hints",
+    inputHash: "e2e-first-run-starter-hints-hash",
     generatedAt: "2026-04-19T08:00:00.000Z",
-    requestId: "req-e2e-first-run",
-    model: "gpt-5.4",
-    promptVersion: "first_run_plan_v1",
-    plans: [
+    planStrategy: {
+      planTitle: "Plan recommandé",
+      summary: "Relancer le projet principal avec une charge réaliste.",
+      weekGoal: "Créer une preuve d’exécution sur le projet principal.",
+      weekBenefit: "Le système démarre avec un premier bloc activable aujourd’hui.",
+      reasoningBullets: ["Le plan reste concentré sur le projet.", "La cadence respecte une capacité stable."],
+    },
+    actionHints: [
       {
-        id: "tenable",
-        variant: "tenable",
-        title: "Plan tenable",
-        summary: "Une première semaine crédible et respirable.",
-        comparisonMetrics: {
-          weeklyMinutes: 150,
-          totalBlocks: 5,
-          activeDays: 4,
-          recoverySlots: 3,
-          dailyDensity: "respirable",
-          engagementLevel: "tenable",
-        },
-        categories: [
-          { id: "cat_business", label: "Business", role: "primary", blockCount: 3 },
-          { id: "cat_health", label: "Santé", role: "support", blockCount: 2 },
-        ],
-        preview: [
-          {
-            dayKey: "2026-04-19",
-            dayLabel: "DIM 19/04",
-            slotLabel: "08:00 - 08:25",
-            categoryId: "cat_business",
-            categoryLabel: "Business",
-            title: "Bloc roadmap",
-            minutes: 25,
-          },
-        ],
-        todayPreview: [
-          {
-            dayKey: "2026-04-19",
-            dayLabel: "DIM 19/04",
-            slotLabel: "08:00 - 08:25",
-            categoryId: "cat_business",
-            categoryLabel: "Business",
-            title: "Bloc roadmap",
-            minutes: 25,
-          },
-        ],
-        rationale: {
-          whyFit: "Le plan protège l'élan.",
-          capacityFit: "La charge reste respirable.",
-          constraintFit: "Les contraintes sont respectées.",
-        },
-        commitDraft: {
-          version: 1,
-          categories: [
-            { id: "cat_business", templateId: "business", name: "Business", color: "#0ea5e9", order: 0 },
-            { id: "cat_health", templateId: "health", name: "Santé", color: "#22c55e", order: 1 },
-          ],
-          goals: [{ id: "goal_business", categoryId: "cat_business", title: "Relancer le projet", type: "OUTCOME", order: 0 }],
-          actions: [
-            {
-              id: "action_roadmap",
-              categoryId: "cat_business",
-              parentGoalId: "goal_business",
-              title: "Bloc roadmap",
-              type: "PROCESS",
-              order: 0,
-              repeat: "weekly",
-              daysOfWeek: [1, 2, 3, 4, 5, 6, 7],
-              timeMode: "FIXED",
-              startTime: "08:00",
-              timeSlots: ["08:00"],
-              durationMinutes: 25,
-              sessionMinutes: 25,
-            },
-          ],
-          occurrences: [{ id: "occ_t_1", goalId: "action_roadmap", date: "2026-04-19", start: "08:00", durationMinutes: 25, status: "planned" }],
-        },
-      },
-      {
-        id: "ambitious",
-        variant: "ambitious",
-        title: "Plan ambitieux",
-        summary: "Une version plus dense pour accélérer.",
-        comparisonMetrics: {
-          weeklyMinutes: 225,
-          totalBlocks: 7,
-          activeDays: 5,
-          recoverySlots: 2,
-          dailyDensity: "soutenue",
-          engagementLevel: "ambitious",
-        },
-        categories: [
-          { id: "cat_business", label: "Business", role: "primary", blockCount: 4 },
-          { id: "cat_health", label: "Santé", role: "support", blockCount: 3 },
-        ],
-        preview: [
-          {
-            dayKey: "2026-04-19",
-            dayLabel: "DIM 19/04",
-            slotLabel: "07:30 - 08:15",
-            categoryId: "cat_business",
-            categoryLabel: "Business",
-            title: "Bloc roadmap",
-            minutes: 45,
-          },
-        ],
-        todayPreview: [
-          {
-            dayKey: "2026-04-19",
-            dayLabel: "DIM 19/04",
-            slotLabel: "07:30 - 08:15",
-            categoryId: "cat_business",
-            categoryLabel: "Business",
-            title: "Bloc roadmap",
-            minutes: 45,
-          },
-        ],
-        rationale: {
-          whyFit: "Le plan accélère dès la première semaine.",
-          capacityFit: "La charge monte d'un cran.",
-          constraintFit: "Les créneaux favorables sont exploités.",
-        },
-        commitDraft: {
-          version: 1,
-          categories: [
-            { id: "cat_business", templateId: "business", name: "Business", color: "#0ea5e9", order: 0 },
-            { id: "cat_health", templateId: "health", name: "Santé", color: "#22c55e", order: 1 },
-          ],
-          goals: [{ id: "goal_business", categoryId: "cat_business", title: "Relancer le projet", type: "OUTCOME", order: 0 }],
-          actions: [
-            {
-              id: "action_roadmap",
-              categoryId: "cat_business",
-              parentGoalId: "goal_business",
-              title: "Bloc roadmap",
-              type: "PROCESS",
-              order: 0,
-              repeat: "weekly",
-              daysOfWeek: [1, 2, 3, 4, 5, 6, 7],
-              timeMode: "FIXED",
-              startTime: "07:30",
-              timeSlots: ["07:30"],
-              durationMinutes: 45,
-              sessionMinutes: 45,
-            },
-          ],
-          occurrences: [{ id: "occ_a_1", goalId: "action_roadmap", date: "2026-04-19", start: "07:30", durationMinutes: 45, status: "planned" }],
-        },
+        id: "project-main-block",
+        categoryId: "business",
+        title: "Relancer le projet principal",
+        purpose: "Créer une avancée concrète sur le projet.",
+        outcomeLink: "Relancer mon projet principal",
+        suggestedDurationMinutes: 30,
+        cadence: "3x",
+        priority: 5,
+        preferredWindowTag: "morning",
+        avoidWindowTags: ["work"],
+        todayCandidate: true,
       },
     ],
+    riskRituals: [],
+    ai: {
+      status: "succeeded",
+      missingInformation: [],
+    },
   };
 }
 
-async function installFirstRunPlanMock(page, { delayMs = 0, failOnce = false, onCall = null } = {}) {
+async function installFirstRunStarterHintsMock(page, { delayMs = 0, fail = false, onCall = null } = {}) {
   await page.addInitScript(() => {
     globalThis.process = globalThis.process || {};
     globalThis.process.env = {
@@ -166,21 +46,19 @@ async function installFirstRunPlanMock(page, { delayMs = 0, failOnce = false, on
     };
   });
 
-  let shouldFail = failOnce;
-  await page.route("**/ai/first-run-plan", async (route) => {
+  await page.route("**/ai/first-run-starter-hints", async (route) => {
     if (typeof onCall === "function") onCall();
     if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
 
-    if (shouldFail) {
-      shouldFail = false;
+    if (fail) {
       await route.fulfill({
         status: 504,
         contentType: "application/json",
         body: JSON.stringify({
-          error: "FIRST_RUN_PLAN_PROVIDER_TIMEOUT",
-          requestId: "req-e2e-timeout",
-          message: "First run plan provider timed out.",
-          details: { providerStatus: "timeout", timeoutMs: 45000 },
+          error: "FIRST_RUN_STARTER_HINTS_PROVIDER_TIMEOUT",
+          requestId: "req-e2e-starter-timeout",
+          message: "First run starter hints provider timed out.",
+          details: { providerStatus: "timeout", timeoutMs: 8000 },
         }),
       });
       return;
@@ -189,7 +67,7 @@ async function installFirstRunPlanMock(page, { delayMs = 0, failOnce = false, on
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify(buildFirstRunPlanResponse()),
+      body: JSON.stringify(buildFirstRunStarterHintsResponse()),
     });
   });
 }
@@ -242,6 +120,7 @@ test("reprend exactement sur signals apres refresh", async ({ page }) => {
 });
 
 test("ne force pas onboardingCompleted trop tot et passe a done uniquement a la fin", async ({ page }) => {
+  await installFirstRunStarterHintsMock(page, { fail: true });
   await bootFirstRunUser(page);
   await page.getByRole("button", { name: "Commencer" }).click();
   await page.getByTestId("first-run-why-input").fill("Je veux reprendre le controle.");
@@ -253,7 +132,7 @@ test("ne force pas onboardingCompleted trop tot et passe a done uniquement a la 
   await page.getByText("Business").click();
   await page.getByRole("button", { name: "Générer les plans" }).click();
 
-  await expect(page.getByTestId("first-run-screen-compare")).toBeVisible();
+  await expect(page.getByTestId("first-run-screen-compare")).toBeVisible({ timeout: 12_000 });
   await expect(page.getByText("Ton plan recommandé est prêt.")).toBeVisible();
   let persistedUi = await readPersistedUiState(page);
   expect(persistedUi?.onboardingCompleted).toBe(false);
@@ -280,7 +159,8 @@ test("ne force pas onboardingCompleted trop tot et passe a done uniquement a la 
 
 test("ne regenere pas apres refresh quand le hash d'entree n'a pas change", async ({ page }) => {
   let callCount = 0;
-  await installFirstRunPlanMock(page, {
+  await installFirstRunStarterHintsMock(page, {
+    fail: true,
     onCall: () => {
       callCount += 1;
     },
@@ -294,7 +174,7 @@ test("ne regenere pas apres refresh quand le hash d'entree n'a pas change", asyn
   await page.getByText("Business").click();
   await page.getByRole("button", { name: "Générer les plans" }).click();
 
-  await expect(page.getByTestId("first-run-screen-compare")).toBeVisible();
+  await expect(page.getByTestId("first-run-screen-compare")).toBeVisible({ timeout: 12_000 });
   const persistedBeforeReload = await readPersistedUiState(page);
   const inputHashBeforeReload = persistedBeforeReload?.firstRunV1?.inputHash;
   const generatedAtBeforeReload = persistedBeforeReload?.firstRunV1?.generatedPlans?.generatedAt;
@@ -311,13 +191,14 @@ test("ne regenere pas apres refresh quand le hash d'entree n'a pas change", asyn
   expect(persistedAfterReload?.firstRunV1?.inputHash).toBe(inputHashBeforeReload);
   expect(persistedAfterReload?.firstRunV1?.generatedPlans?.generatedAt).toBe(generatedAtBeforeReload);
   expect(callCount).toBe(callCountBeforeReload);
-  expect(callCount).toBe(0);
+  expect(callCount).toBe(1);
 });
 
-test("affiche le plan recommande sans attendre le backend IA", async ({ page }) => {
+test("affiche le plan recommande apres l'attente IA bornee", async ({ page }) => {
   let callCount = 0;
-  await installFirstRunPlanMock(page, {
+  await installFirstRunStarterHintsMock(page, {
     delayMs: 10_000,
+    fail: true,
     onCall: () => {
       callCount += 1;
     },
@@ -331,10 +212,29 @@ test("affiche le plan recommande sans attendre le backend IA", async ({ page }) 
   await page.getByText("Business").click();
   await page.getByRole("button", { name: "Générer les plans" }).click();
 
-  await expect(page.getByTestId("first-run-screen-compare")).toBeVisible();
+  await expect(page.getByTestId("first-run-screen-compare")).toBeVisible({ timeout: 12_000 });
   await expect(page.getByText("Ton plan recommandé est prêt.")).toBeVisible();
   const persistedUi = await readPersistedUiState(page);
   expect(persistedUi?.firstRunV1?.generatedPlans?.version).toBe(3);
   expect(persistedUi?.firstRunV1?.generatedPlans?.source).toBe("deterministic_starter");
-  expect(callCount).toBe(0);
+  expect(callCount).toBe(1);
+});
+
+test("affiche un plan assiste IA quand starter hints repond dans la fenetre bornee", async ({ page }) => {
+  await installFirstRunStarterHintsMock(page);
+  await bootFirstRunUser(page);
+  await page.getByRole("button", { name: "Commencer" }).click();
+  await page.getByTestId("first-run-why-input").fill("Je veux reprendre le controle.");
+  await page.getByRole("button", { name: "Continuer" }).click();
+  await page.getByTestId("first-run-primary-goal-input").fill("Relancer mon projet principal");
+  await page.getByText("Stable").click();
+  await page.getByText("Business").click();
+  await page.getByRole("button", { name: "Générer les plans" }).click();
+
+  await expect(page.getByTestId("first-run-screen-compare")).toBeVisible({ timeout: 12_000 });
+  await expect(page.getByTestId("first-run-v3-source-label")).toContainText("Affiné par l’IA à partir de tes signaux.");
+  const persistedUi = await readPersistedUiState(page);
+  expect(persistedUi?.firstRunV1?.generatedPlans?.version).toBe(3);
+  expect(persistedUi?.firstRunV1?.generatedPlans?.source).toBe("ai_assisted_starter");
+  expect(persistedUi?.firstRunV1?.selectedPlanId).toBe("recommended");
 });

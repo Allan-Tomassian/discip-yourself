@@ -84,10 +84,11 @@ describe("First-run narrative screens", () => {
     expect(html).toContain("0 / 1200");
     expect(html).toContain("Ton système doit servir une vraie raison.");
     expect(html).toContain("La motivation baisse. Une raison claire reste.");
-    expect(html).toContain("Assistance IA");
     expect(html).toContain("M’aider à formuler");
+    expect(html).not.toContain("Assistance IA");
+    expect(html).not.toContain("Utiliser cette version");
     FIRST_RUN_WHY_INSPIRATION_CHIPS.forEach((chip) => {
-      expect(html).toContain(chip.label);
+      expect(html).not.toContain(chip.label);
     });
     expect(html).not.toContain("Pourquoi veux-tu te discipliner maintenant ?");
     expect(html).not.toContain("changer de vie");
@@ -121,7 +122,7 @@ describe("First-run narrative screens", () => {
     );
 
     expect(html).toContain("Clarifier avec l’IA");
-    expect(html).toContain("Garde ton intention. L’IA aide seulement à la rendre plus nette.");
+    expect(html).not.toContain("Garde ton intention. L’IA aide seulement à la rendre plus nette.");
     expect(html).not.toContain("Utiliser cette version");
   });
 

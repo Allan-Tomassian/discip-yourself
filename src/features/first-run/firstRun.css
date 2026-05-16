@@ -207,6 +207,13 @@
   gap: var(--space-4);
 }
 
+.firstRunWhyFieldTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .firstRunWhyField .appFieldLabel,
 .firstRunCompactField .appFieldLabel {
   font-size: var(--font-micro);
@@ -234,10 +241,54 @@
   color: var(--danger);
 }
 
+.firstRunWhyAiRoot {
+  position: relative;
+  z-index: 3;
+}
+
+.firstRunWhyAiInlineAction {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid rgba(139, 92, 246, 0.42);
+  border-radius: 999px;
+  color: #efe8ff;
+  background: rgba(139, 92, 246, 0.12);
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.1);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.firstRunWhyAiInlineAction:hover:not(:disabled) {
+  border-color: rgba(185, 147, 255, 0.68);
+  background: rgba(139, 92, 246, 0.18);
+}
+
+.firstRunWhyAiInlineAction:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.firstRunWhyAiInlineAction:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
 .firstRunWhyAiCard {
   position: relative;
   display: grid;
   gap: 12px;
+  width: min(100%, 560px);
+  margin-top: 10px;
   padding: 14px;
   overflow: hidden;
   border: 1px solid rgba(139, 92, 246, 0.22);
@@ -3185,6 +3236,15 @@
 
   .firstRunActivationStatusStep em {
     grid-column: 2;
+  }
+
+  .firstRunWhyFieldTop {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .firstRunWhyAiInlineAction {
+    width: 100%;
   }
 
   .firstRunWhyAiDetailsGrid,

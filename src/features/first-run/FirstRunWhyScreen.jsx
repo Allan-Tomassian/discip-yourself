@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import { AppTextarea, FieldGroup, GhostButton, PrimaryButton } from "../../shared/ui/app";
+import { AppTextarea, GhostButton, PrimaryButton } from "../../shared/ui/app";
 import { isFirstRunWhyReady } from "./firstRunModel";
 import FirstRunCommandSurface from "./FirstRunCommandSurface";
 import FirstRunWhyAiAssistant from "./FirstRunWhyAiAssistant";
@@ -43,9 +43,20 @@ export default function FirstRunWhyScreen({
       className="firstRunCommandSurface--why"
     >
       <div className="firstRunWhyPanel">
-        <FieldGroup label="TA RAISON PROFONDE" className="firstRunWhyField">
+        <div className="firstRunWhyField">
+          <div className="firstRunWhyFieldTop">
+            <label className="appFieldLabel" htmlFor="first-run-why-input">
+              TA RAISON PROFONDE
+            </label>
+            <FirstRunWhyAiAssistant
+              value={safeValue}
+              onChange={onChange}
+              onFocusTextarea={() => textareaRef.current?.focus?.()}
+            />
+          </div>
           <AppTextarea
             ref={textareaRef}
+            id="first-run-why-input"
             className="firstRunWhyInput"
             aria-invalid={Boolean(error)}
             data-testid="first-run-why-input"
@@ -55,7 +66,7 @@ export default function FirstRunWhyScreen({
             placeholder="Écris pourquoi tu veux construire ce système..."
             onChange={(event) => onChange(event.target.value)}
           />
-        </FieldGroup>
+        </div>
 
         <div className={`firstRunWhyMetaRow${error ? "" : " is-count-only"}`}>
           {error ? (
@@ -76,11 +87,6 @@ export default function FirstRunWhyScreen({
           </div>
         </div>
 
-        <FirstRunWhyAiAssistant
-          value={safeValue}
-          onChange={onChange}
-          onFocusTextarea={() => textareaRef.current?.focus?.()}
-        />
       </div>
     </FirstRunCommandSurface>
   );
