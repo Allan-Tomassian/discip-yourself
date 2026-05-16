@@ -1,13 +1,18 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  buildAiFirstRunWhyClarificationRequest,
+  DEFAULT_AI_FIRST_RUN_WHY_CLARIFICATION_TIMEOUT_MS,
   buildAiFirstRunStarterHintsRequest,
   DEFAULT_AI_FIRST_RUN_STARTER_HINTS_TIMEOUT_MS,
   buildAiFirstRunPlanRequest,
   DEFAULT_AI_FIRST_RUN_TIMEOUT_MS,
   isAiFirstRunStarterHintsResponse,
+  isAiFirstRunWhyClarificationResponse,
   normalizeAiFirstRunStarterHintsPayloadForTest,
+  normalizeAiFirstRunWhyClarificationPayloadForTest,
   normalizeAiFirstRunPayloadForTest,
   requestAiFirstRunStarterHints,
+  requestAiFirstRunWhyClarification,
   requestAiFirstRunPlan,
 } from "./aiFirstRunClient";
 import { resetAiBackendWarmupStateForTests } from "./aiBackendWarmup";
@@ -209,6 +214,39 @@ const VALID_STARTER_HINTS_RESPONSE = {
   },
 };
 
+const VALID_WHY_CLARIFICATION_RESPONSE = {
+  version: 1,
+  source: "ai_why_clarification",
+  generatedAt: "2026-04-19T08:00:00.000Z",
+  mode: "clarify",
+  inspirationAxes: [
+    { id: "project", label: "Projet", prompt: "Finir un projet important." },
+    { id: "sport", label: "Sport", prompt: "Reprendre une routine sportive réaliste." },
+  ],
+  drafts: [
+    {
+      id: "draft_app_sport",
+      title: "Projet et discipline",
+      whyText:
+        "Je veux publier mon application avant juin, reprendre une routine sportive réaliste et réduire les automatismes qui me freinent.",
+    },
+  ],
+  clarification: {
+    clarifiedWhy:
+      "Je veux publier mon application avant juin, reprendre une routine sportive réaliste et réduire les automatismes qui me freinent.",
+    primaryIntent: "Finir l’application",
+    secondaryIntents: ["Reprendre le sport", "Réduire une mauvaise habitude"],
+    frictions: ["Manque de constance", "Automatismes en fin de journée"],
+    desiredIdentity: "Quelqu’un qui termine ce qu’il commence",
+    executionRisks: ["Reporter les blocs difficiles", "Trop charger la semaine"],
+    suggestedDomains: ["Business", "Santé", "Personnel"],
+  },
+  ai: {
+    status: "succeeded",
+    missingInformation: [],
+  },
+};
+
 describe("aiFirstRunClient", () => {
   afterEach(() => {
     resetAiBackendWarmupStateForTests();
@@ -382,6 +420,115 @@ describe("aiFirstRunClient", () => {
     expect(DEFAULT_AI_FIRST_RUN_STARTER_HINTS_TIMEOUT_MS).toBe(8000);
     expect(result.ok).toBe(false);
     expect(result.errorCode).toBe("TIMEOUT");
+  });
+
+  it("normalise le payload compact why clarification", async () => {
+    const normalized = normalizeAiFirstRunWhyClarificationPayloadForTest({
+      version: 1,
+      mode: "clarify",
+      whyText: "  Publier mon app  ",
+      locale: "fr-FR",
+      timezone: "Europe/Paris",
+      referenceDateKey: "2026-04-19",
+      commitDraft: { should: "not pass" },
+    });
+    const request = await buildAiFirstRunWhyClarificationRequest(normalized);
+
+    expect(normalized).toEqual({
+      version: 1,
+      mode: "clarify",
+      whyText: "Publier mon app",
+      timezone: "Europe/Paris",
+      locale: "fr-FR",
+      referenceDateKey: "2026-04-19",
+    });
+    expect(request.payload).not.toHaveProperty("commitDraft");
+    expect(request.payload).not.toHaveProperty("occurrences");
+    expect(request.payload).not.toHaveProperty("weekSchedule");
+  });
+
+  it("validates the AI why clarification response shape", () => {
+    expect(isAiFirstRunWhyClarificationResponse(VALID_WHY_CLARIFICATION_RESPONSE)).toBe(true);
+    expect(isAiFirstRunWhyClarificationResponse({ ...VALID_WHY_CLARIFICATION_RESPONSE, commitDraft: {} })).toBe(false);
+    expect(
+      isAiFirstRunWhyClarificationResponse({
+        ...VALID_WHY_CLARIFICATION_RESPONSE,
+        drafts: [{ id: "1", title: "A", whyText: "x" }, { id: "2", title: "B", whyText: "x" }, { id: "3", title: "C", whyText: "x" }, { id: "4", title: "D", whyText: "x" }],
+      })
+    ).toBe(false);
+  });
+
+  it("requests why clarification from the dedicated endpoint", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => VALID_WHY_CLARIFICATION_RESPONSE,
+    });
+
+    const result = await requestAiFirstRunWhyClarification({
+      accessToken: "token",
+      baseUrl: "https://ai.example.test",
+      payload: {
+        version: 1,
+        mode: "clarify",
+        whyText: "Publier mon app",
+        locale: "fr-FR",
+        timezone: "Europe/Paris",
+        referenceDateKey: "2026-04-19",
+      },
+      fetchImpl,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.payload).toEqual(VALID_WHY_CLARIFICATION_RESPONSE);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(fetchImpl.mock.calls[0][0]).toBe("https://ai.example.test/ai/first-run-why-clarification");
+    expect(fetchImpl.mock.calls[0][1].body).not.toContain("commitDraft");
+    expect(fetchImpl.mock.calls[0][1].body).not.toContain("occurrences");
+  });
+
+  it("maps why clarification auth and timeout failures", async () => {
+    const authMissing = await requestAiFirstRunWhyClarification({
+      accessToken: "",
+      baseUrl: "https://ai.example.test",
+      payload: {
+        version: 1,
+        mode: "inspiration",
+        whyText: "",
+        locale: "fr-FR",
+        timezone: "Europe/Paris",
+        referenceDateKey: "2026-04-19",
+      },
+      fetchImpl: vi.fn(),
+    });
+    expect(authMissing.ok).toBe(false);
+    expect(authMissing.errorCode).toBe("AUTH_MISSING");
+
+    const fetchImpl = vi.fn((_url, options) =>
+      new Promise((_resolve, reject) => {
+        options.signal.addEventListener("abort", () => {
+          reject(Object.assign(new Error("aborted"), { name: "AbortError" }));
+        });
+      })
+    );
+    const timedOut = await requestAiFirstRunWhyClarification({
+      accessToken: "token",
+      baseUrl: "https://ai.example.test",
+      payload: {
+        version: 1,
+        mode: "inspiration",
+        whyText: "",
+        locale: "fr-FR",
+        timezone: "Europe/Paris",
+        referenceDateKey: "2026-04-19",
+      },
+      fetchImpl,
+      timeoutMs: 1,
+    });
+
+    expect(DEFAULT_AI_FIRST_RUN_WHY_CLARIFICATION_TIMEOUT_MS).toBe(8000);
+    expect(timedOut.ok).toBe(false);
+    expect(timedOut.errorCode).toBe("TIMEOUT");
   });
 
   it("envoie la requête backend first-run", async () => {

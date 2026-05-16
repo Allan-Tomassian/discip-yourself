@@ -5,17 +5,22 @@ import { readAiBackendBaseUrl } from "./aiNowClient";
 import {
   FIRST_RUN_STARTER_HINTS_RESPONSE_VERSION,
   FIRST_RUN_STARTER_HINTS_SOURCE,
+  FIRST_RUN_WHY_CLARIFICATION_RESPONSE_VERSION,
+  FIRST_RUN_WHY_CLARIFICATION_SOURCE,
   FIRST_RUN_PLAN_RESPONSE_VERSION,
   FIRST_RUN_PLAN_VARIANTS,
   normalizeFirstRunPlanRequestPayload,
   normalizeFirstRunStarterHintsRequestPayload,
+  normalizeFirstRunWhyClarificationRequestPayload,
   serializeFirstRunPlanInput,
   serializeFirstRunStarterHintsInput,
+  serializeFirstRunWhyClarificationInput,
 } from "../features/first-run/firstRunPlanContract";
 
 const AI_SURFACE = "onboarding";
 export const DEFAULT_AI_FIRST_RUN_TIMEOUT_MS = 60000;
 export const DEFAULT_AI_FIRST_RUN_STARTER_HINTS_TIMEOUT_MS = 8000;
+export const DEFAULT_AI_FIRST_RUN_WHY_CLARIFICATION_TIMEOUT_MS = 8000;
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -51,8 +56,10 @@ function normalizeBackendErrorCode(status, backendErrorCode) {
   const code = String(backendErrorCode || "").trim().toUpperCase();
   if (code === "FIRST_RUN_PLAN_PROVIDER_TIMEOUT") return "TIMEOUT";
   if (code === "FIRST_RUN_STARTER_HINTS_PROVIDER_TIMEOUT") return "TIMEOUT";
+  if (code === "FIRST_RUN_WHY_CLARIFICATION_PROVIDER_TIMEOUT") return "TIMEOUT";
   if (code === "FIRST_RUN_PLAN_BACKEND_UNAVAILABLE") return "BACKEND_UNAVAILABLE";
   if (code === "FIRST_RUN_STARTER_HINTS_BACKEND_UNAVAILABLE") return "BACKEND_UNAVAILABLE";
+  if (code === "FIRST_RUN_WHY_CLARIFICATION_BACKEND_UNAVAILABLE") return "BACKEND_UNAVAILABLE";
   if (code === "AUTH_MISSING") return "AUTH_MISSING";
   if (code === "AUTH_INVALID" || code === "UNAUTHORIZED") return "AUTH_INVALID";
   if (code === "RATE_LIMITED") return "RATE_LIMITED";
@@ -60,6 +67,7 @@ function normalizeBackendErrorCode(status, backendErrorCode) {
   if (code === "BACKEND_SCHEMA_MISSING") return "BACKEND_UNAVAILABLE";
   if (code === "INVALID_FIRST_RUN_PLAN_RESPONSE" || code === "INVALID_RESPONSE") return "INVALID_RESPONSE";
   if (code === "INVALID_FIRST_RUN_STARTER_HINTS_RESPONSE") return "INVALID_RESPONSE";
+  if (code === "INVALID_FIRST_RUN_WHY_CLARIFICATION_RESPONSE") return "INVALID_RESPONSE";
   if (code === "BACKEND_ERROR") return "BACKEND_UNAVAILABLE";
   if (
     code === "SNAPSHOT_LOAD_FAILED" ||
@@ -263,6 +271,65 @@ export function isAiFirstRunStarterHintsResponse(value) {
   );
 }
 
+function isWhyClarificationAxis(value) {
+  return (
+    isPlainObject(value) &&
+    typeof value.id === "string" &&
+    typeof value.label === "string" &&
+    typeof value.prompt === "string"
+  );
+}
+
+function isWhyClarificationDraft(value) {
+  return (
+    isPlainObject(value) &&
+    typeof value.id === "string" &&
+    typeof value.title === "string" &&
+    typeof value.whyText === "string"
+  );
+}
+
+function isWhyClarification(value) {
+  return (
+    isPlainObject(value) &&
+    typeof value.clarifiedWhy === "string" &&
+    typeof value.primaryIntent === "string" &&
+    isStringArray(value.secondaryIntents, 5) &&
+    isStringArray(value.frictions, 5) &&
+    typeof value.desiredIdentity === "string" &&
+    isStringArray(value.executionRisks, 5) &&
+    isStringArray(value.suggestedDomains, 6)
+  );
+}
+
+function hasForbiddenWhyClarificationPlanningKeys(value) {
+  if (!isPlainObject(value)) return false;
+  return ["commitDraft", "occurrences", "weekSchedule", "plans", "plan", "diagnosis", "medical", "clinical"].some((key) =>
+    Object.prototype.hasOwnProperty.call(value, key)
+  );
+}
+
+export function isAiFirstRunWhyClarificationResponse(value) {
+  return (
+    isPlainObject(value) &&
+    !hasForbiddenWhyClarificationPlanningKeys(value) &&
+    Number(value.version) === FIRST_RUN_WHY_CLARIFICATION_RESPONSE_VERSION &&
+    value.source === FIRST_RUN_WHY_CLARIFICATION_SOURCE &&
+    typeof value.generatedAt === "string" &&
+    (value.mode === "inspiration" || value.mode === "clarify") &&
+    Array.isArray(value.inspirationAxes) &&
+    value.inspirationAxes.length <= 9 &&
+    value.inspirationAxes.every(isWhyClarificationAxis) &&
+    Array.isArray(value.drafts) &&
+    value.drafts.length <= 3 &&
+    value.drafts.every(isWhyClarificationDraft) &&
+    isWhyClarification(value.clarification) &&
+    isPlainObject(value.ai) &&
+    value.ai.status === "succeeded" &&
+    isStringArray(value.ai.missingInformation, 8)
+  );
+}
+
 export function isAiFirstRunPlanResponse(value) {
   return (
     isPlainObject(value) &&
@@ -291,12 +358,225 @@ export async function buildAiFirstRunStarterHintsRequest(input) {
   return { payload, inputHash };
 }
 
+export async function buildAiFirstRunWhyClarificationRequest(input) {
+  const payload = normalizeFirstRunWhyClarificationRequestPayload(input);
+  const inputHash = await sha256Hex(serializeFirstRunWhyClarificationInput(payload));
+  return { payload, inputHash };
+}
+
 export function normalizeAiFirstRunPayloadForTest(input) {
   return normalizeFirstRunPlanRequestPayload(input);
 }
 
 export function normalizeAiFirstRunStarterHintsPayloadForTest(input) {
   return normalizeFirstRunStarterHintsRequestPayload(input);
+}
+
+export function normalizeAiFirstRunWhyClarificationPayloadForTest(input) {
+  return normalizeFirstRunWhyClarificationRequestPayload(input);
+}
+
+export async function requestAiFirstRunWhyClarification({
+  accessToken,
+  payload,
+  baseUrl,
+  fetchImpl = globalThis.fetch,
+  timeoutMs = DEFAULT_AI_FIRST_RUN_WHY_CLARIFICATION_TIMEOUT_MS,
+}) {
+  const resolvedBaseUrl = readAiBackendBaseUrl(baseUrl);
+  const endpoint = "/ai/first-run-why-clarification";
+  const buildTransport = (errorCode = null, probableCause = null) =>
+    buildAiTransportMeta({
+      baseUrl: resolvedBaseUrl,
+      errorCode,
+      warmupState: null,
+      probableCause,
+    });
+  const buildResultMeta = (transportMeta) => ({
+    surface: AI_SURFACE,
+    probableCause: transportMeta?.probableCause || null,
+    baseUrlUsed: transportMeta?.backendBaseUrl || resolvedBaseUrl || "",
+    originUsed: transportMeta?.frontendOrigin || "",
+  });
+
+  if (!resolvedBaseUrl) {
+    const transportMeta = buildTransport("DISABLED");
+    return {
+      ok: false,
+      errorCode: "DISABLED",
+      payload: null,
+      status: null,
+      requestId: null,
+      errorMessage: null,
+      errorDetails: null,
+      backendErrorCode: null,
+      transportMeta,
+      ...buildResultMeta(transportMeta),
+    };
+  }
+
+  if (typeof fetchImpl !== "function") {
+    const transportMeta = buildTransport("NETWORK_ERROR");
+    logAiTransportIssue({ endpoint, errorCode: "NETWORK_ERROR", transportMeta });
+    return {
+      ok: false,
+      errorCode: "NETWORK_ERROR",
+      payload: null,
+      status: null,
+      requestId: null,
+      errorMessage: null,
+      errorDetails: null,
+      backendErrorCode: null,
+      transportMeta,
+      ...buildResultMeta(transportMeta),
+    };
+  }
+
+  if (!String(accessToken || "").trim()) {
+    const transportMeta = buildTransport("AUTH_MISSING");
+    return {
+      ok: false,
+      errorCode: "AUTH_MISSING",
+      payload: null,
+      status: 401,
+      requestId: null,
+      errorMessage: null,
+      errorDetails: null,
+      backendErrorCode: "AUTH_MISSING",
+      transportMeta,
+      ...buildResultMeta(transportMeta),
+    };
+  }
+
+  let normalizedPayload;
+  try {
+    normalizedPayload = normalizeFirstRunWhyClarificationRequestPayload(payload);
+  } catch {
+    const transportMeta = buildTransport("INVALID_RESPONSE");
+    return {
+      ok: false,
+      errorCode: "INVALID_RESPONSE",
+      payload: null,
+      status: null,
+      requestId: null,
+      errorMessage: null,
+      errorDetails: null,
+      backendErrorCode: null,
+      transportMeta,
+      ...buildResultMeta(transportMeta),
+    };
+  }
+
+  const requestResult = await fetchJsonWithTimeout({
+    fetchImpl,
+    url: `${resolvedBaseUrl}${endpoint}`,
+    timeoutMs,
+    defaultTimeoutMs: DEFAULT_AI_FIRST_RUN_WHY_CLARIFICATION_TIMEOUT_MS,
+    options: {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+        "x-discip-surface": AI_SURFACE,
+      },
+      body: JSON.stringify(normalizedPayload),
+    },
+  });
+
+  if (!requestResult.ok) {
+    const errorCode = requestResult.timedOut ? "TIMEOUT" : "NETWORK_ERROR";
+    const transportMeta = buildTransport(errorCode);
+    logAiTransportIssue({ endpoint, errorCode, transportMeta });
+    return {
+      ok: false,
+      errorCode,
+      payload: null,
+      status: null,
+      requestId: null,
+      errorMessage: null,
+      errorDetails: null,
+      backendErrorCode: null,
+      transportMeta,
+      ...buildResultMeta(transportMeta),
+    };
+  }
+
+  const response = requestResult.response;
+  const body = await safeParseJson(response);
+  const requestId =
+    typeof body?.requestId === "string"
+      ? body.requestId
+      : typeof body?.meta?.requestId === "string"
+        ? body.meta.requestId
+        : null;
+  const rawBackendErrorCode =
+    typeof body?.error === "string" ? body.error
+    : typeof body?.errorCode === "string" ? body.errorCode
+    : null;
+  const errorCode = normalizeBackendErrorCode(response.status, rawBackendErrorCode);
+  const transportMeta = buildTransport(response.ok ? null : errorCode);
+
+  if (!response.ok) {
+    logAiTransportIssue({
+      endpoint,
+      errorCode,
+      status: response.status,
+      requestId,
+      backendErrorCode: rawBackendErrorCode,
+      bodyKeys: isPlainObject(body) ? Object.keys(body) : [],
+      mode: "first_run_why_clarification",
+      transportMeta,
+    });
+    return {
+      ok: false,
+      errorCode,
+      payload: null,
+      status: response.status,
+      requestId,
+      errorMessage: typeof body?.message === "string" ? body.message : null,
+      errorDetails: isPlainObject(body?.details) ? body.details : null,
+      backendErrorCode: rawBackendErrorCode,
+      transportMeta,
+      ...buildResultMeta(transportMeta),
+    };
+  }
+
+  if (!isAiFirstRunWhyClarificationResponse(body)) {
+    logAiTransportIssue({
+      endpoint,
+      errorCode: "INVALID_RESPONSE",
+      status: response.status,
+      requestId,
+      bodyKeys: isPlainObject(body) ? Object.keys(body) : [],
+      mode: "first_run_why_clarification",
+      transportMeta,
+    });
+    return {
+      ok: false,
+      errorCode: "INVALID_RESPONSE",
+      payload: null,
+      status: response.status,
+      requestId,
+      errorMessage: null,
+      errorDetails: null,
+      backendErrorCode: null,
+      transportMeta,
+      ...buildResultMeta(transportMeta),
+    };
+  }
+
+  return {
+    ok: true,
+    errorCode: null,
+    payload: body,
+    status: response.status,
+    requestId,
+    errorMessage: null,
+    errorDetails: null,
+    backendErrorCode: null,
+    transportMeta,
+    ...buildResultMeta(transportMeta),
+  };
 }
 
 export async function requestAiFirstRunStarterHints({

@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useRef } from "react";
 import { AppTextarea, FieldGroup, GhostButton, PrimaryButton } from "../../shared/ui/app";
 import { isFirstRunWhyReady } from "./firstRunModel";
 import FirstRunCommandSurface from "./FirstRunCommandSurface";
+import FirstRunWhyAiAssistant from "./FirstRunWhyAiAssistant";
 
 const WHY_MAX_LENGTH = 1200;
 
@@ -14,6 +15,7 @@ export default function FirstRunWhyScreen({
   onContinue,
 }) {
   const safeValue = String(value || "");
+  const textareaRef = useRef(null);
 
   return (
     <FirstRunCommandSurface
@@ -43,6 +45,7 @@ export default function FirstRunWhyScreen({
       <div className="firstRunWhyPanel">
         <FieldGroup label="TA RAISON PROFONDE" className="firstRunWhyField">
           <AppTextarea
+            ref={textareaRef}
             className="firstRunWhyInput"
             aria-invalid={Boolean(error)}
             data-testid="first-run-why-input"
@@ -72,6 +75,12 @@ export default function FirstRunWhyScreen({
             <span>La motivation baisse. Une raison claire reste.</span>
           </div>
         </div>
+
+        <FirstRunWhyAiAssistant
+          value={safeValue}
+          onChange={onChange}
+          onFocusTextarea={() => textareaRef.current?.focus?.()}
+        />
       </div>
     </FirstRunCommandSurface>
   );

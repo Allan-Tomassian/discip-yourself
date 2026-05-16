@@ -9,6 +9,12 @@ import FirstRunGenerateScreen from "./FirstRunGenerateScreen";
 import FirstRunIntroScreen from "./FirstRunIntroScreen";
 import FirstRunSignalsScreen from "./FirstRunSignalsScreen";
 import FirstRunWhyScreen from "./FirstRunWhyScreen";
+import {
+  FIRST_RUN_WHY_INSPIRATION_CHIPS,
+  getFirstRunWhyAiCta,
+  getFirstRunWhyAiMode,
+  resolveFirstRunWhySuggestionText,
+} from "./firstRunWhyAiAssistantModel";
 
 describe("First-run narrative screens", () => {
   it("keeps the first-run visual layer scoped away from Today and protected engines", () => {
@@ -78,9 +84,45 @@ describe("First-run narrative screens", () => {
     expect(html).toContain("0 / 1200");
     expect(html).toContain("Ton système doit servir une vraie raison.");
     expect(html).toContain("La motivation baisse. Une raison claire reste.");
+    expect(html).toContain("Assistance IA");
+    expect(html).toContain("M’aider à formuler");
+    FIRST_RUN_WHY_INSPIRATION_CHIPS.forEach((chip) => {
+      expect(html).toContain(chip.label);
+    });
     expect(html).not.toContain("Pourquoi veux-tu te discipliner maintenant ?");
     expect(html).not.toContain("changer de vie");
     expect(html).not.toContain("Ce texte sert de point de départ");
+  });
+
+  it("switches the why AI helper between inspiration and clarification without changing readiness", () => {
+    expect(getFirstRunWhyAiMode("")).toBe("inspiration");
+    expect(getFirstRunWhyAiCta("")).toBe("M’aider à formuler");
+    expect(getFirstRunWhyAiMode("Je veux publier mon application avant juin.")).toBe("clarify");
+    expect(getFirstRunWhyAiCta("Je veux publier mon application avant juin.")).toBe("Clarifier avec l’IA");
+    expect(
+      resolveFirstRunWhySuggestionText({
+        clarification: {
+          clarifiedWhy: "Je veux publier mon application avant juin avec une discipline réaliste.",
+        },
+      })
+    ).toBe("Je veux publier mon application avant juin avec une discipline réaliste.");
+  });
+
+  it("renders the why AI clarification CTA for existing rough text", () => {
+    const html = renderToStaticMarkup(
+      <FirstRunWhyScreen
+        data={{}}
+        value="Je veux publier mon application avant juin. Améliorer ma routine sportive. Arrêter de fumer."
+        error=""
+        onChange={() => {}}
+        onBack={() => {}}
+        onContinue={() => {}}
+      />
+    );
+
+    expect(html).toContain("Clarifier avec l’IA");
+    expect(html).toContain("Garde ton intention. L’IA aide seulement à la rendre plus nette.");
+    expect(html).not.toContain("Utiliser cette version");
   });
 
   it("renders signals as a command-signal board while keeping required fields visible", () => {

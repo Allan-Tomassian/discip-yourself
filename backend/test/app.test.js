@@ -22,6 +22,8 @@ const TEST_CONFIG = {
   FIRST_RUN_PLAN_OPENAI_TIMEOUT_MS: 55000,
   FIRST_RUN_STARTER_HINTS_OPENAI_MODEL: "",
   FIRST_RUN_STARTER_HINTS_OPENAI_TIMEOUT_MS: 10000,
+  FIRST_RUN_WHY_CLARIFICATION_OPENAI_MODEL: "",
+  FIRST_RUN_WHY_CLARIFICATION_OPENAI_TIMEOUT_MS: 8000,
   SESSION_GUIDANCE_PREPARE_OPENAI_MODEL: "",
   SESSION_GUIDANCE_PREPARE_OPENAI_TIMEOUT_MS: 60000,
   AI_QUOTA_MODE: "normal",
@@ -642,6 +644,35 @@ function createValidFirstRunStarterHintsProvider(overrides = {}) {
         purpose: "Noter le déclencheur.",
       },
     ],
+    missingInformation: [],
+    ...overrides,
+  };
+}
+
+function createValidFirstRunWhyClarificationProvider(overrides = {}) {
+  return {
+    inspirationAxes: [
+      { id: "project", label: "Projet", prompt: "Finir un projet important." },
+      { id: "sport", label: "Sport", prompt: "Reprendre une routine sportive réaliste." },
+    ],
+    drafts: [
+      {
+        id: "draft_app_sport",
+        title: "Projet et discipline",
+        whyText:
+          "Je veux terminer mon application et retrouver une discipline stable, tout en reprenant une routine sportive réaliste.",
+      },
+    ],
+    clarification: {
+      clarifiedWhy:
+        "Je veux publier mon application avant juin, retrouver une routine sportive réaliste et réduire les automatismes qui me font perdre le contrôle.",
+      primaryIntent: "Finir l’application",
+      secondaryIntents: ["Reprendre le sport", "Réduire une mauvaise habitude"],
+      frictions: ["Manque de constance", "Automatismes en fin de journée"],
+      desiredIdentity: "Quelqu’un qui termine ce qu’il commence",
+      executionRisks: ["Reporter les blocs difficiles", "Trop charger la semaine"],
+      suggestedDomains: ["Business", "Santé", "Personnel"],
+    },
     missingInformation: [],
     ...overrides,
   };
@@ -1541,6 +1572,125 @@ test("POST /ai/first-run-starter-hints returns a structured timeout error", asyn
   assert.equal(body.error, "FIRST_RUN_STARTER_HINTS_PROVIDER_TIMEOUT");
   assert.equal(body.details.timeoutMs, 12000);
   assert.equal(insertedLogs[0]?.coach_kind, "first-run-starter-hints");
+  assert.equal(insertedLogs[0]?.provider_status, "timeout");
+  await app.close();
+});
+
+test("POST /ai/first-run-why-clarification returns compact clarification without planning payload", async () => {
+  let requestedModel = null;
+  let requestedTimeout = null;
+  let requestedUserPrompt = null;
+  const insertedLogs = [];
+  const app = await buildApp({
+    config: TEST_CONFIG_WITH_OPENAI,
+    verifyAccessToken: async () => ({ id: "user-first-run-why-clarification" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: null,
+    dailyCount: 0,
+    monthlyCount: 0,
+    insertedLogs,
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async (input, options) => {
+          requestedModel = input?.model || null;
+          requestedTimeout = options?.timeout ?? null;
+          requestedUserPrompt = input?.messages?.[1]?.content || null;
+          return {
+            choices: [
+              {
+                message: {
+                  parsed: createValidFirstRunWhyClarificationProvider(),
+                },
+              },
+            ],
+          };
+        },
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/first-run-why-clarification",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.33" },
+    payload: {
+      version: 1,
+      mode: "clarify",
+      whyText: "Je veux publier mon application avant juin. Améliorer ma routine sportive. Arrêter de fumer.",
+      timezone: "Europe/Paris",
+      locale: "fr-FR",
+      referenceDateKey: TODAY_KEY,
+    },
+  });
+
+  const body = response.json();
+  assert.equal(response.statusCode, 200);
+  assert.equal(body.version, 1);
+  assert.equal(body.source, "ai_why_clarification");
+  assert.equal(body.mode, "clarify");
+  assert.match(body.clarification.clarifiedWhy, /application/);
+  assert.equal(body.commitDraft, undefined);
+  assert.equal(body.occurrences, undefined);
+  assert.equal(body.weekSchedule, undefined);
+  assert.equal(body.diagnosis, undefined);
+  assert.equal(body.medical, undefined);
+  assert.equal(requestedModel, "gpt-4.1-mini");
+  assert.equal(requestedTimeout, 8000);
+  assert.match(requestedUserPrompt, /Do not include fields named commitDraft, occurrences, weekSchedule/);
+  assert.equal(insertedLogs[0]?.coach_kind, "first-run-why-clarification");
+  assert.equal(insertedLogs[0]?.route, "/ai/first-run-why-clarification");
+  await app.close();
+});
+
+test("POST /ai/first-run-why-clarification returns a structured timeout error", async () => {
+  const insertedLogs = [];
+  const app = await buildApp({
+    config: {
+      ...TEST_CONFIG_WITH_OPENAI,
+      FIRST_RUN_WHY_CLARIFICATION_OPENAI_TIMEOUT_MS: 12000,
+    },
+    verifyAccessToken: async () => ({ id: "user-first-run-why-timeout" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: null,
+    dailyCount: 0,
+    monthlyCount: 0,
+    insertedLogs,
+  });
+  app.openai = {
+    chat: {
+      completions: {
+        parse: async () => {
+          throw new APIConnectionTimeoutError({ message: "request timed out" });
+        },
+      },
+    },
+  };
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/first-run-why-clarification",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.34" },
+    payload: {
+      version: 1,
+      mode: "inspiration",
+      whyText: "",
+      timezone: "Europe/Paris",
+      locale: "fr-FR",
+      referenceDateKey: TODAY_KEY,
+    },
+  });
+
+  const body = response.json();
+  assert.equal(response.statusCode, 504);
+  assert.equal(body.error, "FIRST_RUN_WHY_CLARIFICATION_PROVIDER_TIMEOUT");
+  assert.equal(body.details.timeoutMs, 12000);
+  assert.equal(insertedLogs[0]?.coach_kind, "first-run-why-clarification");
   assert.equal(insertedLogs[0]?.provider_status, "timeout");
   await app.close();
 });

@@ -74,6 +74,8 @@ const envSchema = z.object({
   FIRST_RUN_PLAN_OPENAI_TIMEOUT_MS: z.coerce.number().int().min(1000).max(90000).optional().default(55000),
   FIRST_RUN_STARTER_HINTS_OPENAI_MODEL: z.string().optional().default(""),
   FIRST_RUN_STARTER_HINTS_OPENAI_TIMEOUT_MS: z.coerce.number().int().min(1000).max(30000).optional().default(10000),
+  FIRST_RUN_WHY_CLARIFICATION_OPENAI_MODEL: z.string().optional().default(""),
+  FIRST_RUN_WHY_CLARIFICATION_OPENAI_TIMEOUT_MS: z.coerce.number().int().min(1000).max(30000).optional().default(8000),
   SESSION_GUIDANCE_PREPARE_OPENAI_MODEL: z.string().optional().default(""),
   SESSION_GUIDANCE_PREPARE_OPENAI_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60000).optional().default(60000),
   AI_QUOTA_MODE: z.enum(["normal", "dev_relaxed"]).default("normal"),

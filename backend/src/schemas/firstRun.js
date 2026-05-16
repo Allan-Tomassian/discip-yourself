@@ -204,6 +204,63 @@ export const firstRunStarterHintsRequestSchema = firstRunPlanRequestSchema
   })
   .strict();
 
+export const firstRunWhyClarificationRequestSchema = z
+  .object({
+    version: z.literal(1),
+    mode: z.enum(["inspiration", "clarify"]),
+    whyText: z.string().trim().max(1200).default(""),
+    timezone: z.string().trim().min(1).max(80),
+    locale: localeSchema.optional().default("fr-FR"),
+    referenceDateKey: isoDateKey,
+  })
+  .strict();
+
+export const firstRunWhyClarificationAxisSchema = z
+  .object({
+    id: z.string().trim().min(1).max(80),
+    label: z.string().trim().min(1).max(48),
+    prompt: z.string().trim().min(1).max(180),
+  })
+  .strict();
+
+export const firstRunWhyClarificationDraftSchema = z
+  .object({
+    id: z.string().trim().min(1).max(80),
+    title: z.string().trim().min(1).max(80),
+    whyText: z.string().trim().min(1).max(700),
+  })
+  .strict();
+
+export const firstRunWhyClarificationContentSchema = z
+  .object({
+    clarifiedWhy: z.string().trim().min(1).max(700),
+    primaryIntent: z.string().trim().min(1).max(160),
+    secondaryIntents: z.array(z.string().trim().min(1).max(120)).max(5),
+    frictions: z.array(z.string().trim().min(1).max(120)).max(5),
+    desiredIdentity: z.string().trim().min(1).max(160),
+    executionRisks: z.array(z.string().trim().min(1).max(120)).max(5),
+    suggestedDomains: z.array(z.string().trim().min(1).max(80)).max(6),
+  })
+  .strict();
+
+export const firstRunWhyClarificationResponseSchema = z
+  .object({
+    version: z.literal(1),
+    source: z.literal("ai_why_clarification"),
+    generatedAt: z.string().trim().min(1).max(64),
+    mode: z.enum(["inspiration", "clarify"]),
+    inspirationAxes: z.array(firstRunWhyClarificationAxisSchema).max(9),
+    drafts: z.array(firstRunWhyClarificationDraftSchema).max(3),
+    clarification: firstRunWhyClarificationContentSchema,
+    ai: z
+      .object({
+        status: z.literal("succeeded"),
+        missingInformation: z.array(z.string().trim().min(1).max(80)).max(8),
+      })
+      .strict(),
+  })
+  .strict();
+
 export const firstRunStarterHintsPlanStrategySchema = z
   .object({
     planTitle: z.string().trim().min(1).max(120),

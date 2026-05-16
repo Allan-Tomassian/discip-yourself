@@ -5,6 +5,9 @@ export const FIRST_RUN_DETERMINISTIC_SOURCE = "deterministic_starter";
 export const FIRST_RUN_AI_ASSISTED_SOURCE = "ai_assisted_starter";
 export const FIRST_RUN_STARTER_HINTS_RESPONSE_VERSION = 1;
 export const FIRST_RUN_STARTER_HINTS_SOURCE = "ai_starter_hints";
+export const FIRST_RUN_WHY_CLARIFICATION_RESPONSE_VERSION = 1;
+export const FIRST_RUN_WHY_CLARIFICATION_SOURCE = "ai_why_clarification";
+export const FIRST_RUN_WHY_CLARIFICATION_MODES = Object.freeze(["inspiration", "clarify"]);
 export const FIRST_RUN_PLAN_VARIANTS = Object.freeze(["tenable", "ambitious"]);
 export const FIRST_RUN_SUPPORTED_PLAN_VARIANTS = Object.freeze([
   FIRST_RUN_RECOMMENDED_PLAN_ID,
@@ -41,6 +44,11 @@ function normalizeTimezone(value) {
 function normalizeDateKey(value) {
   const normalized = trimString(value, 10);
   return /^\d{4}-\d{2}-\d{2}$/.test(normalized) ? normalized : "";
+}
+
+function normalizeWhyClarificationMode(value) {
+  const normalized = trimString(value, 32).toLowerCase();
+  return FIRST_RUN_WHY_CLARIFICATION_MODES.includes(normalized) ? normalized : "inspiration";
 }
 
 function normalizeDaysOfWeek(value) {
@@ -187,12 +195,28 @@ export function normalizeFirstRunStarterHintsRequestPayload(input) {
   };
 }
 
+export function normalizeFirstRunWhyClarificationRequestPayload(input) {
+  const source = isPlainObject(input) ? input : {};
+  return {
+    version: FIRST_RUN_WHY_CLARIFICATION_RESPONSE_VERSION,
+    mode: normalizeWhyClarificationMode(source.mode),
+    whyText: trimString(source.whyText, 1200),
+    timezone: normalizeTimezone(source.timezone),
+    locale: normalizeLocale(source.locale),
+    referenceDateKey: normalizeDateKey(source.referenceDateKey),
+  };
+}
+
 export function serializeFirstRunPlanInput(payload) {
   return stableSerialize(normalizeFirstRunPlanRequestPayload(payload));
 }
 
 export function serializeFirstRunStarterHintsInput(payload) {
   return stableSerialize(normalizeFirstRunStarterHintsRequestPayload(payload));
+}
+
+export function serializeFirstRunWhyClarificationInput(payload) {
+  return stableSerialize(normalizeFirstRunWhyClarificationRequestPayload(payload));
 }
 
 export function getFirstRunPlanTitle(variant) {
