@@ -1,0 +1,409 @@
+[data-page-id="objectives"] .container {
+  max-width: 665px;
+  padding-top: calc(14px + var(--safe-top));
+  padding-bottom: calc(112px + max(var(--safe-bottom), 0px));
+}
+
+.objectivesCommandPage {
+  display: grid;
+  gap: 14px;
+  width: 100%;
+  padding: 0;
+}
+
+.objectivesOverviewCommand {
+  padding: 20px 22px;
+}
+
+.objectivesHeroCommand {
+  min-height: 178px;
+  align-content: end;
+}
+
+.objectivesCommandIntent {
+  width: min(100%, 94%);
+  margin: 0;
+  padding: 0 2px;
+  color: var(--command-muted);
+  font-size: 17px;
+  line-height: 1.38;
+}
+
+.objectivesStatsStrip {
+  padding: 0;
+}
+
+.objectivesOverviewMetrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+}
+
+.objectivesMetric {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 14px 15px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.objectivesMetricValue {
+  color: var(--command-text);
+  font-size: 22px;
+  line-height: 1;
+  font-weight: 850;
+}
+
+.objectivesMetricLabel {
+  color: var(--command-muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.objectivesFilterWrap {
+  display: flex;
+  justify-content: flex-start;
+  padding: 1px 0 0;
+}
+
+.objectivesFilterWrap .lovableCompactFilterTrigger {
+  border: 1px solid var(--command-border);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.012)),
+    var(--command-surface-strong);
+  color: var(--command-text);
+  box-shadow: none;
+}
+
+.objectivesFilterWrap .lovableCompactFilterValue {
+  color: var(--command-text);
+}
+
+.objectivesCommandList {
+  display: grid;
+  gap: 12px;
+}
+
+.objectivesCommandCard {
+  --objectives-category-accent: var(--command-execution);
+  padding: 0;
+}
+
+.objectivesCardHeader {
+  display: grid;
+  grid-template-columns: 5px minmax(0, 1fr) auto;
+  align-items: stretch;
+  gap: 14px;
+  width: 100%;
+  padding: 16px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.objectivesCardHeader:focus-visible,
+.objectivesActionRow:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--command-execution) 78%, #ffffff);
+  outline-offset: -2px;
+}
+
+.objectivesCategoryMarker {
+  align-self: stretch;
+  width: 5px;
+  min-height: 64px;
+  border-radius: 999px;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--objectives-category-accent) 76%, transparent),
+      color-mix(in srgb, var(--command-execution) 58%, transparent)
+    );
+  box-shadow: 0 0 18px color-mix(in srgb, var(--objectives-category-accent) 18%, transparent);
+  opacity: 0.72;
+}
+
+.objectivesCardContent {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.objectivesCardCategory,
+.objectivesDetailLabel,
+.objectivesActionSectionTitle {
+  color: color-mix(in srgb, var(--command-execution) 78%, #ffffff);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.objectivesCardTitle {
+  color: var(--command-text);
+  font-size: 17px;
+  line-height: 1.16;
+  font-weight: 800;
+}
+
+.objectivesCardSubtitle,
+.objectivesDetailText {
+  color: var(--command-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.objectivesProgressTrack {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.085);
+}
+
+.objectivesProgressValue {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--command-execution), color-mix(in srgb, var(--command-execution) 48%, #ffffff));
+  box-shadow: 0 0 18px color-mix(in srgb, var(--command-execution) 26%, transparent);
+}
+
+.objectivesCardMeta {
+  display: grid;
+  justify-items: end;
+  align-content: center;
+  gap: 8px;
+  min-width: 70px;
+}
+
+.objectivesStatusBadge {
+  white-space: nowrap;
+}
+
+.objectivesProgressText {
+  color: var(--command-text);
+  font-size: 15px;
+  font-weight: 850;
+}
+
+.objectivesCardChevron {
+  color: var(--command-muted);
+  font-size: 13px;
+}
+
+.objectivesCardBody {
+  display: grid;
+  gap: 16px;
+  padding: 0 16px 16px;
+}
+
+.objectivesDetailPanel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(94px, 0.32fr);
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--command-border);
+  border-radius: var(--radius-16);
+  background: color-mix(in srgb, var(--command-surface-strong) 68%, transparent);
+}
+
+.objectivesDetailText {
+  margin: 6px 0 0;
+}
+
+.objectivesDetailProgress {
+  display: grid;
+  align-content: center;
+  gap: 8px;
+  color: var(--command-text);
+  font-size: 18px;
+  font-weight: 850;
+}
+
+.objectivesActionSections {
+  display: grid;
+  gap: 14px;
+}
+
+.objectivesActionSection {
+  display: grid;
+  gap: 9px;
+}
+
+.objectivesActionRows {
+  display: grid;
+  gap: 8px;
+}
+
+.objectivesActionRow {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid var(--command-border);
+  border-radius: var(--radius-14);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012)),
+    color-mix(in srgb, var(--command-surface-strong) 78%, transparent);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.objectivesActionRow[data-command-tone="execution"] {
+  border-color: color-mix(in srgb, var(--command-execution) 34%, var(--command-border));
+}
+
+.objectivesActionRow[data-command-tone="attention"] {
+  border-color: color-mix(in srgb, var(--command-attention) 46%, var(--command-border));
+}
+
+.objectivesActionDot {
+  width: 13px;
+  height: 13px;
+  border: 1px solid color-mix(in srgb, var(--command-execution) 78%, #ffffff);
+  border-radius: 999px;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--command-execution) 24%, transparent);
+}
+
+.objectivesActionRow[data-command-tone="attention"] .objectivesActionDot {
+  border-color: color-mix(in srgb, var(--command-attention) 78%, #ffffff);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--command-attention) 22%, transparent);
+}
+
+.objectivesActionBody {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.objectivesActionTitle {
+  color: var(--command-text);
+  font-size: 13px;
+  font-weight: 760;
+  line-height: 1.25;
+}
+
+.objectivesActionMeta,
+.objectivesSectionEmpty {
+  color: var(--command-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.objectivesActionDone {
+  color: var(--command-execution);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.objectivesCardFooter {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.objectivesFooterAction {
+  min-height: 44px;
+}
+
+.objectivesEmptyState {
+  width: 100%;
+}
+
+.lovableObjectivesCreate.CommandCTA {
+  display: inline-grid;
+  place-items: center;
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  padding: 0;
+  border-radius: 999px;
+  color: var(--command-execution);
+}
+
+@media (max-width: 430px) {
+  [data-page-id="objectives"] .container {
+    padding-inline: calc(13px + var(--safe-left)) calc(13px + var(--safe-right));
+  }
+
+  .objectivesCommandPage {
+    gap: 13px;
+  }
+
+  .objectivesOverviewCommand {
+    padding: 18px;
+  }
+
+  .objectivesHeroCommand {
+    min-height: 168px;
+  }
+
+  .objectivesHeroCommand .CommandSectionHeader__title {
+    font-size: 31px;
+  }
+
+  .objectivesCommandIntent {
+    width: 100%;
+    font-size: 16px;
+  }
+
+  .objectivesOverviewMetrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .objectivesMetric {
+    padding: 13px 9px;
+  }
+
+  .objectivesMetricValue {
+    font-size: 20px;
+  }
+
+  .objectivesCardHeader {
+    grid-template-columns: 4px minmax(0, 1fr);
+  }
+
+  .objectivesCardMeta {
+    grid-column: 2;
+    grid-template-columns: auto auto 1fr;
+    justify-items: start;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .objectivesCardChevron {
+    justify-self: end;
+  }
+
+  .objectivesDetailPanel {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .objectivesCommandCard,
+  .objectivesActionRow,
+  .lovableObjectivesCreate.CommandCTA {
+    transition:
+      border-color var(--motion-standard) var(--ease-standard),
+      transform var(--motion-fast) var(--ease-standard);
+  }
+
+  .objectivesActionRow:hover,
+  .lovableObjectivesCreate.CommandCTA:hover {
+    transform: translateY(-1px);
+  }
+}

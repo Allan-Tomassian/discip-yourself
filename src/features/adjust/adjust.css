@@ -1,0 +1,562 @@
+[data-page-id="adjust"] .container {
+  max-width: 665px;
+  padding-top: calc(12px + var(--safe-top));
+  padding-bottom: calc(148px + max(var(--safe-bottom), 0px));
+}
+
+.adjustCommandPage {
+  display: grid;
+  gap: 13px;
+  width: 100%;
+}
+
+.adjustHero {
+  min-height: 154px;
+  align-content: end;
+  padding: 18px 20px;
+  border-color: color-mix(in srgb, var(--command-execution) 22%, var(--command-border));
+}
+
+.adjustHero .CommandSectionHeader__title {
+  max-width: 11ch;
+  font-size: clamp(34px, 10vw, 46px);
+  line-height: 0.98;
+}
+
+.adjustHero .CommandSectionHeader__subtitle {
+  max-width: 34ch;
+  font-size: 14px;
+  line-height: 1.42;
+}
+
+.adjustHeroGlyph {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  z-index: 1;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--command-execution) 34%, var(--command-border));
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--command-execution) 10%, transparent);
+  color: var(--command-execution);
+  box-shadow: 0 0 22px color-mix(in srgb, var(--command-execution) 12%, transparent);
+  opacity: 0.86;
+}
+
+.adjustHeroWave {
+  position: absolute;
+  right: 18px;
+  bottom: 22px;
+  width: min(52%, 245px);
+  height: 62px;
+  opacity: 0.42;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 50%, color-mix(in srgb, var(--command-execution) 34%, transparent), transparent 64%),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 12px,
+      color-mix(in srgb, var(--command-execution) 18%, transparent) 12px 13px,
+      transparent 13px 24px
+    );
+  mask-image: radial-gradient(ellipse at 50% 50%, black 0 32%, transparent 72%);
+}
+
+.adjustSummaryCard {
+  padding: 15px;
+}
+
+.adjustSummaryHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.adjustSummaryHeader > div {
+  display: grid;
+  gap: 5px;
+}
+
+.adjustSectionKicker {
+  color: color-mix(in srgb, var(--command-tone, var(--command-execution)) 78%, #ffffff);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.adjustSummaryHeader strong {
+  color: var(--command-text);
+  font-size: 18px;
+  line-height: 1.12;
+}
+
+.adjustSummaryGrid {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+}
+
+.adjustScoreRing {
+  --adjust-score: 0%;
+  display: grid;
+  width: 92px;
+  height: 92px;
+  place-items: center;
+  justify-self: center;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 50% 50%, var(--command-surface) 0 51%, transparent 52%),
+    conic-gradient(var(--command-tone, var(--command-execution)) var(--adjust-score), rgba(255, 255, 255, 0.09) 0);
+  color: var(--command-text);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--command-tone, var(--command-execution)) 20%, transparent),
+    0 0 22px color-mix(in srgb, var(--command-tone, var(--command-execution)) 15%, transparent);
+}
+
+.adjustScoreRing span {
+  font-size: 24px;
+  font-weight: 880;
+  line-height: 1;
+}
+
+.adjustScoreRing small {
+  margin-top: -17px;
+  color: var(--command-muted);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.adjustSummaryMetrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.adjustSummaryMetrics div {
+  display: grid;
+  gap: 5px;
+  min-height: 54px;
+  padding: 10px;
+  border: 1px solid var(--command-border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.026);
+}
+
+.adjustSummaryMetrics span {
+  color: var(--command-muted);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.adjustSummaryMetrics strong {
+  color: var(--command-text);
+  font-size: 15px;
+  line-height: 1.1;
+}
+
+.adjustEmptyState {
+  width: 100%;
+  max-width: none;
+}
+
+.adjustSection {
+  display: grid;
+  gap: 10px;
+}
+
+.adjustInlineHeader {
+  padding: 0 2px;
+}
+
+.adjustInlineHeader .CommandSectionHeader__title {
+  font-size: 21px;
+}
+
+.adjustInlineHeader .CommandSectionHeader__subtitle {
+  font-size: 13px;
+}
+
+.adjustFrictionGrid {
+  display: grid;
+  gap: 9px;
+}
+
+.adjustFrictionCard {
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 13px;
+  border-color: color-mix(in srgb, var(--command-attention) 34%, var(--command-border));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--command-attention) 8%, transparent), transparent),
+    var(--command-surface);
+}
+
+.adjustFrictionIcon,
+.adjustQuickActionIcon {
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  color: var(--command-tone, var(--command-execution));
+  background: color-mix(in srgb, var(--command-tone, var(--command-execution)) 12%, transparent);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--command-tone, var(--command-execution)) 14%, transparent);
+}
+
+.adjustFrictionIcon {
+  width: 36px;
+  height: 36px;
+}
+
+.adjustFrictionCard strong,
+.adjustCalmCard strong,
+.adjustNextBlockCard strong,
+.adjustCoachBlockBody strong {
+  color: var(--command-text);
+  font-size: 15px;
+  line-height: 1.15;
+}
+
+.adjustFrictionCard p,
+.adjustCalmCard p,
+.adjustNextBlockCard p,
+.adjustCoachBlockBody p {
+  margin: 5px 0 0;
+  color: var(--command-muted);
+  font-size: 12px;
+  line-height: 1.42;
+}
+
+.adjustCalmCard,
+.adjustNextBlockCard {
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+}
+
+.adjustCalmCard > svg,
+.adjustNextBlockCard > svg {
+  color: var(--command-tone, var(--command-execution));
+}
+
+.adjustRecommendationCard {
+  padding: 16px;
+}
+
+.adjustRecommendationCard .CommandSectionHeader__title {
+  font-size: 24px;
+}
+
+.adjustImpactList {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--command-tone, var(--command-execution)) 26%, var(--command-border));
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--command-tone, var(--command-execution)) 8%, transparent);
+}
+
+.adjustImpactList > span {
+  color: color-mix(in srgb, var(--command-tone, var(--command-execution)) 78%, #ffffff);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.adjustImpactList div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--command-muted);
+  font-size: 12px;
+}
+
+.adjustImpactList svg {
+  color: var(--command-tone, var(--command-execution));
+}
+
+.adjustHonestNote {
+  margin: 0;
+  color: var(--command-muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.adjustQuickActions {
+  display: grid;
+  gap: 9px;
+}
+
+.adjustQuickAction {
+  --command-tone: var(--command-execution);
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 74px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--command-tone) 28%, var(--command-border));
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--command-tone) 8%, transparent), transparent),
+    color-mix(in srgb, var(--command-surface-strong) 76%, transparent);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--motion-standard) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard),
+    background var(--motion-standard) var(--ease-standard);
+}
+
+.adjustQuickAction[data-command-tone="attention"] {
+  --command-tone: var(--command-attention);
+}
+
+.adjustQuickAction[data-command-tone="ai"] {
+  --command-tone: var(--command-ai);
+}
+
+.adjustQuickAction:hover {
+  border-color: color-mix(in srgb, var(--command-tone) 48%, var(--command-border));
+}
+
+.adjustQuickAction:active {
+  transform: translateY(1px);
+}
+
+.adjustQuickAction:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--command-tone) 72%, #ffffff);
+  outline-offset: 2px;
+}
+
+.adjustQuickActionIcon {
+  width: 40px;
+  height: 40px;
+}
+
+.adjustQuickActionText {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.adjustQuickActionText strong {
+  color: var(--command-text);
+  font-size: 14px;
+  line-height: 1.15;
+}
+
+.adjustQuickActionText small {
+  color: var(--command-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.adjustTrendCard,
+.adjustCategoryCard {
+  padding: 15px;
+}
+
+.adjustTrendBars {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  align-items: end;
+  gap: 8px;
+  min-height: 82px;
+  padding: 12px 10px 8px;
+  border: 1px solid var(--command-border);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--command-surface-strong) 70%, transparent);
+}
+
+.adjustTrendDay {
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.adjustTrendDay span {
+  color: var(--command-muted);
+  font-size: 9px;
+  font-weight: 750;
+  text-transform: capitalize;
+}
+
+.adjustTrendBarSlot {
+  position: relative;
+  display: flex;
+  width: 18px;
+  height: 48px;
+  align-items: end;
+  justify-content: center;
+}
+
+.adjustTrendBar {
+  position: absolute;
+  bottom: 0;
+  display: block;
+  width: 8px;
+  border-radius: 999px;
+}
+
+.adjustTrendBar--planned {
+  background: color-mix(in srgb, var(--command-neutral) 32%, transparent);
+}
+
+.adjustTrendBar--done {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--command-execution) 70%, #ffffff), var(--command-execution));
+  box-shadow: 0 0 12px color-mix(in srgb, var(--command-execution) 24%, transparent);
+}
+
+.adjustTrendLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  color: var(--command-muted);
+  font-size: 11px;
+}
+
+.adjustTrendLegend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.adjustTrendLegend i {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+}
+
+.adjustTrendLegend .is-done {
+  background: var(--command-execution);
+}
+
+.adjustTrendLegend .is-planned {
+  background: color-mix(in srgb, var(--command-neutral) 38%, transparent);
+}
+
+.adjustCategoryList {
+  display: grid;
+  gap: 10px;
+}
+
+.adjustCategoryRow {
+  --command-tone: var(--command-execution);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(82px, 0.46fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.adjustCategoryRow[data-command-tone="attention"] {
+  --command-tone: var(--command-attention);
+}
+
+.adjustCategoryRow div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.adjustCategoryRow span,
+.adjustCategoryRow strong {
+  color: var(--command-text);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.adjustCategoryRow small {
+  color: var(--command-muted);
+  font-size: 10px;
+}
+
+.adjustCategoryProgress {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.adjustCategoryProgress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--command-tone);
+}
+
+.adjustCoachBlock {
+  padding: 16px;
+}
+
+.adjustCoachBlockBody {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--command-ai) 24%, var(--command-border));
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--command-ai) 8%, transparent);
+}
+
+.adjustCoachBlockBody svg {
+  color: var(--command-ai);
+}
+
+.adjustNextBlockCard {
+  border-color: color-mix(in srgb, var(--command-execution) 24%, var(--command-border));
+}
+
+@media (min-width: 620px) {
+  .adjustFrictionGrid,
+  .adjustQuickActions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 340px) {
+  .adjustHero {
+    padding: 18px;
+  }
+
+  .adjustSummaryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .adjustScoreRing {
+    justify-self: start;
+  }
+
+  .adjustSummaryMetrics {
+    grid-template-columns: 1fr;
+  }
+
+  .adjustCategoryRow {
+    grid-template-columns: minmax(0, 1fr) 68px auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .adjustQuickAction,
+  .adjustQuickAction:hover,
+  .adjustQuickAction:active {
+    transition: none;
+    transform: none;
+  }
+}

@@ -17,8 +17,8 @@ const TABS = [
 
 const BottomNavigation = forwardRef(function BottomNavigation({ activeTab = "today", onSelect }, ref) {
   return (
-    <div ref={ref} className="lovableTabBarWrap">
-      <nav className="lovableTabBar" aria-label="Navigation principale" data-tour-id="topnav-tabs">
+    <div ref={ref} className="lovableTabBarWrap CommandBottomNavigation">
+      <nav className="lovableTabBar CommandBottomNavigation__bar" aria-label="Navigation principale" data-tour-id="topnav-tabs">
         {TABS.map((tab) => {
           const active = activeTab === tab.id;
           const { Icon } = tab;
@@ -26,7 +26,7 @@ const BottomNavigation = forwardRef(function BottomNavigation({ activeTab = "tod
             <button
               key={tab.id}
               type="button"
-              className={`lovableTabButton${active ? " is-active" : ""}${tab.home ? " is-home" : ""}${tab.ai ? " is-ai" : ""}`}
+              className={`lovableTabButton CommandBottomNavigation__item${active ? " is-active" : ""}${tab.home ? " is-home" : ""}${tab.ai ? " is-ai" : ""}`}
               onClick={() => onSelect?.(tab.id)}
               aria-current={active ? "page" : undefined}
             >

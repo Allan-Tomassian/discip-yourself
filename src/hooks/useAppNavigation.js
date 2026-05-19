@@ -6,6 +6,7 @@ const TABS = new Set([
   "today",
   "objectives",
   "timeline",
+  "adjust",
   "insights",
   "coach",
   "create-item",
@@ -27,8 +28,9 @@ const TABS = new Set([
 ]);
 
 export function normalizeTab(t) {
-  if (t === "tools") return "insights";
-  if (t === "pilotage") return "insights";
+  if (t === "tools") return "adjust";
+  if (t === "pilotage") return "adjust";
+  if (t === "insights") return "adjust";
   if (t === "plan") return "timeline";
   if (t === "planning") return "timeline";
   if (t === "library") return "objectives";
@@ -77,7 +79,8 @@ function buildPathForTab({
   if (tab === "edit-item") return editItemId ? `/edit/${encodeURIComponent(editItemId)}` : "/edit";
   if (tab === "objectives") return "/objectives";
   if (tab === "timeline") return "/timeline";
-  if (tab === "insights") return "/insights";
+  if (tab === "adjust") return "/adjust";
+  if (tab === "insights") return "/adjust";
   if (tab === "coach") return "/coach";
   if (tab === "onboarding") return "/onboarding";
   if (tab === "journal") return "/journal";
@@ -107,6 +110,7 @@ export function parseNavigationState(pathname, search, historyState = null) {
   const categoryDetailId =
     pathParts[0] === "category" && pathParts.length === 2 ? decodeURIComponent(pathParts[1] || "") : null;
   const editItemId = pathParts[0] === "edit" && pathParts[1] ? decodeURIComponent(pathParts[1] || "") : null;
+  const isAdjustPath = initialPath.startsWith("/adjust");
   const isInsightsPath = initialPath.startsWith("/insights") || initialPath.startsWith("/pilotage") || initialPath.startsWith("/tools");
   const isTimelinePath = initialPath.startsWith("/timeline") || initialPath.startsWith("/planning") || initialPath.startsWith("/plan");
   const isObjectivesPath = initialPath.startsWith("/objectives") || initialPath.startsWith("/library");
@@ -119,7 +123,7 @@ export function parseNavigationState(pathname, search, historyState = null) {
   else if (initialPath.startsWith("/edit")) initialTab = "edit-item";
   else if (isObjectivesPath) initialTab = "objectives";
   else if (isTimelinePath) initialTab = "timeline";
-  else if (isInsightsPath) initialTab = "insights";
+  else if (isAdjustPath || isInsightsPath) initialTab = "adjust";
   else if (initialPath.startsWith("/coach")) initialTab = "coach";
   else if (initialPath.startsWith("/journal")) initialTab = "journal";
   else if (initialPath.startsWith("/micro-actions")) initialTab = "micro-actions";
@@ -259,9 +263,9 @@ export function useAppNavigation({ safeData, setData }) {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (tab !== "insights") return;
-    if (window.location.pathname === "/tools") {
-      window.history.replaceState({}, "", "/insights");
+    if (tab !== "adjust") return;
+    if (window.location.pathname === "/tools" || window.location.pathname === "/pilotage" || window.location.pathname === "/insights") {
+      window.history.replaceState({}, "", "/adjust");
     }
   }, [tab]);
 

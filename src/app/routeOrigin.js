@@ -1,4 +1,4 @@
-const MAIN_TABS = new Set(["today", "objectives", "timeline", "insights", "coach"]);
+const MAIN_TABS = new Set(["today", "objectives", "timeline", "adjust", "coach"]);
 const DRAWER_TABS = new Set([
   "settings",
   "account",
@@ -34,8 +34,8 @@ export function normalizeMainTab(value, fallback = "today") {
       ? "timeline"
       : raw === "library"
         ? "objectives"
-        : raw === "pilotage" || raw === "tools"
-          ? "insights"
+        : raw === "pilotage" || raw === "tools" || raw === "insights"
+          ? "adjust"
           : raw;
   return MAIN_TABS.has(next) ? next : fallback;
 }
@@ -47,8 +47,8 @@ export function resolveMainTabForSurface(surface, fallbackMainTab = "today") {
       ? "timeline"
       : rawSurface === "library"
         ? "objectives"
-        : rawSurface === "pilotage" || rawSurface === "tools"
-          ? "insights"
+        : rawSurface === "pilotage" || rawSurface === "tools" || rawSurface === "insights"
+          ? "adjust"
           : rawSurface;
   if (MAIN_TABS.has(safeSurface)) return safeSurface;
   if (safeSurface === "category-detail" || safeSurface === "category-progress" || safeSurface === "edit-item") {

@@ -16,7 +16,17 @@ describe("route origin helpers", () => {
   it("derives the active top nav tab from the current task surface", () => {
     expect(resolveActiveTopNavTab({ currentTab: "create-item", taskMainTab: "planning" })).toBe("timeline");
     expect(resolveActiveTopNavTab({ currentTab: "edit-item", editReturnTab: "library" })).toBe("objectives");
-    expect(resolveActiveTopNavTab({ currentTab: "pilotage" })).toBe("insights");
+    expect(resolveActiveTopNavTab({ currentTab: "pilotage" })).toBe("adjust");
+    expect(resolveActiveTopNavTab({ currentTab: "insights" })).toBe("adjust");
+    expect(resolveActiveTopNavTab({ currentTab: "tools" })).toBe("adjust");
+  });
+
+  it("normalizes legacy analysis origins to Ajuster", () => {
+    expect(normalizeRouteOrigin({ mainTab: "insights", sourceSurface: "pilotage" })).toMatchObject({
+      mainTab: "adjust",
+      sourceSurface: "pilotage",
+    });
+    expect(resolveMainTabForSurface("insights", "today")).toBe("adjust");
   });
 
   it("normalizes library route origin details", () => {

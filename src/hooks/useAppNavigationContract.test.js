@@ -23,7 +23,11 @@ describe("useAppNavigation contract", () => {
     expect(source).toContain('"legal"');
     expect(source).toContain('"billing"');
     expect(source).toContain('"settings"');
+    expect(source).toContain('"adjust"');
     expect(source).toContain('"create-item"');
+    expect(source).toContain('if (t === "tools") return "adjust";');
+    expect(source).toContain('if (t === "pilotage") return "adjust";');
+    expect(source).toContain('if (t === "insights") return "adjust";');
     expect(source).toContain('if (t === "create") return "create-item";');
     expect(source).not.toContain('"coach-chat"');
   });
@@ -37,6 +41,12 @@ describe("useAppNavigation contract", () => {
     expect(source).toContain('initialPath.startsWith("/create")');
     expect(source).toContain('if (tab === "create-item") return "/create";');
     expect(source).toContain('initialPath.startsWith("/coach/chat")');
+    expect(source).toContain('initialPath.startsWith("/adjust")');
+    expect(source).toContain('initialPath.startsWith("/insights")');
+    expect(source).toContain('initialPath.startsWith("/pilotage")');
+    expect(source).toContain('initialPath.startsWith("/tools")');
+    expect(source).toContain('if (tab === "adjust") return "/adjust";');
+    expect(source).toContain('window.history.replaceState({}, "", "/adjust")');
     expect(source).toContain("initialCoachAliasRequest");
     expect(source).toContain("consumeCoachAliasRequest");
     expect(source).not.toContain('else if (t === "coach-chat") nextPath = "/coach/chat";');

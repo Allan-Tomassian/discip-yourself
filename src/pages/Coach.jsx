@@ -1,10 +1,14 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AppScreen } from "../shared/ui/app";
+import { CommandBadge, CommandCTA } from "../shared/ui/command";
 import AiDebugLine from "../components/ai/AiDebugLine";
 import CoachComposerMenu from "../features/coach/CoachComposerMenu";
 import { useCoachConversationController } from "../features/coach/coachPanelController";
 import { COACH_SCREEN_COPY } from "../ui/labels";
 import "../features/coach/coachSurface.css";
+
+const ASSISTANT_COMMAND_TEXT_LENGTH = 220;
+const ASSISTANT_COMMAND_LINE_COUNT = 4;
 
 function resolveName(profile) {
   const fullName = String(profile?.full_name || "").trim();
@@ -24,9 +28,25 @@ function buildCreatedViewAction(reply) {
   };
 }
 
+function resolveCoachMessageTone({ entry, reply, isConversationReply }) {
+  if (entry?.role !== "assistant") return "user";
+  const displayText = String(entry?.displayText || "");
+  const lineCount = displayText.split(/\n+/).filter(Boolean).length;
+  if (isConversationReply && reply?.proposal) return "proposal";
+  if (isConversationReply && reply?.mode === "plan") return "command";
+  if (displayText.length >= ASSISTANT_COMMAND_TEXT_LENGTH || lineCount >= ASSISTANT_COMMAND_LINE_COUNT) {
+    return "command";
+  }
+  return "natural";
+}
+
 function CoachPendingState({ pendingUi }) {
   if (!pendingUi) return null;
   const isPlan = pendingUi.variant === "plan";
+  const title = isPlan ? pendingUi.label : "Le Coach analyse ton système…";
+  const steps = isPlan
+    ? ["Clarification de l’intention", "Construction de la proposition"]
+    : ["Lecture du contexte", "Analyse des priorités", "Préparation de la réponse"];
   return (
     <div
       className={`lovableCard ${isPlan ? "coachSurfacePending coachSurfacePending--plan" : "lovableCoachBubble is-assistant coachSurfacePending coachSurfacePending--free"}`}
@@ -34,11 +54,22 @@ function CoachPendingState({ pendingUi }) {
       aria-live="polite"
       aria-label={pendingUi.ariaLabel}
     >
-      {isPlan ? <div className="coachSurfacePendingLabel">{pendingUi.label}</div> : null}
-      <div className="coachSurfacePendingDots" aria-hidden="true">
-        <span className="coachSurfacePendingDot" />
-        <span className="coachSurfacePendingDot" />
-        <span className="coachSurfacePendingDot" />
+      <div className="coachSurfacePendingSignal" aria-hidden="true">
+        <span className="coachSurfacePendingCore" />
+      </div>
+      <div className="coachSurfacePendingBody">
+        <CommandBadge tone="ai" className="coachSurfacePendingLabel">COACH IA</CommandBadge>
+        <div className="coachSurfacePendingTitle">{title}</div>
+        <div className="coachSurfacePendingSteps">
+          {steps.map((step) => (
+            <span key={step}>{step}</span>
+          ))}
+        </div>
+        <div className="coachSurfacePendingDots" aria-hidden="true">
+          <span className="coachSurfacePendingDot" />
+          <span className="coachSurfacePendingDot" />
+          <span className="coachSurfacePendingDot" />
+        </div>
       </div>
     </div>
   );
@@ -259,13 +290,18 @@ export default function Coach({
     <AppScreen pageId="coach" headerTitle={COACH_SCREEN_COPY.title} headerSubtitle={COACH_SCREEN_COPY.subtitle}>
       <div className="lovablePage lovableCoachPage">
         <div ref={scrollRef} className="lovableCoachMessages">
-          <div className="lovableCard lovableCoachIntro">
-            <div className="lovableCoachEyebrow">{COACH_SCREEN_COPY.introEyebrow}</div>
-            <p className="lovableCoachText">{introText}</p>
+          <div className="lovableCard lovableCoachIntro coachSurfaceIntroShell">
+            <div className="coachSurfaceIntroSignal" aria-hidden="true">
+              <span />
+            </div>
+            <div className="coachSurfaceIntroBody">
+              <div className="lovableCoachEyebrow">{COACH_SCREEN_COPY.introEyebrow}</div>
+              <p className="lovableCoachText">{introText}</p>
+            </div>
           </div>
 
           {!controller.hasMessages ? (
-            <div className="lovableCoachPrompts">
+            <div className="lovableCoachPrompts coachSurfaceStarterList">
               {controller.quickPrompts.map((prompt) => (
                 <button
                   key={prompt}
@@ -277,7 +313,8 @@ export default function Coach({
                   }}
                   disabled={controller.loading}
                 >
-                  {prompt}
+                  <span>{prompt}</span>
+                  <span className="coachSurfaceStarterArrow" aria-hidden="true">›</span>
                 </button>
               ))}
             </div>
@@ -287,11 +324,25 @@ export default function Coach({
             const reply = entry.reply || null;
             const isConversationReply = entry.role === "assistant" && reply?.kind === "conversation";
             const isCreatedProposal = isConversationReply && reply?.proposal && reply?.createStatus === "created";
+            const messageTone = resolveCoachMessageTone({ entry, reply, isConversationReply });
+            const isAssistant = entry.role === "assistant";
+            const bubbleClasses = [
+              "lovableCard",
+              "lovableCoachBubble",
+              isAssistant ? "is-assistant" : "is-user",
+              isAssistant ? `coachBubble--${messageTone}` : "",
+              isConversationReply && reply?.mode === "plan" ? "coachBubble--plan" : "",
+              isConversationReply && reply?.proposal ? "coachBubble--hasProposal" : "",
+              isCreatedProposal ? "coachBubble--createdProposal" : "",
+            ]
+              .filter(Boolean)
+              .join(" ");
 
             return (
               <div
                 key={entry.id}
-                className={`lovableCard lovableCoachBubble ${entry.role === "assistant" ? "is-assistant" : "is-user"}`}
+                className={bubbleClasses}
+                data-coach-message-tone={messageTone}
               >
                 <div className="lovableCoachEyebrow">
                   {entry.role === "assistant" ? COACH_SCREEN_COPY.assistantEyebrow : COACH_SCREEN_COPY.userEyebrow}
@@ -323,22 +374,32 @@ export default function Coach({
 
                 {isConversationReply && reply?.proposal ? (
                   <div className={`lovableCard lovableCoachDraft${isCreatedProposal ? " is-created" : ""}`}>
-                    <div className="lovableCoachDraftTitle">
-                      {isCreatedProposal ? COACH_SCREEN_COPY.createdPlanTitle : COACH_SCREEN_COPY.concisePlanTitle}
+                    <div className="coachSurfaceDraftHeader">
+                      {isCreatedProposal ? (
+                        <span className="coachSurfaceCreatedCheck" aria-hidden="true">✓</span>
+                      ) : null}
+                      <div>
+                        <div className="lovableCoachDraftTitle">
+                          {isCreatedProposal ? COACH_SCREEN_COPY.createdPlanTitle : COACH_SCREEN_COPY.concisePlanTitle}
+                        </div>
+                        <div className="coachSurfaceDraftMeta">
+                          {isCreatedProposal ? "Ajouté à ton système." : "Proposition à valider."}
+                        </div>
+                      </div>
                     </div>
                     <div className="lovableCoachDraftList">
                       {reply.proposal?.categoryDraft?.label || reply.proposal?.categoryDraft?.id ? (
-                        <div className="lovableCoachDraftItem">
+                        <div className="lovableCoachDraftItem coachDraftItem--category">
                           {`${COACH_SCREEN_COPY.draftCategoryLabel} · ${reply.proposal.categoryDraft.label || reply.proposal.categoryDraft.id}`}
                         </div>
                       ) : null}
                       {reply.proposal?.outcomeDraft?.title ? (
-                        <div className="lovableCoachDraftItem">
+                        <div className="lovableCoachDraftItem coachDraftItem--objective">
                           {`${COACH_SCREEN_COPY.draftObjectiveLabel} · ${reply.proposal.outcomeDraft.title}`}
                         </div>
                       ) : null}
                       {(Array.isArray(reply.proposal?.actionDrafts) ? reply.proposal.actionDrafts : []).map((draftItem, index) => (
-                        <div key={`${entry.id}-draft-${index}`} className="lovableCoachDraftItem">
+                        <div key={`${entry.id}-draft-${index}`} className="lovableCoachDraftItem coachDraftItem--action">
                           {[
                             draftItem?.title || COACH_SCREEN_COPY.draftActionFallback,
                             draftItem?.oneOffDate || "",
@@ -353,10 +414,10 @@ export default function Coach({
                       <>
                         <div className="lovableCoachDraftTitle">{COACH_SCREEN_COPY.sessionBlueprintTitle}</div>
                         <div className="lovableCoachDraftList lovableCoachDraftBlueprintList">
-                          <div className="lovableCoachDraftItem">
+                          <div className="lovableCoachDraftItem coachDraftItem--blueprint">
                             {`${COACH_SCREEN_COPY.sessionBlueprintWhyLabel} · ${reply.proposal.sessionBlueprintDraft.why}`}
                           </div>
-                          <div className="lovableCoachDraftItem">
+                          <div className="lovableCoachDraftItem coachDraftItem--blueprint">
                             {`${COACH_SCREEN_COPY.sessionBlueprintFirstStepLabel} · ${reply.proposal.sessionBlueprintDraft.firstStep}`}
                           </div>
                         </div>
@@ -367,7 +428,7 @@ export default function Coach({
                         <div className="lovableCoachDraftTitle">{COACH_SCREEN_COPY.unresolvedTitle}</div>
                         <div className="lovableCoachDraftList">
                           {reply.proposal.unresolvedQuestions.map((question, index) => (
-                            <div key={`${entry.id}-question-${index}`} className="lovableCoachDraftItem">
+                            <div key={`${entry.id}-question-${index}`} className="lovableCoachDraftItem coachDraftItem--question">
                               {question}
                             </div>
                           ))}
@@ -377,8 +438,9 @@ export default function Coach({
                     <div className="lovableCoachDraftActions">
                       {isCreatedProposal ? (
                         <>
-                          <button
+                          <CommandCTA
                             type="button"
+                            tone="execution"
                             className="lovableCoachDraftAction"
                             onClick={() => {
                               const action = buildCreatedViewAction(reply);
@@ -386,33 +448,38 @@ export default function Coach({
                             }}
                           >
                             {COACH_SCREEN_COPY.viewInApp}
-                          </button>
-                          <button
+                          </CommandCTA>
+                          <CommandCTA
                             type="button"
+                            variant="secondary"
+                            tone="ai"
                             className="lovableCoachDraftSecondary"
                             onClick={() => controller.reenterPlan()}
                           >
                             {COACH_SCREEN_COPY.continue}
-                          </button>
+                          </CommandCTA>
                         </>
                       ) : (
                         <>
-                          <button
+                          <CommandCTA
                             type="button"
+                            tone="ai"
                             className="lovableCoachDraftAction"
                             disabled={reply?.createStatus === "creating"}
                             onClick={() => controller.createFromPlanReply(entry)}
                           >
                             {reply?.createStatus === "creating" ? COACH_SCREEN_COPY.creating : COACH_SCREEN_COPY.create}
-                          </button>
-                          <button
+                          </CommandCTA>
+                          <CommandCTA
                             type="button"
+                            variant="secondary"
+                            tone="neutral"
                             className="lovableCoachDraftSecondary"
                             disabled={reply?.createStatus === "creating"}
                             onClick={() => controller.openAssistantReview(entry)}
                           >
                             {COACH_SCREEN_COPY.reviewInApp}
-                          </button>
+                          </CommandCTA>
                         </>
                       )}
                     </div>
@@ -439,7 +506,7 @@ export default function Coach({
               </button>
             </div>
           ) : null}
-          <div className={`lovableCard lovableCoachComposer${composerFocused ? " is-focused" : ""}`}>
+          <div className={`lovableCard lovableCoachComposer coachSurfaceComposerDock${composerFocused ? " is-focused" : ""}`}>
             <button
               ref={plusButtonRef}
               type="button"
@@ -482,10 +549,14 @@ export default function Coach({
             onSelectPlan={handleSelectPlan}
           />
           {controller.error ? (
-            <>
-              <div className="lovableCoachError">{controller.error}</div>
-              <AiDebugLine diagnostics={controller.errorDiagnostics} className="lovableCoachError" />
-            </>
+            <div className="coachSurfaceErrorState" role="alert">
+              <div className="coachSurfaceErrorIcon" aria-hidden="true">!</div>
+              <div className="coachSurfaceErrorBody">
+                <div className="coachSurfaceErrorTitle">Coach IA indisponible</div>
+                <div className="lovableCoachError">{controller.error}</div>
+                <AiDebugLine diagnostics={controller.errorDiagnostics} className="lovableCoachError" />
+              </div>
+            </div>
           ) : null}
         </div>
       </div>

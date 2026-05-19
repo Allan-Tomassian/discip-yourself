@@ -31,6 +31,10 @@ export function buildBaseState({ withContent = false } = {}) {
     ...(data.ui.firstRunV1 || {}),
     status: "done",
     discoveryDone: true,
+    commitV1: {
+      ...((data.ui.firstRunV1 && typeof data.ui.firstRunV1.commitV1 === "object") ? data.ui.firstRunV1.commitV1 : {}),
+      status: "applied",
+    },
   };
   data.ui.showPlanStep = false;
   data.ui.selectedDate = today;

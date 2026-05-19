@@ -30,7 +30,9 @@ describe("category accent UI contract", () => {
     expect(primaryAction).toContain("categoryLabel");
     expect(primaryAction).not.toContain("resolveCategoryColor");
     expect(objectives).toContain("resolveCategoryColor");
-    expect(objectives).toContain("ObjectiveRing");
+    expect(objectives).toContain("--objectives-category-accent");
+    expect(objectives).not.toContain("ObjectiveRing");
+    expect(objectives).not.toContain("#8b78ff");
     expect(objectives).toContain("category?.name");
   });
 });

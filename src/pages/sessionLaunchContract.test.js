@@ -16,13 +16,15 @@ describe("session launch contract", () => {
     const timeline = readSrc("pages/Timeline.jsx");
     const coach = readSrc("pages/Coach.jsx");
     const controller = readSrc("features/coach/coachPanelController.js");
+    const adjust = readSrc("pages/Adjust.jsx");
     const insights = readSrc("pages/Insights.jsx");
 
     expect(app).toContain("const openSessionSurface = useCallback(");
     expect(app).toContain('sourceSurface: "today"');
     expect(app).toContain('sourceSurface: "timeline"');
     expect(app).toContain('sourceSurface: "coach"');
-    expect(app).toContain('sourceSurface: "insights"');
+    expect(app).toContain('sourceSurface === "insights"');
+    expect(app).toContain('sourceSurface === "adjust"');
     expect(app).toContain("sessionLaunchState={sessionLaunchState}");
     expect(app).toContain("onOpenPaywall={openPaywall}");
     expect(app).toContain("isPremiumPlan={isPremiumPlan}");
@@ -33,6 +35,7 @@ describe("session launch contract", () => {
     expect(timeline).toContain("onOpenSession");
     expect(coach).toContain("onOpenSession,");
     expect(controller).toContain("onOpenSession");
+    expect(adjust).toContain('pageId="adjust"');
     expect(insights).toContain("onOpenSession");
   });
 

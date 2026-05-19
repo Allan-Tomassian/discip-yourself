@@ -1,5 +1,5 @@
 import React from "react";
-import { AppCard, EmptyState, GhostButton, PrimaryButton } from "../shared/ui/app";
+import { CommandCTA, CommandErrorState } from "../shared/ui/command";
 import "./errorBoundary.css";
 
 function buildDiagnosticText(error, info) {
@@ -66,19 +66,19 @@ export default class ErrorBoundary extends React.Component {
     return (
       <div className="errorBoundaryShell">
         <div className="errorBoundaryInner">
-          <AppCard variant="elevated" className="errorBoundaryCard">
-            <EmptyState
-              title="Une erreur est survenue"
-              subtitle="L’application a rencontré un problème inattendu. Tu peux recharger ou copier le diagnostic."
-              actions={
-                <div className="errorBoundaryActions">
-                  <PrimaryButton onClick={() => window.location.reload()}>Recharger</PrimaryButton>
-                  <GhostButton onClick={() => copyText(diagnosticText)}>
-                    Copier le diagnostic
-                  </GhostButton>
-                </div>
-              }
-            />
+          <CommandErrorState
+            title="Une erreur est survenue"
+            subtitle="L’application a rencontré un problème inattendu. Tu peux recharger ou copier le diagnostic."
+            className="errorBoundaryCard"
+            actions={
+              <div className="errorBoundaryActions">
+                <CommandCTA onClick={() => window.location.reload()}>Recharger</CommandCTA>
+                <CommandCTA variant="ghost" tone="critical" onClick={() => copyText(diagnosticText)}>
+                  Copier le diagnostic
+                </CommandCTA>
+              </div>
+            }
+          >
             <details className="errorBoundaryDetails">
               <summary className="errorBoundarySummary">
                 Détails
@@ -87,7 +87,7 @@ export default class ErrorBoundary extends React.Component {
                 {diagnosticText}
               </pre>
             </details>
-          </AppCard>
+          </CommandErrorState>
         </div>
       </div>
     );

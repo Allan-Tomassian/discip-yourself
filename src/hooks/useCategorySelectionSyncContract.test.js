@@ -18,7 +18,7 @@ describe("useCategorySelectionSync contract", () => {
     expect(source).toContain("withLibraryActiveCategoryId");
     expect(source).toContain("if (tab === \"today\") {");
     expect(source).toContain("if (tab === \"planning\" || tab === \"timeline\") {");
-    expect(source).toContain("if (tab === \"pilotage\" || tab === \"insights\") {");
+    expect(source).toContain("if (tab === \"pilotage\" || tab === \"insights\" || tab === \"adjust\") {");
     expect(source).toContain("syncExecutionCategorySelection();");
     expect(source).toContain("if (tab === \"library\" || tab === \"objectives\") {");
     expect(source).toContain("if (tab === \"category-detail\") {");

@@ -213,6 +213,14 @@ export async function installSessionGuidanceMock(page, defaults = {}) {
     };
   });
 
+  await page.route("**/health", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ ok: true }),
+    });
+  });
+
   await page.route("**/ai/session-guidance", async (route) => {
     const body = JSON.parse(route.request().postData() || "{}");
     if (body.mode !== "prepare") {

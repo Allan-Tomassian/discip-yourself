@@ -115,6 +115,32 @@ function buildCoachProposalState() {
   return state;
 }
 
+function buildCoachLongReplyState() {
+  const state = buildBaseState({ withContent: true });
+  const today = state.ui?.selectedDate || new Date().toISOString().slice(0, 10);
+  const messages = [
+    {
+      role: "user",
+      text: "Je dois avancer sur plusieurs choses et je ne sais pas par quoi commencer.",
+      createdAt: "2026-04-07T10:00:00.000Z",
+    },
+    {
+      role: "assistant",
+      text:
+        "Commence par isoler le livrable qui débloque le plus le reste de ta journée. Protège ensuite un bloc court, sans ouvrir d’autre chantier. Si tu termines avant la fin du bloc, utilise le temps restant pour vérifier le résultat au lieu de changer de priorité. Cette réponse reste une clarification, pas un plan prêt à créer.",
+      createdAt: "2026-04-07T10:01:00.000Z",
+    },
+  ];
+
+  state.coach_conversations_v1 = appendCoachConversationMessages(null, {
+    messages,
+    contextSnapshot: { activeCategoryId: "cat_business", dateKey: today },
+    mode: "free",
+  }).state;
+
+  return state;
+}
+
 function buildCoachCreatedProposalState() {
   const state = buildBaseState({ withContent: true });
   const today = state.ui?.selectedDate || new Date().toISOString().slice(0, 10);
@@ -257,12 +283,46 @@ async function installDelayedCoachReply(page, responseBody, { delayMs = 1800 } =
     };
   });
 
+  await page.route("**/health", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ ok: true }),
+    });
+  });
+
   await page.route("**/ai/chat", async (route) => {
     await new Promise((resolve) => setTimeout(resolve, delayMs));
     await route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify(responseBody),
+    });
+  });
+}
+
+async function installFailingCoachReply(page) {
+  await page.addInitScript(() => {
+    globalThis.process = globalThis.process || {};
+    globalThis.process.env = {
+      ...(globalThis.process.env || {}),
+      VITE_AI_BACKEND_URL: globalThis.location.origin,
+    };
+  });
+
+  await page.route("**/health", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ ok: true }),
+    });
+  });
+
+  await page.route("**/ai/chat", async (route) => {
+    await route.fulfill({
+      status: 503,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "BACKEND_ERROR", requestId: "req_coach_unavailable" }),
     });
   });
 }
@@ -310,7 +370,7 @@ async function attachScreenshot(page, testInfo, name) {
 async function openCoach(page, state) {
   await seedState(page, state);
   await page.goto("/");
-  await page.getByRole("button", { name: "Coach IA" }).click();
+  await page.getByLabel("Navigation principale").getByRole("button", { name: "Coach IA" }).click();
   await expect(page.getByText("Ton copilote stratégique")).toBeVisible();
 }
 
@@ -345,6 +405,8 @@ test("coach structure remains stable and text is visible at open", async ({ page
   await expect(page.getByText("Finaliser la page d'accueil.")).toBeVisible();
   await expect(page.getByText("Bien. Commence par la section hero puis verrouille le CTA principal.")).toBeVisible();
   await expect(page.getByText("Lecture des catégories")).toHaveCount(0);
+  await expect(page.locator('[data-coach-message-tone="natural"]')).not.toHaveCount(0);
+  await expect(page.locator('[data-coach-message-tone="natural"] .lovableCoachDraft')).toHaveCount(0);
 
   const openMetrics = await page.evaluate(() => {
     const composerCard = document.querySelector(".lovableCoachComposer")?.getBoundingClientRect();
@@ -398,10 +460,22 @@ test("coach structure remains stable and text is visible at open", async ({ page
   await attachScreenshot(page, testInfo, "coach-scrolled-history.png");
 });
 
+test("coach longer natural reply uses command treatment without fake sections", async ({ page }, testInfo) => {
+  await openCoach(page, buildCoachLongReplyState());
+
+  const commandReply = page.locator('[data-coach-message-tone="command"]').last();
+  await expect(commandReply).toBeVisible();
+  await expect(commandReply).toContainText("Commence par isoler le livrable");
+  await expect(commandReply.locator(".lovableCoachDraft")).toHaveCount(0);
+  await attachScreenshot(page, testInfo, "coach-long-command-reply.png");
+});
+
 test("coach proposal card stays readable with assistant text", async ({ page }, testInfo) => {
   await openCoach(page, buildCoachProposalState());
 
   await expect(page.getByText("Je te propose un plan concret pour aujourd'hui.")).toBeVisible();
+  await expect(page.locator('[data-coach-message-tone="proposal"]')).toBeVisible();
+  await expect(page.locator(".coachBubble--proposal")).toBeVisible();
   await expect(page.getByText("Plan proposé")).toBeVisible();
   await expect(page.getByText("Séance type")).toBeVisible();
   await expect(page.getByText(/Cap ·/)).toBeVisible();
@@ -421,6 +495,7 @@ test("coach created proposal stays the single success surface", async ({ page },
   await expect(page.getByText("Créé dans l’app.")).toHaveCount(0);
   await expect(page.getByText("Créé dans Sport.")).toHaveCount(0);
   await expect(page.getByText("Lecture des catégories")).toHaveCount(0);
+  await expect(page.locator(".coachBubble--createdProposal")).toBeVisible();
   expect(await page.locator(".lovableCoachBubble.is-assistant").count()).toBe(1);
   await attachScreenshot(page, testInfo, "coach-success-single-surface.png");
 });
@@ -437,14 +512,17 @@ test("coach free mode shows a non-persisted pending bubble", async ({ page }, te
   await expect(page.locator(".lovableCoachBubble.is-user").last()).toContainText("Clarifie mon prochain pas.");
 
   await expect(page.locator(".coachSurfacePending--free")).toBeVisible();
-  await expect(page.locator(".coachSurfacePending--free .coachSurfacePendingLabel")).toHaveCount(0);
+  await expect(page.locator(".coachSurfacePending--free .coachSurfacePendingLabel")).toContainText("COACH IA");
+  await expect(page.getByText("Lecture du contexte")).toBeVisible();
+  await expect(page.getByText("Analyse des priorités")).toBeVisible();
+  await expect(page.getByText("Préparation de la réponse")).toBeVisible();
   await expect(page.locator(".coachSurfacePending--free .coachSurfacePendingDot")).toHaveCount(3);
   await expect(page.getByText("Lecture des catégories")).toHaveCount(0);
   await expect(page.getByText("Chargement")).toHaveCount(0);
   await expect(page.getByText("Je réfléchis")).toHaveCount(0);
   await attachScreenshot(page, testInfo, "coach-free-pending.png");
 
-  await expect(page.getByText("Commence par nommer le prochain pas concret à fermer aujourd'hui.")).toBeVisible();
+  await expect(page.getByText(/Commence par nommer le prochain pas concret/)).toBeVisible();
   await expect(page.locator(".coachSurfacePending")).toHaveCount(0);
   expect(await readPersistedCoachMessages(page)).toMatchObject({
     assistantMessages: 1,
@@ -459,18 +537,19 @@ test("coach plan mode shows a pending plan state without persisting it", async (
   await openCoach(page, state);
 
   await page.locator(".coachSurfaceComposerPlus").click();
-  await page.getByRole("menuitem", { name: /Structurer/i }).click();
+  await page.getByRole("menuitem", { name: /Plan/i }).click();
   await expect(page.getByText("Plan actif")).toBeVisible();
   await page.evaluate(() => {
     document.querySelector(".lovableCoachComposerSend")?.click();
   });
   await expect(page.locator(".lovableCoachTextarea")).toHaveValue("");
   await expect(page.locator(".lovableCoachBubble.is-user").last()).toContainText(
-    "Aide-moi à structurer ce que je veux faire avancer."
+    "Aide-moi à transformer cette intention en plan clair et actionnable."
   );
 
   await expect(page.locator(".coachSurfacePending--plan")).toBeVisible();
   await expect(page.getByText("Préparation du plan")).toBeVisible();
+  await expect(page.getByText("Clarification de l’intention")).toBeVisible();
   await expect(page.locator(".coachSurfacePending--plan .coachSurfacePendingDot")).toHaveCount(3);
   await expect(page.getByText("Lecture des catégories")).toHaveCount(0);
   await expect(page.getByText("Chargement")).toHaveCount(0);
@@ -486,16 +565,33 @@ test("coach plan mode shows a pending plan state without persisting it", async (
   });
 });
 
-test("coach plus menu triggers structurer without moving layout", async ({ page }, testInfo) => {
+test("coach unavailable state stays restrained and composer remains visible", async ({ page }, testInfo) => {
+  await installFailingCoachReply(page);
+  await openCoach(page, buildBaseState({ withContent: true }));
+
+  await page.locator(".lovableCoachTextarea").fill("Aide-moi à prioriser.");
+  await page.evaluate(() => {
+    document.querySelector(".lovableCoachComposerSend")?.click();
+  });
+
+  await expect(page.locator(".coachSurfaceErrorState")).toBeVisible();
+  await expect(page.getByText("Coach IA indisponible")).toBeVisible();
+  await expect(page.locator(".lovableCoachComposerWrap")).toBeVisible();
+  await expect(page.locator(".lovableCoachTextarea")).toBeVisible();
+  await expect(page.locator(".coachSurfacePending")).toHaveCount(0);
+  await attachScreenshot(page, testInfo, "coach-error-unavailable.png");
+});
+
+test("coach plus menu triggers Plan without moving layout", async ({ page }, testInfo) => {
   await openCoach(page, buildCoachConversationState());
 
   const composerBeforeMenu = await page.locator(".lovableCoachComposer").boundingBox();
   const textareaBeforeMenu = await page.locator(".lovableCoachTextarea").boundingBox();
   await page.locator(".coachSurfaceComposerPlus").click();
 
-  await expect(page.getByRole("menu", { name: "Intentions du coach" })).toBeVisible();
-  await expect(page.getByRole("menuitem", { name: /Structurer/i })).toBeVisible();
-  await expect(page.getByRole("menuitem", { name: /Créer vite/i })).toBeVisible();
+  await expect(page.getByRole("menu", { name: "Menu plan du coach" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: /Plan/i })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: /Créer vite/i })).toHaveCount(0);
   await attachScreenshot(page, testInfo, "coach-plus-menu-open.png");
 
   const composerAfterMenu = await page.locator(".lovableCoachComposer").boundingBox();
@@ -503,9 +599,9 @@ test("coach plus menu triggers structurer without moving layout", async ({ page 
   expect(composerAfterMenu?.y).toBeCloseTo(composerBeforeMenu?.y ?? 0, 1);
   expect(textareaBeforeMenu?.width ?? 0).toBeGreaterThan(180);
 
-  await page.getByRole("menuitem", { name: /Structurer/i }).click();
+  await page.getByRole("menuitem", { name: /Plan/i }).click();
   await expect(page.locator(".lovableCoachTextarea")).toHaveValue(
-    "Aide-moi à structurer ce que je veux faire avancer."
+    "Aide-moi à transformer cette intention en plan clair et actionnable."
   );
   await expect(page.getByText("Plan actif")).toBeVisible();
   await attachScreenshot(page, testInfo, "coach-plus-structurer-focus.png");
@@ -520,23 +616,23 @@ test("coach plus menu triggers structurer without moving layout", async ({ page 
   });
 });
 
-test("coach plus menu triggers quick create without changing page", async ({ page }, testInfo) => {
+test("coach plus menu keeps the existing Plan action as the creation entry", async ({ page }, testInfo) => {
   await openCoach(page, buildCoachConversationState());
 
   await page.locator(".coachSurfaceComposerPlus").click();
-  await page.getByRole("menuitem", { name: /Créer vite/i }).click();
+  await page.getByRole("menuitem", { name: /Plan/i }).click();
   await expect(page.locator(".lovableCoachTextarea")).toHaveValue(
-    "Aide-moi à transformer vite cette intention en brouillon concret."
+    "Aide-moi à transformer cette intention en plan clair et actionnable."
   );
   await expect(page.getByText("Plan actif")).toBeVisible();
-  await attachScreenshot(page, testInfo, "coach-plus-quick-create-focus.png");
+  await attachScreenshot(page, testInfo, "coach-plus-plan-focus.png");
 });
 
 test("coach plan pill stays stable above the composer without moving the header", async ({ page }, testInfo) => {
   await openCoach(page, buildCoachConversationState());
 
   await page.locator(".coachSurfaceComposerPlus").click();
-  await page.getByRole("menuitem", { name: /Structurer/i }).click();
+  await page.getByRole("menuitem", { name: /Plan/i }).click();
   await expect(page.getByText("Plan actif")).toBeVisible();
 
   const headerBefore = await page.locator(".pageHeader").boundingBox();
@@ -551,6 +647,10 @@ test("coach empty state still shows intro and composer immediately", async ({ pa
   await openCoach(page, buildBaseState({ withContent: true }));
 
   await expect(page.locator(".lovableCoachIntro")).toBeVisible();
+  await expect(page.getByRole("button", { name: /Analyser ma journée/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Créer un plan pour avancer/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Lever un blocage actuel/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Prioriser mes 3 prochaines actions/i })).toBeVisible();
   await expect(page.locator(".lovableCoachComposerWrap")).toBeVisible();
   await attachScreenshot(page, testInfo, "coach-empty-open.png");
 });

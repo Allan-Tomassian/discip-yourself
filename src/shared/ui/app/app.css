@@ -164,7 +164,7 @@
 .appProgressBarFill {
   height: 100%;
   border-radius: inherit;
-  background: var(--info);
+  background: var(--command-execution);
   transition: width var(--motion-standard) var(--ease-standard);
 }
 
@@ -370,7 +370,7 @@
 .appToggleRow input {
   width: var(--space-16);
   height: var(--space-16);
-  accent-color: var(--accent-primary);
+  accent-color: var(--command-execution);
 }
 
 .appToggleRowText {
@@ -415,8 +415,8 @@
 }
 
 .appChip.is-active {
-  border-color: var(--accentBorderStrong);
-  background: color-mix(in srgb, var(--accent-primary) 18%, var(--chipBg));
+  border-color: color-mix(in srgb, var(--command-execution) 36%, var(--border-subtle));
+  background: color-mix(in srgb, var(--command-execution) 14%, var(--chipBg));
 }
 
 .appSheetContent {

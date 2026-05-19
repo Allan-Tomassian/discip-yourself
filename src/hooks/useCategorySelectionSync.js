@@ -218,7 +218,7 @@ export function useCategorySelectionSync({
       syncLibraryCategorySelection();
       return;
     }
-    if (tab === "pilotage" || tab === "insights") {
+    if (tab === "pilotage" || tab === "insights" || tab === "adjust") {
       syncExecutionCategorySelection();
       return;
     }
@@ -233,7 +233,7 @@ export function useCategorySelectionSync({
         ? categoryDetailId
         : tab === "category-progress"
           ? categoryProgressId
-          : tab === "pilotage" || tab === "insights"
+          : tab === "pilotage" || tab === "insights" || tab === "adjust"
             ? getExecutionActiveCategoryId(safeData) || homeSelectedCategoryId || null
           : tab === "planning" || tab === "timeline"
             ? getExecutionActiveCategoryId(safeData) || homeSelectedCategoryId || null

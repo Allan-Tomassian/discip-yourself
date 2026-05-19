@@ -105,7 +105,7 @@ function applyCoachAction(action, setTab, fallbackDateKey, onOpenSession) {
     return;
   }
   if (action.intent === "open_pilotage") {
-    setTab?.("insights");
+    setTab?.("adjust");
     return;
   }
   if (action.intent === "open_today") {

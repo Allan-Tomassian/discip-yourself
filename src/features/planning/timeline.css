@@ -1,0 +1,625 @@
+[data-page-id="timeline"] .container {
+  max-width: 665px;
+  padding-top: calc(10px + var(--safe-top));
+  padding-bottom: calc(156px + max(var(--safe-bottom), 0px));
+}
+
+.timelineCommandPage {
+  display: grid;
+  gap: 11px;
+  width: 100%;
+  padding: 0;
+}
+
+[data-page-id="timeline"] .lovableIconButton {
+  border-color: rgba(49, 240, 116, 0.18);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(49, 240, 116, 0.16), transparent 62%),
+    rgba(255, 255, 255, 0.035);
+  color: var(--command-execution);
+  box-shadow: 0 0 18px rgba(49, 240, 116, 0.12);
+}
+
+[data-page-id="timeline"] .lovableIconButton:hover {
+  border-color: rgba(49, 240, 116, 0.34);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(49, 240, 116, 0.22), transparent 62%),
+    rgba(255, 255, 255, 0.045);
+}
+
+.timelineCommandHero {
+  min-height: 104px;
+  align-content: end;
+  padding: 14px 16px;
+}
+
+.timelineCommandHero .CommandSectionHeader__title {
+  max-width: 12ch;
+  font-size: clamp(26px, 7vw, 34px);
+  line-height: 1;
+}
+
+.timelineCommandHero .CommandSectionHeader__subtitle {
+  max-width: 30ch;
+  font-size: 13px;
+  line-height: 1.38;
+}
+
+.timelineDateStrip {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
+  padding: 7px;
+  border: 1px solid var(--command-border);
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012)),
+    color-mix(in srgb, var(--command-surface-strong) 82%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+}
+
+.timelineDatePill {
+  display: grid;
+  position: relative;
+  gap: 3px;
+  min-width: 0;
+  min-height: 49px;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 15px;
+  background: transparent;
+  color: var(--command-muted);
+  cursor: pointer;
+  font: inherit;
+}
+
+.timelineDatePill span {
+  color: inherit;
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+  line-height: 1;
+}
+
+.timelineDatePill strong {
+  color: color-mix(in srgb, var(--command-text) 88%, var(--command-muted));
+  font-size: 16px;
+  font-weight: 850;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.timelineDatePill i {
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--command-execution) 72%, transparent);
+  box-shadow: 0 0 8px rgba(49, 240, 116, 0.3);
+}
+
+.timelineDatePill.is-today:not(.is-selected) {
+  color: color-mix(in srgb, var(--command-execution) 72%, var(--command-muted));
+}
+
+.timelineDatePill.is-selected {
+  border-color: rgba(49, 240, 116, 0.34);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(49, 240, 116, 0.18), transparent 70%),
+    rgba(49, 240, 116, 0.075);
+  color: var(--command-execution);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.timelineDatePill.is-selected strong {
+  color: var(--command-execution);
+}
+
+.timelineDatePill:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--command-execution) 78%, #ffffff);
+  outline-offset: 2px;
+}
+
+.timelineStatusStrip {
+  padding: 0;
+}
+
+.timelineStatusStrip.CommandSurface::before {
+  opacity: 0.08;
+}
+
+.timelineStatusStrip {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+}
+
+.timelineStatusMetric {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 10px 11px;
+  background: rgba(255, 255, 255, 0.024);
+}
+
+.timelineStatusMetric--wide {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--command-border);
+}
+
+.timelineStatusMetric span {
+  color: var(--command-muted);
+  font-size: 9px;
+  font-weight: 820;
+  letter-spacing: 0.11em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.timelineStatusMetric strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--command-text);
+  font-size: 13px;
+  font-weight: 820;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timelineFilterWrap {
+  display: flex;
+  justify-content: flex-start;
+  padding-top: 1px;
+}
+
+.timelineFilterWrap .lovableCompactFilterTrigger {
+  border: 1px solid var(--command-border);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.012)),
+    var(--command-surface-strong);
+  color: var(--command-text);
+  box-shadow: none;
+}
+
+.timelineFilterWrap .lovableCompactFilterValue {
+  color: var(--command-text);
+}
+
+[data-page-id="timeline"] .lovableCompactFilterOption.is-active {
+  background: rgba(49, 240, 116, 0.1);
+}
+
+[data-page-id="timeline"] .lovableCompactFilterOptionMark {
+  color: var(--command-execution);
+}
+
+[data-page-id="timeline"] .lovableTimelineList {
+  display: grid;
+  gap: 9px;
+  padding-left: 10px;
+}
+
+[data-page-id="timeline"] .lovableTimelineList::before {
+  top: 12px;
+  bottom: 18px;
+  left: 4px;
+  width: 1px;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    color-mix(in srgb, var(--command-execution) 34%, transparent) 18%,
+    color-mix(in srgb, var(--command-neutral) 18%, transparent) 82%,
+    transparent
+  );
+}
+
+.timelineDateSeparator {
+  position: relative;
+  z-index: 1;
+  padding: 4px 0 2px 15px;
+}
+
+.timelineDateSeparator span {
+  display: inline-flex;
+  min-height: 22px;
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 999px;
+  padding: 0 10px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012)),
+    #060808;
+  color: var(--command-muted);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+}
+
+.timelineCommandItem {
+  --timeline-tone: var(--command-neutral);
+}
+
+.timelineCommandItem[data-command-tone="execution"] {
+  --timeline-tone: var(--command-execution);
+}
+
+.timelineCommandItem[data-command-tone="attention"] {
+  --timeline-tone: var(--command-attention);
+}
+
+[data-page-id="timeline"] .lovableTimelineNode {
+  left: -10px;
+  top: 21px;
+  width: 10px;
+  height: 10px;
+  border-color: color-mix(in srgb, var(--timeline-tone) 54%, var(--command-border));
+  background: color-mix(in srgb, var(--command-surface) 88%, #000000);
+  box-shadow:
+    0 0 0 4px #050607,
+    0 0 12px color-mix(in srgb, var(--timeline-tone) 18%, transparent);
+}
+
+[data-page-id="timeline"] .lovableTimelineItem.is-current .lovableTimelineNode,
+[data-page-id="timeline"] .lovableTimelineItem.is-complete .lovableTimelineNode {
+  background: var(--timeline-tone);
+  border-color: color-mix(in srgb, var(--timeline-tone) 82%, #ffffff);
+  box-shadow:
+    0 0 0 4px #050607,
+    0 0 15px color-mix(in srgb, var(--timeline-tone) 32%, transparent);
+}
+
+[data-page-id="timeline"] .lovableTimelineCard.timelineCommandCard {
+  width: 100%;
+  padding: 0;
+  cursor: default;
+}
+
+.timelineCommandCard[data-command-tone="attention"] {
+  border-color: color-mix(in srgb, var(--command-attention) 32%, var(--command-border));
+}
+
+[data-page-id="timeline"] .lovableTimelineCardButton {
+  display: grid;
+  gap: 7px;
+  padding: 12px;
+}
+
+[data-page-id="timeline"] .lovableTimelineCardButton:focus-visible,
+[data-page-id="timeline"] .lovableTimelineAction:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--command-execution) 78%, #ffffff);
+  outline-offset: -2px;
+}
+
+.timelineCardTopline {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-height: 21px;
+}
+
+[data-page-id="timeline"] .lovableTimelineDate {
+  margin: 0;
+  color: var(--command-muted);
+  font-size: 10px;
+  font-weight: 820;
+  letter-spacing: 0.12em;
+}
+
+.timelineStatusBadge {
+  min-height: 20px;
+  padding-inline: 7px;
+  font-size: 8px;
+}
+
+.timelineCardMain {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.timelineTimeRail {
+  display: grid;
+  min-height: 46px;
+  align-items: start;
+  padding-top: 3px;
+  border-right: 1px solid color-mix(in srgb, var(--timeline-tone, var(--command-neutral)) 18%, transparent);
+}
+
+.timelineTimeRail span {
+  color: color-mix(in srgb, var(--timeline-tone, var(--command-neutral)) 74%, #ffffff);
+  font-size: 10.5px;
+  font-weight: 850;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.timelineCardBody {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+[data-page-id="timeline"] .lovableTimelineCategory {
+  margin: 0;
+  color: color-mix(in srgb, var(--timeline-tone, var(--command-execution)) 72%, #ffffff);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.13em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+[data-page-id="timeline"] .lovableTimelineTitle {
+  margin: 0;
+  color: var(--command-text);
+  font-size: 15.5px;
+  line-height: 1.17;
+  font-weight: 820;
+}
+
+[data-page-id="timeline"] .lovableTimelineSubtitle {
+  margin: 0;
+  color: var(--command-muted);
+  font-size: 11.5px;
+  line-height: 1.38;
+}
+
+[data-page-id="timeline"] .lovableTimelineExpand {
+  gap: 10px;
+  margin: 0 12px 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--command-border);
+}
+
+[data-page-id="timeline"] .lovableTimelineExpandDate {
+  color: color-mix(in srgb, var(--command-execution) 68%, #ffffff);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+[data-page-id="timeline"] .lovableTimelineExpandMeta {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+[data-page-id="timeline"] .lovableTimelineExpandItem {
+  gap: 5px;
+  min-width: 0;
+  padding: 10px 11px;
+  border: 1px solid var(--command-border);
+  border-radius: var(--radius-14);
+  background: color-mix(in srgb, var(--command-surface-strong) 74%, transparent);
+}
+
+[data-page-id="timeline"] .lovableTimelineExpandItem span {
+  color: var(--command-muted);
+  font-size: 9px;
+  font-weight: 820;
+  letter-spacing: 0.1em;
+}
+
+[data-page-id="timeline"] .lovableTimelineExpandItem strong {
+  color: var(--command-text);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+[data-page-id="timeline"] .lovableTimelineExpandBlock {
+  gap: 9px;
+}
+
+[data-page-id="timeline"] .lovableTimelineUpcomingItem {
+  border: 1px solid var(--command-border);
+  background: color-mix(in srgb, var(--command-surface-strong) 76%, transparent);
+}
+
+[data-page-id="timeline"] .lovableTimelineExpandActions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: 10px;
+}
+
+[data-page-id="timeline"] .lovableTimelineAction {
+  min-height: 42px;
+}
+
+[data-page-id="timeline"] .lovableTimelineAction--primary {
+  margin-left: 0;
+}
+
+.timelineEmptyState {
+  width: 100%;
+}
+
+[data-page-id="timeline"] .lovableTimelineCalendarDialog {
+  gap: 12px;
+  padding: 15px;
+  border: 1px solid var(--command-border);
+  border-radius: var(--radius-20);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.012)),
+    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--command-execution) 12%, transparent), transparent 62%),
+    var(--command-surface);
+  color: var(--command-text);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.055);
+}
+
+.timelineCalendarModal.modalPanel {
+  border-color: rgba(49, 240, 116, 0.16);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012)),
+    radial-gradient(circle at 50% 0%, rgba(49, 240, 116, 0.12), transparent 60%),
+    #050707;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 24px 70px rgba(0, 0, 0, 0.55);
+  padding: 0;
+}
+
+.timelineDatePickerMenu.datePickerMenu {
+  border-color: rgba(49, 240, 116, 0.16);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012)),
+    radial-gradient(circle at 50% 0%, rgba(49, 240, 116, 0.1), transparent 62%),
+    #050707;
+  color: var(--command-text);
+}
+
+.timelineDatePickerMenu .datePickerNavBtn,
+.timelineDatePickerMenu .datePickerAction {
+  border-color: rgba(49, 240, 116, 0.16);
+  color: var(--command-execution);
+  background: rgba(49, 240, 116, 0.06);
+}
+
+.timelineDatePickerMenu .datePickerMonth {
+  color: var(--command-text);
+  font-weight: 820;
+}
+
+.timelineDatePickerMenu .datePickerWeekday {
+  color: var(--command-muted);
+}
+
+.timelineDatePickerMenu .datePickerDay:hover {
+  background: rgba(49, 240, 116, 0.08);
+}
+
+.timelineDatePickerMenu .datePickerDay.isSelected {
+  border-color: rgba(49, 240, 116, 0.62);
+  background: rgba(49, 240, 116, 0.16);
+  color: var(--command-text);
+  box-shadow: inset 0 0 0 1px rgba(49, 240, 116, 0.44);
+}
+
+.timelineDatePickerMenu .datePickerDay.isToday {
+  color: var(--command-execution);
+  box-shadow: inset 0 0 0 1px rgba(49, 240, 116, 0.3);
+}
+
+.timelineDatePickerMenu .datePickerDay.isSelected.isToday {
+  box-shadow: inset 0 0 0 1px rgba(49, 240, 116, 0.54);
+}
+
+[data-page-id="timeline"] .lovableTimelineCalendarTitle {
+  color: var(--command-text);
+  font-weight: 820;
+}
+
+[data-page-id="timeline"] .lovableTimelineCalendarDialog .lovableSectionLabel {
+  color: color-mix(in srgb, var(--command-execution) 62%, var(--command-muted));
+}
+
+[data-page-id="timeline"] .lovableTimelineCalendarSection {
+  padding: 11px 12px;
+  border: 1px solid var(--command-border);
+  border-radius: var(--radius-14);
+  background: color-mix(in srgb, var(--command-surface-strong) 76%, transparent);
+}
+
+[data-page-id="timeline"] .lovableTimelineCalendarSection .selectTrigger {
+  border-color: rgba(49, 240, 116, 0.16);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.018)),
+    rgba(7, 11, 12, 0.9);
+  color: var(--command-text);
+  box-shadow: none;
+}
+
+[data-page-id="timeline"] .lovableTimelineCalendarSection .selectTrigger:hover,
+[data-page-id="timeline"] .lovableTimelineCalendarSection .selectTrigger:focus-visible {
+  border-color: rgba(49, 240, 116, 0.34);
+  box-shadow: 0 0 0 1px rgba(49, 240, 116, 0.16);
+}
+
+[data-page-id="timeline"] .lovableTimelineCalendarSection .selectChevron {
+  color: var(--command-muted);
+}
+
+[data-page-id="timeline"] .lovableTimelineSelectedDate {
+  color: var(--command-text);
+  font-weight: 760;
+}
+
+@media (max-width: 430px) {
+  [data-page-id="timeline"] .container {
+    padding-inline: calc(13px + var(--safe-left)) calc(13px + var(--safe-right));
+    padding-bottom: calc(168px + max(var(--safe-bottom), 0px));
+  }
+
+  .timelineCommandPage {
+    gap: 10px;
+  }
+
+  .timelineCommandHero {
+    min-height: 100px;
+    padding: 13px;
+  }
+
+  .timelineCommandHero .CommandSectionHeader__title {
+    font-size: 27px;
+  }
+
+  .timelineStatusMetric {
+    padding: 10px 8px;
+  }
+
+  .timelineStatusMetric strong {
+    font-size: 12.5px;
+  }
+
+  [data-page-id="timeline"] .lovableTimelineList {
+    padding-left: 10px;
+  }
+
+  [data-page-id="timeline"] .lovableTimelineNode {
+    left: -10px;
+  }
+
+  .timelineCardMain {
+    grid-template-columns: 58px minmax(0, 1fr);
+    gap: 9px;
+  }
+
+  .timelineDateStrip {
+    gap: 4px;
+    padding: 6px;
+    border-radius: 18px;
+  }
+
+  .timelineDatePill {
+    min-height: 45px;
+    border-radius: 13px;
+  }
+
+  .timelineDatePill strong {
+    font-size: 15px;
+  }
+
+  .timelineDateSeparator {
+    padding-left: 13px;
+  }
+
+  [data-page-id="timeline"] .lovableTimelineExpandMeta,
+  [data-page-id="timeline"] .lovableTimelineExpandActions {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-page-id="timeline"] .lovableTimelineCardButton,
+  [data-page-id="timeline"] .lovableTimelineAction {
+    transition:
+      border-color var(--motion-standard) var(--ease-standard),
+      transform var(--motion-fast) var(--ease-standard);
+  }
+
+  [data-page-id="timeline"] .lovableTimelineCardButton:hover {
+    transform: translateY(-1px);
+  }
+}

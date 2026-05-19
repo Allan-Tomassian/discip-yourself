@@ -13,6 +13,7 @@ import {
   GhostButton,
   PrimaryButton,
 } from "./shared/ui/app";
+import { CommandLoadingState } from "./shared/ui/command";
 import { uid } from "./utils/helpers";
 import "./app/appShell.css";
 import "./styles/lovable.css";
@@ -21,7 +22,7 @@ import Onboarding from "./pages/Onboarding";
 import Home from "./pages/Home";
 import Objectives from "./pages/Objectives";
 import Timeline from "./pages/Timeline";
-import Insights from "./pages/Insights";
+import Adjust from "./pages/Adjust";
 import CoachPage from "./pages/Coach";
 import Preferences from "./pages/Preferences";
 import Account from "./pages/Account";
@@ -40,7 +41,6 @@ import Session from "./pages/Session";
 import Privacy from "./pages/Privacy";
 import Support from "./pages/Support";
 import BottomNavigation from "./components/navigation/BottomNavigation";
-import TodayAdjustmentSheet from "./components/today/TodayAdjustmentSheet";
 import { applyThemeTokens, BRAND_ACCENT, DEFAULT_THEME } from "./theme/themeTokens";
 import { todayLocalKey } from "./utils/dateKey";
 import { normalizePriorities } from "./logic/priority";
@@ -80,6 +80,7 @@ import {
 import { isFirstRunDone } from "./features/first-run/firstRunModel";
 import { resolveGoalType } from "./domain/goalType";
 import { BehaviorFeedbackHost, BehaviorFeedbackProvider } from "./feedback/BehaviorFeedbackContext";
+import { ADJUST_ACTION_IDS } from "./features/adjust/adjustDiagnostic";
 
 function runSelfTests(data) {
   const isProd = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.PROD;
@@ -138,7 +139,6 @@ export default function App() {
     conversationId: null,
     prefill: "",
   });
-  const [adjustmentSheetOpen, setAdjustmentSheetOpen] = useState(false);
   const dataRef = useRef(data);
   const invariantLogRef = useRef(new Set());
   const tour = useTour({ data, setData, steps: FIRST_USE_TOUR_STEPS, tourVersion: TOUR_VERSION });
@@ -237,7 +237,8 @@ export default function App() {
         sourceSurface === "today" ||
         sourceSurface === "timeline" ||
         sourceSurface === "coach" ||
-        sourceSurface === "insights"
+        sourceSurface === "insights" ||
+        sourceSurface === "adjust"
           ? sourceSurface
           : "unknown";
       setSessionLaunchState({
@@ -275,14 +276,43 @@ export default function App() {
     tab === "edit-item" ||
     tab === "session" ||
     tab === "onboarding";
-  const showBottomRail = !hideNavigationChrome && new Set(["today", "objectives", "timeline", "insights", "coach"]).has(tab);
+  const showBottomRail = !hideNavigationChrome && new Set(["today", "objectives", "timeline", "adjust", "coach"]).has(tab);
   const handleBottomNavigationSelect = useCallback(
     (nextTab) => {
-      if (nextTab === "adjust") {
-        setAdjustmentSheetOpen(true);
+      setTab(nextTab);
+    },
+    [setTab]
+  );
+  const handleAdjustAction = useCallback(
+    (actionId) => {
+      if (actionId === ADJUST_ACTION_IDS.REORGANIZE_SCHEDULE) {
+        setTab("timeline");
         return;
       }
-      setTab(nextTab);
+      if (actionId === ADJUST_ACTION_IDS.SIMPLIFY_DAY) {
+        setCoachState({
+          mode: "plan",
+          conversationId: null,
+          prefill: "Simplifie ma journée en gardant seulement le prochain bloc utile.",
+        });
+        setTab("coach");
+        return;
+      }
+      if (actionId === ADJUST_ACTION_IDS.REDUCE_LOAD) {
+        setCoachState({
+          mode: "plan",
+          conversationId: null,
+          prefill: "Réduis la charge de ma journée sans perdre l’action critique.",
+        });
+        setTab("coach");
+        return;
+      }
+      setCoachState({
+        mode: "free",
+        conversationId: null,
+        prefill: "Aide-moi à ajuster ma journée.",
+      });
+      setTab("coach");
     },
     [setTab]
   );
@@ -454,7 +484,7 @@ export default function App() {
         }
         return;
       }
-      if (effectiveCategoryId && (origin.mainTab === "today" || origin.mainTab === "timeline" || origin.mainTab === "insights")) {
+      if (effectiveCategoryId && (origin.mainTab === "today" || origin.mainTab === "timeline" || origin.mainTab === "adjust")) {
         setData((previous) => ({
           ...previous,
           ui: withExecutionActiveCategoryId(previous.ui, effectiveCategoryId),
@@ -653,7 +683,7 @@ export default function App() {
       if (ui.librarySelectedCategoryId && !visibleIds.has(ui.librarySelectedCategoryId)) {
         issues.push("librarySelectedCategoryId");
       }
-      ["today", "timeline", "objectives", "insights"].forEach((key) => {
+      ["today", "timeline", "objectives", "adjust"].forEach((key) => {
         if (scv[key] && !visibleIds.has(scv[key])) issues.push(`selectedCategoryByView.${key}`);
       });
       if (!issues.length) return;
@@ -800,13 +830,13 @@ export default function App() {
 
   if (dataLoading && !renderTodayDuringDataLoad) {
     return renderWithBehaviorFeedback(
-      <div
+      <CommandLoadingState
         data-testid="user-data-loading-screen"
         className="appViewportFill"
-        style={{ display: "grid", placeItems: "center", padding: 24 }}
-      >
-        <p>Chargement...</p>
-      </div>
+        label="SYSTÈME"
+        title="Chargement de ton système…"
+        steps={["Connexion aux données", "Préparation du cockpit", "Synchronisation"]}
+      />
     );
   }
 
@@ -829,13 +859,13 @@ export default function App() {
 
   if (!renderTodayDuringDataLoad && tab === "onboarding") {
     return renderWithBehaviorFeedback(
-      <div
+      <CommandLoadingState
         data-testid="first-run-redirecting-screen"
         className="appViewportFill"
-        style={{ display: "grid", placeItems: "center", padding: 24 }}
-      >
-        <p>Redirection...</p>
-      </div>
+        label="SYSTÈME"
+        title="Redirection vers ton cockpit…"
+        steps={["Validation du parcours", "Ouverture de Today"]}
+      />
     );
   }
 
@@ -953,21 +983,8 @@ export default function App() {
             setTab("objectives");
           }}
         />
-      ) : tab === "insights" ? (
-        <Insights
-          data={data}
-          setData={setData}
-          setTab={setTab}
-          onOpenSession={({ categoryId, dateKey, occurrenceId }) =>
-            openSessionSurface({
-              sourceSurface: "insights",
-              categoryId,
-              dateKey,
-              occurrenceId,
-            })
-          }
-          persistenceScope={persistenceScope}
-        />
+      ) : tab === "adjust" ? (
+        <Adjust data={data} onAdjustAction={handleAdjustAction} />
       ) : tab === "objectives" ? (
         <Objectives
           data={data}
@@ -1065,8 +1082,8 @@ export default function App() {
                 ? "timeline"
                 : sessionLaunchState?.sourceSurface === "coach"
                   ? "coach"
-                  : sessionLaunchState?.sourceSurface === "insights"
-                    ? "insights"
+                  : sessionLaunchState?.sourceSurface === "adjust" || sessionLaunchState?.sourceSurface === "insights"
+                    ? "adjust"
                   : "today";
             setSessionLaunchState(null);
             setLibraryCategoryId(null);
@@ -1181,7 +1198,7 @@ export default function App() {
                       ...prev,
                       ui: withExecutionActiveCategoryId(prev.ui, target.categoryId),
                     }));
-                    setTab("insights");
+                    setTab("adjust");
                   }
                   setActiveReminder(null);
                 }}
@@ -1206,41 +1223,6 @@ export default function App() {
         />
       ) : null}
       <DiagnosticOverlay data={safeData} tab={tab} />
-      <TodayAdjustmentSheet
-        open={adjustmentSheetOpen}
-        onClose={() => setAdjustmentSheetOpen(false)}
-        onSimplify={() => {
-          setAdjustmentSheetOpen(false);
-          setCoachState({
-            mode: "plan",
-            conversationId: null,
-            prefill: "Simplifie ma journée en gardant seulement le prochain bloc utile.",
-          });
-          setTab("coach");
-        }}
-        onReorganize={() => {
-          setAdjustmentSheetOpen(false);
-          setTab("timeline");
-        }}
-        onReduce={() => {
-          setAdjustmentSheetOpen(false);
-          setCoachState({
-            mode: "plan",
-            conversationId: null,
-            prefill: "Réduis la charge de ma journée sans perdre l’action critique.",
-          });
-          setTab("coach");
-        }}
-        onAskCoach={() => {
-          setAdjustmentSheetOpen(false);
-          setCoachState({
-            mode: "free",
-            conversationId: null,
-            prefill: "Aide-moi à ajuster ma journée.",
-          });
-          setTab("coach");
-        }}
-      />
       <PaywallModal
         open={paywallOpen}
         reason={paywallReason}

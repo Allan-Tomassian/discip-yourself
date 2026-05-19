@@ -45,6 +45,7 @@ export const TAB_COPY = Object.freeze({
   objectives: SURFACE_LABELS.library,
   timeline: SURFACE_LABELS.planning,
   insights: SURFACE_LABELS.pilotage,
+  adjust: "Ajuster",
   coach: SURFACE_LABELS.coach,
 });
 

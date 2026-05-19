@@ -5,9 +5,18 @@ import { getVisibleCategories } from "../domain/categoryVisibility";
 import { computeAggregateProgress, getGoalProgress } from "../logic/goals";
 import { splitProcessByLink } from "../logic/linking";
 import { AppScreen, CompactCategoryFilter } from "../shared/ui/app";
+import {
+  CommandBadge,
+  CommandCard,
+  CommandCTA,
+  CommandEmptyState,
+  CommandSectionHeader,
+  CommandSurface,
+} from "../shared/ui/command";
 import { OBJECTIVES_SCREEN_COPY } from "../ui/labels";
 import { resolveCategoryColor } from "../utils/categoryPalette";
 import { normalizeLocalDateKey, todayLocalKey } from "../utils/datetime";
+import "../features/objectives/objectives.css";
 
 function clampPercent(value) {
   return Math.max(0, Math.min(100, Math.round((Number.isFinite(value) ? value : 0) * 100)));
@@ -129,30 +138,37 @@ function openObjectiveActionEditor(action, onEditItem) {
   onEditItem?.({ id: action.id, type: "PROCESS", categoryId: action.categoryId || null });
 }
 
-function ObjectiveRing({ progress = 0, color = "#8b78ff" }) {
-  const circumference = 2 * Math.PI * 21;
-  const offset = circumference - circumference * Math.max(0, Math.min(1, progress));
-  return (
-    <div className="lovableObjectiveRing" aria-hidden="true">
-      <svg viewBox="0 0 52 52">
-        <circle className="lovableObjectiveRingTrack" cx="26" cy="26" r="21" />
-        <circle
-          className="lovableObjectiveRingValue"
-          cx="26"
-          cy="26"
-          r="21"
-          stroke={color}
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-        />
-      </svg>
-      <div className="lovableObjectiveRingLabel">{clampPercent(progress)}%</div>
-    </div>
-  );
-}
-
 function escapeSelectorValue(value) {
   return String(value || "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
+function normalizeStatusKey(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function resolveObjectiveStatus(goal, progress = 0) {
+  const status = normalizeStatusKey(goal?.status || goal?.state || goal?.lifecycleStatus);
+  if (["failed", "failure", "abandoned", "echec", "echoue"].includes(status)) {
+    return { key: "failed", label: "Échoué", tone: "critical" };
+  }
+  if (["paused", "pause", "suspended", "on_hold", "hold", "en_pause"].includes(status)) {
+    return { key: "paused", label: "En pause", tone: "attention" };
+  }
+  if (["completed", "complete", "done", "finished", "termine", "terminee"].includes(status) || progress >= 1) {
+    return { key: "completed", label: "Terminé", tone: "execution" };
+  }
+  return { key: "active", label: "Actif", tone: "execution" };
+}
+
+function resolveActionTone(item, todayKey) {
+  if (item?.isDone) return "execution";
+  const dateKey = normalizeLocalDateKey(item?.occurrence?.date) || "";
+  if (dateKey && dateKey < todayKey) return "attention";
+  return "neutral";
 }
 
 function buildObjectiveCategoryOptions({ categories, cards, occurrencesByGoalId, todayKey }) {
@@ -286,6 +302,38 @@ export default function Objectives({
     () => buildObjectiveCategoryOptions({ categories, cards, occurrencesByGoalId, todayKey }),
     [cards, categories, occurrencesByGoalId, todayKey]
   );
+  const overviewMetrics = useMemo(() => {
+    const outcomeIds = new Set(outcomes.map((outcome) => outcome.id).filter(Boolean));
+    const activeObjectives = outcomes.filter((outcome) => {
+      const progress = goalProgressById.get(outcome.id) || 0;
+      return resolveObjectiveStatus(outcome, progress).key === "active";
+    }).length;
+    const averageProgress = outcomes.length
+      ? Math.round(
+          outcomes.reduce((sum, outcome) => sum + clampPercent(goalProgressById.get(outcome.id) || 0), 0) /
+            outcomes.length
+        )
+      : 0;
+    const linkedActionCount = processGoals.filter((goal) => {
+      const linkedId = goal?.parentId || goal?.outcomeId || "";
+      return outcomeIds.has(linkedId);
+    }).length;
+
+    return {
+      activeObjectives,
+      averageProgress,
+      linkedActionCount,
+    };
+  }, [goalProgressById, outcomes, processGoals]);
+
+  const openCreateMenuFrom = (event) => {
+    if (typeof onOpenCreateMenu !== "function") return;
+    onOpenCreateMenu({
+      source: "objectives",
+      anchorEl: event.currentTarget,
+      anchorRect: event.currentTarget.getBoundingClientRect(),
+    });
+  };
 
   useEffect(() => {
     const firstActionId = focusTarget?.actionIds?.[0] || null;
@@ -335,98 +383,173 @@ export default function Objectives({
       headerTitle={OBJECTIVES_SCREEN_COPY.title}
       headerRight={
         typeof onOpenCreateMenu === "function" ? (
-          <button
-            type="button"
+          <CommandCTA
+            variant="secondary"
+            tone="execution"
             className="lovableObjectivesCreate"
             data-testid="objectives-universal-capture-button"
             aria-label={OBJECTIVES_SCREEN_COPY.createAriaLabel}
-            onClick={(event) =>
-              onOpenCreateMenu?.({
-                source: "objectives",
-                anchorEl: event.currentTarget,
-                anchorRect: event.currentTarget.getBoundingClientRect(),
-              })
-            }
+            onClick={openCreateMenuFrom}
           >
             +
-          </button>
+          </CommandCTA>
         ) : null
       }
     >
-      <div className="lovablePage">
-        {categories.length ? (
-          <CompactCategoryFilter
-            label={OBJECTIVES_SCREEN_COPY.categoryFilterLabel}
-            options={categoryOptions}
-            value={categoryFilterId}
-            onChange={setCategoryFilterId}
-            allLabel={OBJECTIVES_SCREEN_COPY.allCategories}
+      <div className="objectivesCommandPage">
+        <CommandSurface tone="execution" className="objectivesOverviewCommand objectivesHeroCommand">
+          <CommandSectionHeader
+            label="OBJECTIFS"
+            title="Structure. Direction. Impact."
+            tone="execution"
           />
+        </CommandSurface>
+
+        <p className="objectivesCommandIntent">
+          Tes objectifs donnent le cap. Chaque action exécutée renforce ton système.
+        </p>
+
+        <CommandSurface
+          tone="execution"
+          density="compact"
+          className="objectivesStatsStrip"
+          aria-label="Vue d'ensemble des objectifs"
+        >
+          <div className="objectivesOverviewMetrics" aria-label="Vue d'ensemble des objectifs">
+            <div className="objectivesMetric">
+              <span className="objectivesMetricValue">{overviewMetrics.activeObjectives}</span>
+              <span className="objectivesMetricLabel">Objectifs actifs</span>
+            </div>
+            <div className="objectivesMetric">
+              <span className="objectivesMetricValue">{overviewMetrics.averageProgress}%</span>
+              <span className="objectivesMetricLabel">Progression moyenne</span>
+            </div>
+            <div className="objectivesMetric">
+              <span className="objectivesMetricValue">{overviewMetrics.linkedActionCount}</span>
+              <span className="objectivesMetricLabel">Actions liées</span>
+            </div>
+          </div>
+        </CommandSurface>
+
+        {categories.length ? (
+          <div className="objectivesFilterWrap">
+            <CompactCategoryFilter
+              label={OBJECTIVES_SCREEN_COPY.categoryFilterLabel}
+              options={categoryOptions}
+              value={categoryFilterId}
+              onChange={setCategoryFilterId}
+              allLabel={OBJECTIVES_SCREEN_COPY.allCategories}
+            />
+          </div>
         ) : null}
 
         {filteredCards.length ? (
-          <div className="lovableObjectivesList">
+          <div className="objectivesCommandList">
             {filteredCards.map((card) => {
               const expanded = Boolean(expandedCards[card.id]);
-              const color = resolveCategoryColor(card.category, "#8b78ff");
+              const color = resolveCategoryColor(card.category, "#30f273");
+              const progressPercent = clampPercent(card.progress);
+              const status = resolveObjectiveStatus(card.outcome, card.progress);
               return (
-                <div key={card.id} className="lovableCard lovableObjectiveCard" data-objective-card={card.id}>
+                <CommandCard
+                  key={card.id}
+                  as="article"
+                  tone={status.tone}
+                  className="objectivesCommandCard"
+                  data-objective-card={card.id}
+                  style={{ "--objectives-category-accent": color }}
+                >
                   <button
                     type="button"
-                    className="lovableObjectiveHeader"
+                    className="objectivesCardHeader"
+                    aria-expanded={expanded}
                     onClick={() =>
                       setExpandedCards((previous) => ({ ...previous, [card.id]: !expanded }))
                     }
                   >
-                    <ObjectiveRing progress={card.progress} color={color} />
-                    <div>
+                    <span className="objectivesCategoryMarker" aria-hidden="true" />
+                    <span className="objectivesCardContent">
                       {card.category?.name ? (
-                        <div className="lovableObjectiveCategory">{card.category.name}</div>
+                        <span className="objectivesCardCategory">{card.category.name}</span>
                       ) : null}
-                      <div className="lovableObjectiveTitle">{card.title}</div>
-                      <div className="lovableObjectiveSubtitle">{card.subtitle}</div>
-                    </div>
-                    <div className="lovableObjectiveChevron">{expanded ? "⌃" : "⌄"}</div>
+                      <span className="objectivesCardTitle">{card.title}</span>
+                      <span className="objectivesCardSubtitle">{card.subtitle}</span>
+                      <span className="objectivesProgressTrack" aria-hidden="true">
+                        <span
+                          className="objectivesProgressValue"
+                          style={{ width: `${progressPercent}%` }}
+                        />
+                      </span>
+                    </span>
+                    <span className="objectivesCardMeta">
+                      <CommandBadge tone={status.tone} className="objectivesStatusBadge">
+                        {status.label}
+                      </CommandBadge>
+                      <span className="objectivesProgressText">{progressPercent}%</span>
+                      <span className="objectivesCardChevron" aria-hidden="true">
+                        {expanded ? "⌃" : "⌄"}
+                      </span>
+                    </span>
                   </button>
                   {expanded ? (
-                    <div className="lovableObjectiveBody">
-                      <div className="lovableObjectiveSections">
+                    <div className="objectivesCardBody">
+                      <div className="objectivesDetailPanel">
+                        <div>
+                          <div className="objectivesDetailLabel">Vision</div>
+                          <p className="objectivesDetailText">{card.subtitle}</p>
+                        </div>
+                        <div className="objectivesDetailProgress" aria-label={`Progression ${progressPercent}%`}>
+                          <span>{progressPercent}%</span>
+                          <div className="objectivesProgressTrack">
+                            <div
+                              className="objectivesProgressValue"
+                              style={{ width: `${progressPercent}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="objectivesActionSections">
                         {buildObjectiveSections({
                           actions: card.actions,
                           occurrencesByGoalId,
                           todayKey,
                         }).map((section) => (
-                          <div key={`${card.id}:${section.key}`} className="lovableObjectiveSection">
-                            <div className="lovableObjectiveSectionTitle">{section.label}</div>
-                            <div className="lovableObjectiveTasks">
+                          <div key={`${card.id}:${section.key}`} className="objectivesActionSection">
+                            <div className="objectivesActionSectionTitle">{section.label}</div>
+                            <div className="objectivesActionRows">
                               {section.items.length ? (
-                                section.items.map((item) => (
-                                  <button
-                                    key={item.id}
-                                    type="button"
-                                    className={`lovableObjectiveTask${item.isDone ? " is-done" : ""}`}
-                                    data-objective-row={item.goal?.id || ""}
-                                    onClick={() => openObjectiveActionEditor(item.goal, onEditItem)}
-                                  >
-                                    <span className="lovableObjectiveTaskCircle" />
-                                    <span className="lovableObjectiveTaskTitle">
-                                      {item.title}
-                                      {item.meta ? ` • ${item.meta}` : ""}
-                                    </span>
-                                  </button>
-                                ))
+                                section.items.map((item) => {
+                                  const actionTone = resolveActionTone(item, todayKey);
+                                  return (
+                                    <button
+                                      key={item.id}
+                                      type="button"
+                                      className="objectivesActionRow"
+                                      data-command-tone={actionTone}
+                                      data-objective-row={item.goal?.id || ""}
+                                      onClick={() => openObjectiveActionEditor(item.goal, onEditItem)}
+                                    >
+                                      <span className="objectivesActionDot" aria-hidden="true" />
+                                      <span className="objectivesActionBody">
+                                        <span className="objectivesActionTitle">{item.title}</span>
+                                        {item.meta ? <span className="objectivesActionMeta">{item.meta}</span> : null}
+                                      </span>
+                                      {item.isDone ? <span className="objectivesActionDone">Validé</span> : null}
+                                    </button>
+                                  );
+                                })
                               ) : (
-                                <div className="lovableMuted">{section.emptyLabel}</div>
+                                <div className="objectivesSectionEmpty">{section.emptyLabel}</div>
                               )}
                             </div>
                           </div>
                         ))}
                       </div>
-                      <div className="lovableObjectiveFooter">
+                      <div className="objectivesCardFooter">
                         {card.type === "outcome" ? (
-                          <button
-                            type="button"
-                            className="lovableGhostButton lovableObjectiveLink"
+                          <CommandCTA
+                            variant="ghost"
+                            className="objectivesFooterAction"
                             onClick={() =>
                               onEditItem?.({
                                 id: card.outcome.id,
@@ -436,29 +559,38 @@ export default function Objectives({
                             }
                           >
                             {OBJECTIVES_SCREEN_COPY.editObjective}
-                          </button>
+                          </CommandCTA>
                         ) : null}
-                        <button
-                          type="button"
-                          className="lovableGhostButton"
+                        <CommandCTA
+                          variant="secondary"
+                          tone="execution"
+                          className="objectivesFooterAction"
                           onClick={() => onOpenCreateAction?.(card.category?.id || null, card.type === "outcome" ? card.id : null)}
                         >
                           {OBJECTIVES_SCREEN_COPY.addAction}
-                        </button>
+                        </CommandCTA>
                       </div>
                     </div>
                   ) : null}
-                </div>
+                </CommandCard>
               );
             })}
           </div>
         ) : (
-          <div className="lovableCard lovableEmptyCard">
-            <div className="lovableEmptyTitle">{OBJECTIVES_SCREEN_COPY.emptyTitle}</div>
-            <p className="lovableEmptyCopy">
-              {OBJECTIVES_SCREEN_COPY.emptyCopy}
-            </p>
-          </div>
+          <CommandEmptyState
+            label="OBJECTIFS"
+            title="Aucun objectif pour le moment"
+            subtitle="Les objectifs donnent une direction claire et transforment tes efforts en résultats."
+            tone="execution"
+            className="objectivesEmptyState"
+            actions={
+              typeof onOpenCreateMenu === "function" ? (
+                <CommandCTA tone="execution" onClick={openCreateMenuFrom}>
+                  Créer mon premier objectif
+                </CommandCTA>
+              ) : null
+            }
+          />
         )}
       </div>
     </AppScreen>

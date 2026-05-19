@@ -32,3 +32,19 @@ describe("useAppNavigation legacy coach alias", () => {
     });
   });
 });
+
+describe("useAppNavigation adjust aliases", () => {
+  it("routes the canonical Ajuster path to the adjust tab", () => {
+    expect(parseNavigationState("/adjust", "", null)).toMatchObject({
+      initialTab: "adjust",
+    });
+  });
+
+  it("keeps legacy analysis paths compatible with the new Ajuster diagnostic surface", () => {
+    for (const path of ["/insights", "/pilotage", "/tools"]) {
+      expect(parseNavigationState(path, "", null)).toMatchObject({
+        initialTab: "adjust",
+      });
+    }
+  });
+});

@@ -7,11 +7,18 @@ import {
   AppDialog,
   AppScreen,
   CompactCategoryFilter,
-  GhostButton,
-  PrimaryButton,
 } from "../shared/ui/app";
+import {
+  CommandBadge,
+  CommandCard,
+  CommandCTA,
+  CommandEmptyState,
+  CommandSectionHeader,
+} from "../shared/ui/command";
+import { buildTimelineDateStrip, getTimelineDisplayTime } from "./timelineDisplayModel";
 import { TIMELINE_SCREEN_COPY } from "../ui/labels";
 import { addDaysLocal, fromLocalDateKey, getWeekdayShortLabel, normalizeLocalDateKey, todayLocalKey } from "../utils/datetime";
+import "../features/planning/timeline.css";
 
 const WINDOW_PAST_DAYS = 5;
 const WINDOW_FUTURE_DAYS = 14;
@@ -89,6 +96,22 @@ function statusLabel(status) {
   if (status === "blocked") return "Bloquée";
   if (status === "reported") return "Reportée";
   return TIMELINE_SCREEN_COPY.upcoming;
+}
+
+function resolveTimelineTone(status, { isCurrent = false, isSelectedDay = false } = {}) {
+  if (status === "done" || status === "in_progress") return "execution";
+  if (status === "partial" || status === "blocked" || status === "reported") return "attention";
+  if (isCurrent && isSelectedDay) return "execution";
+  return "neutral";
+}
+
+function formatTimelineTime(entry) {
+  const occurrence = entry?.targetOccurrence || entry?.occurrence || null;
+  return getTimelineDisplayTime({ startTime: entry?.startTime, occurrence, goal: entry?.goal });
+}
+
+function formatDurationLabel(minutes) {
+  return Number.isFinite(minutes) ? `${minutes} min` : "Libre";
 }
 
 function resolveCurrentStatus({ occurrence, groupedOccurrences = [], activeOccurrenceId = null }) {
@@ -279,6 +302,7 @@ export default function Timeline({ data, setData, setTab, onEditItem, onOpenSess
           category: entry.category,
           outcome: entry.outcome,
           dateKey: representative?.dateKey || entry.dateKey,
+          startTime: representative?.startTime || "",
           status: resolveCurrentStatus({
             occurrence: representative?.occurrence || null,
             groupedOccurrences: sortedGrouped,
@@ -306,6 +330,7 @@ export default function Timeline({ data, setData, setTab, onEditItem, onOpenSess
         category: entry.category,
         outcome: entry.outcome,
         dateKey: entry.dateKey,
+        startTime: entry.startTime,
         status: resolveCurrentStatus({
           occurrence: entry.occurrence,
           activeOccurrenceId,
@@ -318,12 +343,7 @@ export default function Timeline({ data, setData, setTab, onEditItem, onOpenSess
         groupedOccurrences: [entry],
         categoryLabel: entry.category?.name || "",
         title: entry.goal?.title || entry.occurrence?.title || TIMELINE_SCREEN_COPY.entryFallbackTitle,
-        subtitle: [
-          Number.isFinite(entry.occurrence?.durationMinutes) ? `${entry.occurrence.durationMinutes} min` : "",
-          statusLabel(resolveCurrentStatus({ occurrence: entry.occurrence, activeOccurrenceId })),
-        ]
-          .filter(Boolean)
-          .join(" • "),
+        subtitle: statusLabel(resolveCurrentStatus({ occurrence: entry.occurrence, activeOccurrenceId })),
         targetOccurrence: entry.occurrence,
       });
     }
@@ -337,6 +357,32 @@ export default function Timeline({ data, setData, setTab, onEditItem, onOpenSess
   }, [displayEntries, selectedDateKey]);
 
   const selectedDateLabel = useMemo(() => formatExpandedDateLabel(selectedDateKey), [selectedDateKey]);
+  const dateStripDays = useMemo(
+    () => buildTimelineDateStrip(selectedDateKey, todayKey),
+    [selectedDateKey, todayKey]
+  );
+  const selectedDayEntries = useMemo(
+    () => filteredOccurrenceEntries.filter((entry) => entry.dateKey === selectedDateKey),
+    [filteredOccurrenceEntries, selectedDateKey]
+  );
+  const selectedDayDurationMinutes = useMemo(
+    () =>
+      selectedDayEntries.reduce((total, entry) => {
+        const minutes = Number(entry?.occurrence?.durationMinutes || entry?.goal?.sessionMinutes);
+        return Number.isFinite(minutes) ? total + minutes : total;
+      }, 0),
+    [selectedDayEntries]
+  );
+  const nextCommandEntry = useMemo(
+    () =>
+      displayEntries.find((entry) => String(entry?.dateKey || "") >= selectedDateKey && entry?.status !== "done") ||
+      displayEntries[0] ||
+      null,
+    [displayEntries, selectedDateKey]
+  );
+  const selectedDayBlockLabel = `${selectedDayEntries.length} bloc${selectedDayEntries.length > 1 ? "s" : ""}`;
+  const selectedDayDurationLabel = selectedDayDurationMinutes > 0 ? `${selectedDayDurationMinutes} min` : "Durée libre";
+  const nextCommandLabel = nextCommandEntry?.title || "Aucun prochain bloc";
   const commitSelectedDate = useCallback(
     (nextDateKey) => {
       const normalized = normalizeLocalDateKey(nextDateKey);
@@ -418,51 +464,123 @@ export default function Timeline({ data, setData, setTab, onEditItem, onOpenSess
         </button>
       }
     >
-      <div className="lovablePage">
-        {categories.length ? (
-          <CompactCategoryFilter
-            label={TIMELINE_SCREEN_COPY.categoryFilterLabel}
-            options={categoryOptions}
-            value={categoryFilterId}
-            onChange={setCategoryFilterId}
-            allLabel={TIMELINE_SCREEN_COPY.allCategories}
+      <div className="timelineCommandPage lovablePage">
+        <CommandCard tone="execution" className="timelineCommandHero">
+          <CommandSectionHeader
+            tone="execution"
+            label="PLANNING"
+            title="Architecture du temps."
+            subtitle="Ton temps devient ton système. Chaque bloc doit servir une direction."
           />
+        </CommandCard>
+
+        <div className="timelineDateStrip" aria-label="Sélection du jour">
+          {dateStripDays.map((day) => (
+            <button
+              key={day.dateKey}
+              type="button"
+              className={`timelineDatePill${day.isSelected ? " is-selected" : ""}${day.isToday ? " is-today" : ""}`}
+              aria-pressed={day.isSelected}
+              onClick={() => commitSelectedDate(day.dateKey)}
+            >
+              <span>{day.weekday}</span>
+              <strong>{day.dayNumber}</strong>
+              {day.isToday ? <i aria-hidden="true" /> : null}
+            </button>
+          ))}
+        </div>
+
+        <CommandCard tone="neutral" density="compact" className="timelineStatusStrip">
+          <div className="timelineStatusMetric">
+            <span>Jour affiché</span>
+            <strong>{selectedDateLabel}</strong>
+          </div>
+          <div className="timelineStatusMetric">
+            <span>Blocs planifiés</span>
+            <strong>{selectedDayBlockLabel}</strong>
+          </div>
+          <div className="timelineStatusMetric">
+            <span>Charge</span>
+            <strong>{selectedDayDurationLabel}</strong>
+          </div>
+          <div className="timelineStatusMetric timelineStatusMetric--wide">
+            <span>Prochain bloc</span>
+            <strong>{nextCommandLabel}</strong>
+          </div>
+        </CommandCard>
+
+        {categories.length ? (
+          <div className="timelineFilterWrap">
+            <CompactCategoryFilter
+              label={TIMELINE_SCREEN_COPY.categoryFilterLabel}
+              options={categoryOptions}
+              value={categoryFilterId}
+              onChange={setCategoryFilterId}
+              allLabel={TIMELINE_SCREEN_COPY.allCategories}
+            />
+          </div>
         ) : null}
 
         {displayEntries.length ? (
           <div className="lovableTimelineList">
-            {displayEntries.map((entry) => {
+            {displayEntries.map((entry, index) => {
               const isComplete = entry.status === "done";
               const isCurrent = entry.id === currentEntryId;
+              const isSelectedDay = entry.dateKey === selectedDateKey;
+              const tone = resolveTimelineTone(entry.status, { isCurrent, isSelectedDay });
               const expanded = entry.id === expandedEntryId;
               const targetOccurrence = entry.targetOccurrence || null;
+              const previousEntry = displayEntries[index - 1] || null;
+              const showDateSeparator = !previousEntry || previousEntry.dateKey !== entry.dateKey;
               return (
-                <div
-                  key={entry.id}
-                  className={`lovableTimelineItem${isComplete ? " is-complete" : ""}${isCurrent ? " is-current" : ""}`}
-                >
-                  <div className="lovableTimelineNode" />
-                  <div className={`lovableTimelineCard${expanded ? " is-expanded" : ""}`}>
-                    <button
-                      type="button"
-                      className="lovableTimelineCardButton"
-                      onClick={() => toggleExpanded(entry.id)}
-                      aria-expanded={expanded}
-                      aria-label={`${expanded ? TIMELINE_SCREEN_COPY.collapse : TIMELINE_SCREEN_COPY.expand} ${entry.title}`}
+                <React.Fragment key={entry.id}>
+                  {showDateSeparator ? (
+                    <div className="timelineDateSeparator">
+                      <span>{formatDateLabel(entry.dateKey)}</span>
+                    </div>
+                  ) : null}
+                  <div
+                    className={`lovableTimelineItem timelineCommandItem${isComplete ? " is-complete" : ""}${isCurrent ? " is-current" : ""}`}
+                    data-command-tone={tone}
+                  >
+                    <div className="lovableTimelineNode" />
+                    <CommandCard
+                      tone={tone}
+                      className={`lovableTimelineCard timelineCommandCard${expanded ? " is-expanded" : ""}`}
                     >
-                      <div className="lovableTimelineDate">{formatDateLabel(entry.dateKey)}</div>
-                      {entry.categoryLabel ? <div className="lovableTimelineCategory">{entry.categoryLabel}</div> : null}
-                      <div className="lovableTimelineTitle">{entry.title}</div>
-                      <div className="lovableTimelineSubtitle">{entry.subtitle}</div>
-                    </button>
+                      <button
+                        type="button"
+                        className="lovableTimelineCardButton"
+                        onClick={() => toggleExpanded(entry.id)}
+                        aria-expanded={expanded}
+                        aria-label={`${expanded ? TIMELINE_SCREEN_COPY.collapse : TIMELINE_SCREEN_COPY.expand} ${entry.title}`}
+                      >
+                        <div className="timelineCardTopline">
+                          <CommandBadge tone={tone} className="timelineStatusBadge">
+                            {statusLabel(entry.status)}
+                          </CommandBadge>
+                        </div>
+                        <div className="timelineCardMain">
+                          <div className="timelineTimeRail">
+                            <span>{formatTimelineTime(entry)}</span>
+                          </div>
+                          <div className="timelineCardBody">
+                            {entry.categoryLabel ? <div className="lovableTimelineCategory">{entry.categoryLabel}</div> : null}
+                            <div className="lovableTimelineTitle">{entry.title}</div>
+                            <div className="lovableTimelineSubtitle">
+                              {[entry.outcome?.title || "", formatDurationLabel(entry.durationMinutes), entry.subtitle].filter(Boolean).join(" • ")}
+                            </div>
+                          </div>
+                        </div>
+                      </button>
 
-                    {expanded ? (
-                      <div className="lovableTimelineExpand">
+                      {expanded ? (
+                        <div className="lovableTimelineExpand">
                         <div className="lovableTimelineExpandDate">{formatExpandedDateLabel(entry.dateKey)}</div>
                         <div className="lovableTimelineExpandMeta">
                           <div className="lovableTimelineExpandItem">
                             <span>{TIMELINE_SCREEN_COPY.inlineDuration}</span>
-                            <strong>{Number.isFinite(entry.durationMinutes) ? `${entry.durationMinutes} min` : "Libre"}</strong>
+                            <strong>{formatDurationLabel(entry.durationMinutes)}</strong>
                           </div>
                           <div className="lovableTimelineExpandItem">
                             <span>{TIMELINE_SCREEN_COPY.inlineStatus}</span>
@@ -492,7 +610,7 @@ export default function Timeline({ data, setData, setTab, onEditItem, onOpenSess
                                 .map((occurrenceEntry) => (
                                   <div key={occurrenceEntry.id} className="lovableTimelineUpcomingItem">
                                     <span>{formatExpandedDateLabel(occurrenceEntry.dateKey)}</span>
-                                    <strong>{occurrenceEntry.startTime || "Heure libre"}</strong>
+                                    <strong>{formatTimelineTime(occurrenceEntry)}</strong>
                                   </div>
                                 ))}
                               {!entry.groupedOccurrences.some((occurrenceEntry) => String(occurrenceEntry?.dateKey || "") >= selectedDateKey) ? (
@@ -503,8 +621,9 @@ export default function Timeline({ data, setData, setTab, onEditItem, onOpenSess
                         ) : null}
 
                         <div className="lovableTimelineExpandActions">
-                          <GhostButton
+                          <CommandCTA
                             type="button"
+                            variant="secondary"
                             className="lovableTimelineAction"
                             onClick={() =>
                               onEditItem?.({
@@ -515,10 +634,11 @@ export default function Timeline({ data, setData, setTab, onEditItem, onOpenSess
                             }
                           >
                             {TIMELINE_SCREEN_COPY.inlineEditAction}
-                          </GhostButton>
+                          </CommandCTA>
                           {entry.outcome?.id ? (
-                            <GhostButton
+                            <CommandCTA
                               type="button"
+                              variant="secondary"
                               className="lovableTimelineAction"
                               onClick={() =>
                                 onEditItem?.({
@@ -529,9 +649,9 @@ export default function Timeline({ data, setData, setTab, onEditItem, onOpenSess
                               }
                             >
                               {TIMELINE_SCREEN_COPY.inlineEditObjective}
-                            </GhostButton>
+                            </CommandCTA>
                           ) : null}
-                          <PrimaryButton
+                          <CommandCTA
                             type="button"
                             className="lovableTimelineAction lovableTimelineAction--primary"
                             disabled={!targetOccurrence?.id}
@@ -540,20 +660,24 @@ export default function Timeline({ data, setData, setTab, onEditItem, onOpenSess
                             {activeOccurrenceId && targetOccurrence?.id === activeOccurrenceId
                               ? TIMELINE_SCREEN_COPY.inlineResumeSession
                               : TIMELINE_SCREEN_COPY.inlineStartSession}
-                          </PrimaryButton>
+                          </CommandCTA>
                         </div>
-                      </div>
-                    ) : null}
+                        </div>
+                      ) : null}
+                    </CommandCard>
                   </div>
-                </div>
+                </React.Fragment>
               );
             })}
           </div>
         ) : (
-          <div className="lovableCard lovableEmptyCard">
-            <div className="lovableEmptyTitle">{TIMELINE_SCREEN_COPY.entryFallbackTitle}</div>
-            <p className="lovableEmptyCopy">{TIMELINE_SCREEN_COPY.subtitle}</p>
-          </div>
+          <CommandEmptyState
+            label="PLANNING"
+            title="Aucun bloc planifié"
+            subtitle="Ton planning donne une forme à ton exécution."
+            tone="neutral"
+            className="timelineEmptyState"
+          />
         )}
       </div>
 
@@ -561,7 +685,8 @@ export default function Timeline({ data, setData, setTab, onEditItem, onOpenSess
         open={calendarOpen}
         onClose={() => setCalendarOpen(false)}
         ariaLabel={TIMELINE_SCREEN_COPY.calendarTitle}
-        maxWidth={520}
+        className="timelineCalendarModal"
+        maxWidth={440}
       >
         <div className="lovableTimelineCalendarDialog">
           <div className="lovableTimelineCalendarHeader">
@@ -569,9 +694,9 @@ export default function Timeline({ data, setData, setTab, onEditItem, onOpenSess
               <div className="lovableTimelineCalendarTitle">{TIMELINE_SCREEN_COPY.calendarTitle}</div>
               <p className="lovableMuted">{TIMELINE_SCREEN_COPY.calendarSubtitle}</p>
             </div>
-            <GhostButton type="button" onClick={() => setCalendarOpen(false)}>
+            <CommandCTA type="button" variant="ghost" onClick={() => setCalendarOpen(false)}>
               Fermer
-            </GhostButton>
+            </CommandCTA>
           </div>
 
           <div className="lovableTimelineCalendarSection">
@@ -584,17 +709,20 @@ export default function Timeline({ data, setData, setTab, onEditItem, onOpenSess
             <AppDateField
               value={selectedDateKey}
               onChange={(event) => commitSelectedDate(event.target.value)}
+              menuClassName="timelineDatePickerMenu"
             />
           </div>
 
           <div className="lovableTimelineCalendarActions">
-            <GhostButton
+            <CommandCTA
               type="button"
+              variant="secondary"
+              tone="execution"
               onClick={() => commitSelectedDate(todayKey)}
               disabled={selectedDateKey === todayKey}
             >
               {TIMELINE_SCREEN_COPY.backToToday}
-            </GhostButton>
+            </CommandCTA>
           </div>
         </div>
       </AppDialog>

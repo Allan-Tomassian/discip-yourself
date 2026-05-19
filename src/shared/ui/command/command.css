@@ -1,0 +1,439 @@
+.CommandSurface {
+  --command-tone: var(--command-neutral);
+  position: relative;
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  border: 1px solid var(--command-border);
+  border-radius: var(--radius-20);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012)),
+    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--command-tone) 12%, transparent), transparent 62%),
+    var(--command-surface);
+  color: var(--command-text);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    0 22px 52px rgba(0, 0, 0, 0.34);
+  overflow: hidden;
+}
+
+.CommandSurface::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--command-tone) 8%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--command-tone) 8%, transparent) 1px, transparent 1px);
+  background-size: 28px 28px;
+  opacity: 0.16;
+  mask-image: linear-gradient(180deg, black, transparent 76%);
+}
+
+.CommandSurface > * {
+  position: relative;
+  z-index: 1;
+}
+
+.CommandSurface--compact {
+  gap: 12px;
+}
+
+.CommandSurface--interactive {
+  cursor: pointer;
+  transition:
+    border-color var(--motion-standard) var(--ease-standard),
+    background var(--motion-standard) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard);
+}
+
+.CommandSurface--interactive:hover {
+  border-color: color-mix(in srgb, var(--command-tone) 34%, var(--command-border));
+}
+
+.CommandSurface--interactive:active {
+  transform: translateY(1px);
+}
+
+.CommandSurface--tone-neutral {
+  --command-tone: var(--command-neutral);
+}
+
+.CommandSurface--tone-execution {
+  --command-tone: var(--command-execution);
+}
+
+.CommandSurface--tone-ai {
+  --command-tone: var(--command-ai);
+}
+
+.CommandSurface--tone-attention {
+  --command-tone: var(--command-attention);
+}
+
+.CommandSurface--tone-critical {
+  --command-tone: var(--command-critical);
+}
+
+.CommandSurface--tone-disabled {
+  --command-tone: var(--command-disabled);
+  opacity: 0.72;
+}
+
+.CommandSurface--tone-offline {
+  --command-tone: var(--command-offline);
+}
+
+.CommandSectionHeader--tone-neutral,
+.CommandCTA--tone-neutral,
+.CommandTimelineRow--tone-neutral { --command-tone: var(--command-neutral); }
+.CommandSectionHeader--tone-execution,
+.CommandCTA--tone-execution,
+.CommandTimelineRow--tone-execution { --command-tone: var(--command-execution); }
+.CommandSectionHeader--tone-ai,
+.CommandCTA--tone-ai,
+.CommandTimelineRow--tone-ai { --command-tone: var(--command-ai); }
+.CommandSectionHeader--tone-attention,
+.CommandCTA--tone-attention,
+.CommandTimelineRow--tone-attention { --command-tone: var(--command-attention); }
+.CommandSectionHeader--tone-critical,
+.CommandCTA--tone-critical,
+.CommandTimelineRow--tone-critical { --command-tone: var(--command-critical); }
+.CommandSectionHeader--tone-disabled,
+.CommandCTA--tone-disabled,
+.CommandTimelineRow--tone-disabled { --command-tone: var(--command-disabled); }
+.CommandSectionHeader--tone-offline,
+.CommandCTA--tone-offline,
+.CommandTimelineRow--tone-offline { --command-tone: var(--command-offline); }
+
+.CommandCard {
+  padding: 18px;
+}
+
+.CommandSectionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.CommandSectionHeader__text {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.CommandSectionHeader__label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--command-tone, var(--command-neutral)) 74%, #ffffff);
+}
+
+.CommandSectionHeader__title {
+  font-size: clamp(20px, 6vw, 28px);
+  line-height: 1.05;
+  font-weight: 800;
+  color: var(--command-text);
+  letter-spacing: 0;
+}
+
+.CommandSectionHeader__subtitle {
+  max-width: 48ch;
+  font-size: 14px;
+  line-height: 1.48;
+  color: var(--command-muted);
+}
+
+.CommandSectionHeader__actions {
+  flex: 0 0 auto;
+}
+
+.CommandStatusSurface {
+  width: min(100%, 440px);
+}
+
+.CommandStatusSurface__icon {
+  display: grid;
+  place-items: center;
+  min-height: 110px;
+  color: var(--command-tone);
+}
+
+.CommandStatusSurface__steps {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--command-border) 94%, var(--command-tone));
+  border-radius: var(--radius-16);
+  background: color-mix(in srgb, var(--command-surface-strong) 82%, transparent);
+}
+
+.CommandStatusStep {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 10px 12px;
+  color: var(--command-muted);
+  border-top: 1px solid var(--command-border);
+}
+
+.CommandStatusStep:first-child {
+  border-top: 0;
+}
+
+.CommandStatusStep__dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--command-tone) 45%, var(--command-border));
+  background: transparent;
+}
+
+.CommandStatusStep--complete .CommandStatusStep__dot,
+.CommandStatusStep--active .CommandStatusStep__dot {
+  background: var(--command-tone);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--command-tone) 42%, transparent);
+}
+
+.CommandStatusStep--active .CommandStatusStep__dot {
+  animation: commandStatusPulse 1.4s ease-in-out infinite;
+}
+
+.CommandStatusStep--complete,
+.CommandStatusStep--active {
+  color: var(--command-text);
+}
+
+.CommandStatusSurface__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.CommandStatusSurface__actions > * {
+  flex: 1 1 auto;
+}
+
+.CommandStatusSurface__footer {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--command-muted);
+}
+
+.CommandStateScreen {
+  min-height: 100vh;
+  min-height: 100svh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  padding:
+    calc(var(--safe-top) + 24px)
+    calc(var(--safe-right) + 20px)
+    calc(var(--safe-bottom) + 24px)
+    calc(var(--safe-left) + 20px);
+  background:
+    radial-gradient(circle at 50% 12%, color-mix(in srgb, var(--command-execution) 10%, transparent), transparent 44%),
+    linear-gradient(180deg, #050608, #090b0d 56%, #050506);
+}
+
+.CommandErrorState {
+  border-color: color-mix(in srgb, var(--command-critical) 42%, var(--command-border));
+}
+
+.CommandEmptyState {
+  width: min(100%, 520px);
+}
+
+.CommandCTA {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-14);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    transform var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-standard) var(--ease-standard),
+    background var(--motion-standard) var(--ease-standard),
+    filter var(--motion-standard) var(--ease-standard);
+}
+
+.CommandCTA--primary {
+  color: var(--command-cta-text);
+  border-color: color-mix(in srgb, var(--command-cta-bg) 76%, transparent);
+  background:
+    linear-gradient(135deg, #ffffff, var(--command-cta-bg) 58%, color-mix(in srgb, var(--command-execution) 22%, var(--command-cta-bg)));
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.26);
+}
+
+.CommandCTA--secondary,
+.CommandCTA--ghost {
+  color: var(--command-text);
+  border-color: var(--command-border);
+  background: color-mix(in srgb, var(--command-surface-strong) 78%, transparent);
+}
+
+.CommandCTA--ghost {
+  background: transparent;
+}
+
+.CommandCTA--tone-ai.CommandCTA--primary {
+  color: #ffffff;
+  border-color: color-mix(in srgb, var(--command-ai) 58%, transparent);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--command-ai) 84%, #ffffff), var(--command-ai));
+}
+
+.CommandCTA--tone-execution.CommandCTA--secondary,
+.CommandCTA--tone-execution.CommandCTA--ghost {
+  color: color-mix(in srgb, var(--command-execution) 78%, #ffffff);
+  border-color: color-mix(in srgb, var(--command-execution) 34%, var(--command-border));
+}
+
+.CommandCTA--tone-critical.CommandCTA--secondary,
+.CommandCTA--tone-critical.CommandCTA--ghost {
+  color: color-mix(in srgb, var(--command-critical) 74%, #ffffff);
+  border-color: color-mix(in srgb, var(--command-critical) 34%, var(--command-border));
+}
+
+.CommandCTA:disabled,
+.CommandCTA--tone-disabled {
+  cursor: not-allowed;
+  filter: saturate(0.72);
+  opacity: 0.58;
+}
+
+.CommandCTA:hover:not(:disabled) {
+  filter: brightness(1.025);
+}
+
+.CommandCTA:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.CommandCTA:focus-visible,
+.CommandSurface--interactive:focus-visible {
+  outline: 1px solid color-mix(in srgb, var(--command-execution) 58%, rgba(255, 255, 255, 0.24));
+  outline-offset: 2px;
+}
+
+.CommandBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  padding: 0 9px;
+  border: 1px solid color-mix(in srgb, var(--command-tone, var(--command-neutral)) 32%, var(--command-border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--command-tone, var(--command-neutral)) 11%, transparent);
+  color: color-mix(in srgb, var(--command-tone, var(--command-neutral)) 70%, #ffffff);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.CommandBadge--tone-neutral { --command-tone: var(--command-neutral); }
+.CommandBadge--tone-execution { --command-tone: var(--command-execution); }
+.CommandBadge--tone-ai { --command-tone: var(--command-ai); }
+.CommandBadge--tone-attention { --command-tone: var(--command-attention); }
+.CommandBadge--tone-critical { --command-tone: var(--command-critical); }
+.CommandBadge--tone-disabled { --command-tone: var(--command-disabled); }
+.CommandBadge--tone-offline { --command-tone: var(--command-offline); }
+
+.CommandAIBlock {
+  border-color: color-mix(in srgb, var(--command-ai) 32%, var(--command-border));
+}
+
+.CommandSheet,
+.CommandDialog,
+.CommandPopoverMenu {
+  border-color: var(--command-border);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.012)),
+    var(--command-surface);
+}
+
+.CommandTimelineRow {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid var(--command-border);
+  border-radius: var(--radius-14);
+  background: color-mix(in srgb, var(--command-surface-strong) 78%, transparent);
+}
+
+.CommandTimelineRow__time {
+  color: color-mix(in srgb, var(--command-tone, var(--command-neutral)) 72%, #ffffff);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.CommandTimelineRow__body {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.CommandTimelineRow__title {
+  color: var(--command-text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.CommandTimelineRow__meta {
+  color: var(--command-muted);
+  font-size: 12px;
+}
+
+.CommandTimelineRow__right {
+  color: var(--command-muted);
+}
+
+@keyframes commandStatusPulse {
+  0%, 100% {
+    transform: scale(0.9);
+    opacity: 0.68;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .CommandSurface,
+  .CommandCTA,
+  .CommandStatusStep__dot {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .CommandCard {
+    padding: 16px;
+  }
+
+  .CommandSectionHeader {
+    display: grid;
+  }
+
+  .CommandStatusSurface {
+    width: 100%;
+  }
+}

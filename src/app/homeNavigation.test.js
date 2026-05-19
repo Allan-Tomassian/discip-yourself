@@ -13,14 +13,14 @@ describe("createHomeNavigationHandlers", () => {
     expect(setTab).not.toHaveBeenCalled();
   });
 
-  it("ouvre insights pour les intents backend", () => {
+  it("ouvre Ajuster pour les intents backend", () => {
     const openLibraryDetail = vi.fn();
     const setTab = vi.fn();
     const handlers = createHomeNavigationHandlers({ openLibraryDetail, setTab });
 
     handlers.onOpenPilotage();
 
-    expect(setTab).toHaveBeenCalledWith("insights");
+    expect(setTab).toHaveBeenCalledWith("adjust");
     expect(openLibraryDetail).not.toHaveBeenCalled();
   });
 });

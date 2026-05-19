@@ -35,7 +35,7 @@ describe("main section container contract", () => {
     const aiInsight = readSrc("components/today/AIInsightCard.jsx");
     const objectives = readSrc("pages/Objectives.jsx");
     const timeline = readSrc("pages/Timeline.jsx");
-    const insights = readSrc("pages/Insights.jsx");
+    const adjust = readSrc("pages/Adjust.jsx");
     const coach = readSrc("pages/Coach.jsx");
 
     expect(home).toContain("todayCockpitScreen");
@@ -48,12 +48,20 @@ describe("main section container contract", () => {
     expect(primaryAction).toContain("todayPrimaryActionCard");
     expect(todayTimeline).toContain("todayTimelineCard");
     expect(aiInsight).toContain("todayAiInsightCard");
-    expect(objectives).toContain("lovableObjectiveCard");
-    expect(objectives).toContain("ObjectiveRing");
-    expect(timeline).toContain("lovableTimelineList");
-    expect(timeline).toContain("lovableTimelineCard");
-    expect(insights).toContain("lovableChartCard");
-    expect(insights).toContain("lovableMetricCard");
+    expect(objectives).toContain("objectivesCommandCard");
+    expect(objectives).toContain("CommandSectionHeader");
+    expect(timeline).toContain("timelineCommandPage");
+    expect(timeline).toContain("CommandSectionHeader");
+    expect(timeline).toContain("CommandEmptyState");
+    expect(timeline).toContain("timelineDateStrip");
+    expect(timeline).toContain("timelineDateSeparator");
+    expect(timeline).toContain("getTimelineDisplayTime");
+    expect(timeline).toContain("lovableTimelineCardButton");
+    expect(timeline).not.toContain('tone="ai"');
+    expect(adjust).toContain("adjustCommandPage");
+    expect(adjust).toContain("buildAdjustDiagnostic");
+    expect(adjust).toContain("CommandAIBlock");
+    expect(adjust).toContain("CommandEmptyState");
     expect(coach).toContain("lovableCoachMessages");
     expect(coach).toContain("lovableCoachComposer");
   });

@@ -29,11 +29,10 @@ import {
 } from "./coachStorage";
 
 const COACH_QUICK_PROMPTS = [
-  "Aide-moi à clarifier ma journée",
-  "Je bloque sur ma discipline",
-  "Aide-moi à arbitrer mes priorités",
-  "Construis mon plan de vie",
-  "Analyse mes statistiques",
+  "Analyser ma journée",
+  "Créer un plan pour avancer",
+  "Lever un blocage actuel",
+  "Prioriser mes 3 prochaines actions",
 ];
 
 const COACH_PLAN_PROMPTS = [
@@ -769,7 +768,7 @@ export function useCoachConversationController({
         return;
       }
       if (action.intent === "open_pilotage") {
-        setTab?.("insights");
+        setTab?.("adjust");
         onRequestClose?.();
         return;
       }

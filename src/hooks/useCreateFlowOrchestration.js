@@ -44,7 +44,8 @@ function resolveCategoryContextNamespace({ source, tab }) {
     safeSource === "planning" ||
     safeSource === "timeline" ||
     safeSource === "pilotage" ||
-    safeSource === "insights"
+    safeSource === "insights" ||
+    safeSource === "adjust"
   ) {
     return "execution";
   }
@@ -57,7 +58,7 @@ function resolveCategoryContextNamespace({ source, tab }) {
   ) {
     return "library";
   }
-  if (tab === "today" || tab === "planning" || tab === "timeline" || tab === "pilotage" || tab === "insights") {
+  if (tab === "today" || tab === "planning" || tab === "timeline" || tab === "pilotage" || tab === "insights" || tab === "adjust") {
     return "execution";
   }
   return "none";

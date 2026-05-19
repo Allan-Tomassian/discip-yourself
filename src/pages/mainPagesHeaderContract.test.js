@@ -14,7 +14,7 @@ describe("main pages header contract", () => {
     const home = readSrc("pages/Home.jsx");
     const objectives = readSrc("pages/Objectives.jsx");
     const timeline = readSrc("pages/Timeline.jsx");
-    const insights = readSrc("pages/Insights.jsx");
+    const adjust = readSrc("pages/Adjust.jsx");
     const coach = readSrc("pages/Coach.jsx");
 
     expect(home).toContain('pageId="today"');
@@ -29,9 +29,9 @@ describe("main pages header contract", () => {
     expect(timeline).toContain("headerTitle={TIMELINE_SCREEN_COPY.title}");
     expect(timeline).toContain("headerSubtitle={TIMELINE_SCREEN_COPY.subtitle}");
 
-    expect(insights).toContain('pageId="insights"');
-    expect(insights).toContain("headerTitle={INSIGHTS_SCREEN_COPY.title}");
-    expect(insights).toContain("headerSubtitle={INSIGHTS_SCREEN_COPY.subtitle}");
+    expect(adjust).toContain('pageId="adjust"');
+    expect(adjust).toContain("headerTitle={ADJUST_SCREEN_COPY.title}");
+    expect(adjust).toContain("headerSubtitle={ADJUST_SCREEN_COPY.subtitle}");
 
     expect(coach).toContain('pageId="coach"');
     expect(coach).toContain("headerTitle={COACH_SCREEN_COPY.title}");
