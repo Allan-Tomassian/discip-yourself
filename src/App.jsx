@@ -60,6 +60,7 @@ import { useCategorySelectionSync } from "./hooks/useCategorySelectionSync";
 import { getInboxId } from "./app/inbox";
 import { createHomeNavigationHandlers } from "./app/homeNavigation";
 import { resolveCoachCreatedViewTarget } from "./app/coachCreatedViewTarget";
+import { scheduleMainTabScrollReset } from "./app/mainTabScroll";
 import {
   normalizeRouteOrigin,
   resolveMainTabForSurface,
@@ -186,6 +187,7 @@ export default function App() {
   const firstRunDone = isFirstRunDone(safeData.ui);
   const showPlanStep = Boolean(safeData.ui?.showPlanStep);
   const bottomRailRef = useRef(null);
+  const pendingMainTabScrollResetRef = useRef(null);
 
   useEffect(() => {
     setData((prev) => {
@@ -279,10 +281,17 @@ export default function App() {
   const showBottomRail = !hideNavigationChrome && new Set(["today", "objectives", "timeline", "adjust", "coach"]).has(tab);
   const handleBottomNavigationSelect = useCallback(
     (nextTab) => {
+      if (nextTab !== tab) pendingMainTabScrollResetRef.current = nextTab;
       setTab(nextTab);
     },
-    [setTab]
+    [setTab, tab]
   );
+
+  useLayoutEffect(() => {
+    if (pendingMainTabScrollResetRef.current !== tab) return undefined;
+    pendingMainTabScrollResetRef.current = null;
+    return scheduleMainTabScrollReset(tab);
+  }, [tab]);
   const handleAdjustAction = useCallback(
     (actionId) => {
       if (actionId === ADJUST_ACTION_IDS.REORGANIZE_SCHEDULE) {

@@ -1307,7 +1307,7 @@ html[data-active-tab="coach"][data-coach-composer-menu-open="true"] .lovableTabB
   min-height: 0;
   overflow: hidden;
   margin-top: 0;
-  padding-bottom: calc(12px + max(var(--safe-bottom), var(--bottom-fixed-stack-space, 0px), 84px));
+  padding-bottom: calc(var(--main-tab-bottom-clearance, max(var(--safe-bottom), var(--bottom-fixed-stack-space, 0px), 84px)) + 12px);
 }
 
 html.keyboardOpen[data-active-tab="coach"] [data-page-id="coach"] .pageContent,

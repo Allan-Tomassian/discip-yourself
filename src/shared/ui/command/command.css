@@ -415,12 +415,41 @@
   }
 }
 
+.CommandMotionReveal {
+  animation: commandComfortReveal var(--comfort-motion-standard, 180ms) var(--comfort-motion-ease, ease-out) both;
+}
+
+.CommandPressFeedback {
+  transition:
+    transform var(--comfort-motion-fast, 120ms) var(--comfort-motion-ease, ease-out),
+    filter var(--comfort-motion-fast, 120ms) var(--comfort-motion-ease, ease-out);
+}
+
+.CommandPressFeedback:active {
+  transform: translateY(1px) scale(0.995);
+  filter: brightness(1.04);
+}
+
+@keyframes commandComfortReveal {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .CommandSurface,
   .CommandCTA,
-  .CommandStatusStep__dot {
+  .CommandStatusStep__dot,
+  .CommandMotionReveal,
+  .CommandPressFeedback {
     animation: none !important;
     transition: none !important;
+    transform: none !important;
   }
 }
 

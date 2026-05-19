@@ -290,15 +290,17 @@ export default function Coach({
     <AppScreen pageId="coach" headerTitle={COACH_SCREEN_COPY.title} headerSubtitle={COACH_SCREEN_COPY.subtitle}>
       <div className="lovablePage lovableCoachPage">
         <div ref={scrollRef} className="lovableCoachMessages">
-          <div className="lovableCard lovableCoachIntro coachSurfaceIntroShell">
-            <div className="coachSurfaceIntroSignal" aria-hidden="true">
-              <span />
+          {!controller.hasMessages ? (
+            <div className="lovableCard lovableCoachIntro coachSurfaceIntroShell">
+              <div className="coachSurfaceIntroSignal" aria-hidden="true">
+                <span />
+              </div>
+              <div className="coachSurfaceIntroBody">
+                <div className="lovableCoachEyebrow">{COACH_SCREEN_COPY.introEyebrow}</div>
+                <p className="lovableCoachText">{introText}</p>
+              </div>
             </div>
-            <div className="coachSurfaceIntroBody">
-              <div className="lovableCoachEyebrow">{COACH_SCREEN_COPY.introEyebrow}</div>
-              <p className="lovableCoachText">{introText}</p>
-            </div>
-          </div>
+          ) : null}
 
           {!controller.hasMessages ? (
             <div className="lovableCoachPrompts coachSurfaceStarterList">

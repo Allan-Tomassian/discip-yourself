@@ -22,8 +22,10 @@ describe("mobile viewport contract", () => {
 
     expect(indexCss).toContain("--topbar-bottom: calc(var(--safe-top) + 24px);");
     expect(indexCss).toContain("--bottom-fixed-stack-space: 0px;");
+    expect(indexCss).toContain("--main-tab-bottom-clearance");
+    expect(indexCss).toContain("--main-tab-bottom-padding");
     expect(indexCss).toContain(".appViewportFill{");
-    expect(indexCss).toContain("padding-bottom:calc(120px + max(var(--safe-bottom), var(--bottom-fixed-stack-space, 0px)));");
+    expect(indexCss).toContain("padding-bottom:var(--main-tab-bottom-padding");
     expect(indexCss).toContain("padding-top: calc(var(--safe-top) + var(--navGap, 10px) + var(--page-top-gap));");
 
     expect(app).toContain("const bottomRailRef = useRef(null);");
@@ -47,7 +49,7 @@ describe("mobile viewport contract", () => {
     expect(lovableCss).toContain("-webkit-text-size-adjust: 100%;");
     expect(lovableCss).toContain("@supports (-webkit-touch-callout: none)");
     expect(lovableCss).toContain("flex: 0 0 auto;");
-    expect(lovableCss).toContain("padding-bottom: calc(12px + max(var(--safe-bottom), var(--bottom-fixed-stack-space, 0px), 84px));");
+    expect(lovableCss).toContain("padding-bottom: calc(var(--main-tab-bottom-clearance");
     expect(lovableCss).toContain('html.keyboardOpen[data-active-tab="coach"] [data-page-id="coach"] .pageContent');
   });
 });

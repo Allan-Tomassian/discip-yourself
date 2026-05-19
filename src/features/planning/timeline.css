@@ -1,12 +1,12 @@
 [data-page-id="timeline"] .container {
   max-width: 665px;
   padding-top: calc(10px + var(--safe-top));
-  padding-bottom: calc(156px + max(var(--safe-bottom), 0px));
+  padding-bottom: calc(var(--main-tab-bottom-clearance, 132px) + 18px);
 }
 
 .timelineCommandPage {
   display: grid;
-  gap: 11px;
+  gap: 10px;
   width: 100%;
   padding: 0;
 }
@@ -137,7 +137,7 @@
   display: grid;
   gap: 5px;
   min-width: 0;
-  padding: 10px 11px;
+  padding: 9px 10px;
   background: rgba(255, 255, 255, 0.024);
 }
 
@@ -164,6 +164,48 @@
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.timelineNextFocusCard {
+  gap: 7px;
+  padding: 12px 13px;
+  border-color: color-mix(in srgb, var(--command-tone, var(--command-execution)) 24%, var(--command-border));
+  background:
+    radial-gradient(circle at 90% 0%, color-mix(in srgb, var(--command-tone, var(--command-execution)) 13%, transparent), transparent 46%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012)),
+    var(--command-surface);
+}
+
+.timelineNextFocusHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.timelineNextFocusHeader > span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--command-muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.timelineNextFocusCard > strong {
+  color: var(--command-text);
+  font-size: 16px;
+  line-height: 1.16;
+}
+
+.timelineNextFocusCard > p {
+  margin: 0;
+  color: var(--command-muted);
+  font-size: 12px;
+  line-height: 1.36;
 }
 
 .timelineFilterWrap {
@@ -195,8 +237,8 @@
 
 [data-page-id="timeline"] .lovableTimelineList {
   display: grid;
-  gap: 9px;
-  padding-left: 10px;
+  gap: 7px;
+  padding-left: 8px;
 }
 
 [data-page-id="timeline"] .lovableTimelineList::before {
@@ -248,10 +290,10 @@
 }
 
 [data-page-id="timeline"] .lovableTimelineNode {
-  left: -10px;
-  top: 21px;
-  width: 10px;
-  height: 10px;
+  left: -8px;
+  top: 19px;
+  width: 8px;
+  height: 8px;
   border-color: color-mix(in srgb, var(--timeline-tone) 54%, var(--command-border));
   background: color-mix(in srgb, var(--command-surface) 88%, #000000);
   box-shadow:
@@ -280,8 +322,8 @@
 
 [data-page-id="timeline"] .lovableTimelineCardButton {
   display: grid;
-  gap: 7px;
-  padding: 12px;
+  gap: 6px;
+  padding: 10px 11px;
 }
 
 [data-page-id="timeline"] .lovableTimelineCardButton:focus-visible,
@@ -295,7 +337,7 @@
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
-  min-height: 21px;
+  min-height: 19px;
 }
 
 [data-page-id="timeline"] .lovableTimelineDate {
@@ -314,14 +356,14 @@
 
 .timelineCardMain {
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr);
-  gap: 10px;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 9px;
   align-items: start;
 }
 
 .timelineTimeRail {
   display: grid;
-  min-height: 46px;
+  min-height: 40px;
   align-items: start;
   padding-top: 3px;
   border-right: 1px solid color-mix(in srgb, var(--timeline-tone, var(--command-neutral)) 18%, transparent);
@@ -355,7 +397,7 @@
 [data-page-id="timeline"] .lovableTimelineTitle {
   margin: 0;
   color: var(--command-text);
-  font-size: 15.5px;
+  font-size: 15px;
   line-height: 1.17;
   font-weight: 820;
 }
@@ -363,7 +405,7 @@
 [data-page-id="timeline"] .lovableTimelineSubtitle {
   margin: 0;
   color: var(--command-muted);
-  font-size: 11.5px;
+  font-size: 11px;
   line-height: 1.38;
 }
 
@@ -549,7 +591,7 @@
 @media (max-width: 430px) {
   [data-page-id="timeline"] .container {
     padding-inline: calc(13px + var(--safe-left)) calc(13px + var(--safe-right));
-    padding-bottom: calc(168px + max(var(--safe-bottom), 0px));
+    padding-bottom: calc(var(--main-tab-bottom-clearance, 140px) + 24px);
   }
 
   .timelineCommandPage {
@@ -574,16 +616,16 @@
   }
 
   [data-page-id="timeline"] .lovableTimelineList {
-    padding-left: 10px;
+    padding-left: 8px;
   }
 
   [data-page-id="timeline"] .lovableTimelineNode {
-    left: -10px;
+    left: -8px;
   }
 
   .timelineCardMain {
-    grid-template-columns: 58px minmax(0, 1fr);
-    gap: 9px;
+    grid-template-columns: 54px minmax(0, 1fr);
+    gap: 8px;
   }
 
   .timelineDateStrip {

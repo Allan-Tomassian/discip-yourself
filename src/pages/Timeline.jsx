@@ -383,6 +383,19 @@ export default function Timeline({ data, setData, setTab, onEditItem, onOpenSess
   const selectedDayBlockLabel = `${selectedDayEntries.length} bloc${selectedDayEntries.length > 1 ? "s" : ""}`;
   const selectedDayDurationLabel = selectedDayDurationMinutes > 0 ? `${selectedDayDurationMinutes} min` : "Durée libre";
   const nextCommandLabel = nextCommandEntry?.title || "Aucun prochain bloc";
+  const nextCommandTone = nextCommandEntry
+    ? resolveTimelineTone(nextCommandEntry.status, {
+        isCurrent: nextCommandEntry.id === currentEntryId,
+        isSelectedDay: nextCommandEntry.dateKey === selectedDateKey,
+      })
+    : "neutral";
+  const nextCommandMeta = nextCommandEntry
+    ? [
+        nextCommandEntry.categoryLabel || "",
+        formatTimelineTime(nextCommandEntry),
+        formatDurationLabel(nextCommandEntry.durationMinutes),
+      ].filter(Boolean).join(" · ")
+    : "";
   const commitSelectedDate = useCallback(
     (nextDateKey) => {
       const normalized = normalizeLocalDateKey(nextDateKey);
@@ -464,7 +477,7 @@ export default function Timeline({ data, setData, setTab, onEditItem, onOpenSess
         </button>
       }
     >
-      <div className="timelineCommandPage lovablePage">
+      <div className="timelineCommandPage lovablePage CommandMotionReveal">
         <CommandCard tone="execution" className="timelineCommandHero">
           <CommandSectionHeader
             tone="execution"
@@ -508,6 +521,17 @@ export default function Timeline({ data, setData, setTab, onEditItem, onOpenSess
             <strong>{nextCommandLabel}</strong>
           </div>
         </CommandCard>
+
+        {nextCommandEntry ? (
+          <CommandCard tone={nextCommandTone} density="compact" className="timelineNextFocusCard">
+            <div className="timelineNextFocusHeader">
+              <CommandBadge tone={nextCommandTone}>Prochain bloc utile</CommandBadge>
+              <span>{nextCommandEntry.dateKey === selectedDateKey ? "Jour affiché" : formatExpandedDateLabel(nextCommandEntry.dateKey)}</span>
+            </div>
+            <strong>{nextCommandEntry.title}</strong>
+            <p>{nextCommandMeta}</p>
+          </CommandCard>
+        ) : null}
 
         {categories.length ? (
           <div className="timelineFilterWrap">

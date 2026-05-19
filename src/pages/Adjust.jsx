@@ -204,6 +204,8 @@ export default function Adjust({ data, onAdjustAction }) {
   const { summary, nextBlock, frictionSignals, recommendation, quickActions, trendSnapshot, categorySignals } = diagnostic;
   const summaryTone = resolveSummaryTone(summary);
   const hasSignals = Array.isArray(frictionSignals) && frictionSignals.length > 0;
+  const visibleFrictionSignals = hasSignals ? frictionSignals.slice(0, 2) : [];
+  const hiddenFrictionCount = hasSignals ? Math.max(0, frictionSignals.length - visibleFrictionSignals.length) : 0;
   const recommendationTone = recommendation?.tone || "execution";
   const hasUsefulData = Boolean(summary?.hasPlannedData || nextBlock || hasSignals);
 
@@ -215,7 +217,7 @@ export default function Adjust({ data, onAdjustAction }) {
       headerTitle={ADJUST_SCREEN_COPY.title}
       headerSubtitle={ADJUST_SCREEN_COPY.subtitle}
     >
-      <div className="adjustCommandPage">
+      <div className="adjustCommandPage CommandMotionReveal">
         <CommandSurface tone="execution" className="adjustHero" density="compact">
           <span className="adjustHeroGlyph" aria-hidden="true">
             <SlidersHorizontal size={22} strokeWidth={2} />
@@ -251,6 +253,41 @@ export default function Adjust({ data, onAdjustAction }) {
           </div>
         </CommandCard>
 
+        <CommandCard tone={recommendationTone} className="adjustRecommendationCard adjustRecommendationCard--primary" density="compact">
+          <CommandSectionHeader
+            label="RECOMMANDATION"
+            title={recommendation?.title || "Choisis un ajustement simple"}
+            subtitle={recommendation?.description || "Aucune correction automatique n’est appliquée depuis cette page."}
+            tone={recommendationTone}
+          />
+          <CommandCTA
+            variant="primary"
+            onClick={() => onAdjustAction?.(recommendation?.actionId || ADJUST_ACTION_IDS.ASK_COACH)}
+          >
+            {recommendationAction ? recommendationAction.label : "Lancer cette correction"}
+          </CommandCTA>
+          {Array.isArray(recommendation?.expectedImpact) && recommendation.expectedImpact.length ? (
+            <div className="adjustImpactList">
+              <span>Impact attendu</span>
+              {recommendation.expectedImpact.map((item) => (
+                <div key={item}><Sparkles size={13} strokeWidth={2} aria-hidden="true" />{item}</div>
+              ))}
+            </div>
+          ) : null}
+          <p className="adjustHonestNote">Aucune modification n’est appliquée sans passer par l’action choisie.</p>
+        </CommandCard>
+
+        {nextBlock ? (
+          <CommandCard tone="execution" className="adjustNextBlockCard" density="compact">
+            <Target size={20} strokeWidth={2} aria-hidden="true" />
+            <div>
+              <span className="adjustSectionKicker">PROCHAIN BLOC UTILE</span>
+              <strong>{nextBlock.title}</strong>
+              <p>{formatBlockMeta(nextBlock)}</p>
+            </div>
+          </CommandCard>
+        ) : null}
+
         {!hasUsefulData ? (
           <CommandEmptyState
             label="DIAGNOSTIC"
@@ -276,14 +313,14 @@ export default function Adjust({ data, onAdjustAction }) {
             id="adjust-friction-title"
             label="FRICTION"
             title="Ce qui bloque maintenant"
-            subtitle={hasSignals ? "Détection basée sur tes vrais blocs et ton historique récent." : "Aucune friction forte détectée pour le moment."}
+            subtitle={hasSignals ? "Les signaux les plus utiles à corriger maintenant." : "Aucune friction forte détectée pour le moment."}
             tone={hasSignals ? "attention" : "neutral"}
             className="adjustInlineHeader"
           />
           {hasSignals ? (
             <div className="adjustFrictionGrid">
-              {frictionSignals.map((signal) => (
-                <CommandCard key={signal.id} tone="attention" className="adjustFrictionCard" density="compact">
+              {visibleFrictionSignals.map((signal) => (
+                <CommandCard key={signal.id} tone="attention" className="adjustFrictionCard adjustFrictionCard--preview" density="compact">
                   <div className="adjustFrictionIcon" aria-hidden="true">
                     <AlertTriangle size={17} strokeWidth={2} />
                   </div>
@@ -293,6 +330,11 @@ export default function Adjust({ data, onAdjustAction }) {
                   </div>
                 </CommandCard>
               ))}
+              {hiddenFrictionCount ? (
+                <p className="adjustFrictionMore">
+                  {hiddenFrictionCount} autre{hiddenFrictionCount > 1 ? "s" : ""} {hiddenFrictionCount > 1 ? "signaux placés" : "signal placé"} plus bas dans l’analyse.
+                </p>
+              ) : null}
             </div>
           ) : (
             <CommandCard tone="neutral" className="adjustCalmCard" density="compact">
@@ -304,30 +346,6 @@ export default function Adjust({ data, onAdjustAction }) {
             </CommandCard>
           )}
         </section>
-
-        <CommandCard tone={recommendationTone} className="adjustRecommendationCard" density="compact">
-          <CommandSectionHeader
-            label="RECOMMANDATION"
-            title={recommendation?.title || "Choisis un ajustement simple"}
-            subtitle={recommendation?.description || "Aucune correction automatique n’est appliquée depuis cette page."}
-            tone={recommendationTone}
-          />
-          {Array.isArray(recommendation?.expectedImpact) && recommendation.expectedImpact.length ? (
-            <div className="adjustImpactList">
-              <span>Impact attendu</span>
-              {recommendation.expectedImpact.map((item) => (
-                <div key={item}><Sparkles size={13} strokeWidth={2} aria-hidden="true" />{item}</div>
-              ))}
-            </div>
-          ) : null}
-          <CommandCTA
-            variant="primary"
-            onClick={() => onAdjustAction?.(recommendation?.actionId || ADJUST_ACTION_IDS.ASK_COACH)}
-          >
-            {recommendationAction ? recommendationAction.label : "Lancer cette correction"}
-          </CommandCTA>
-          <p className="adjustHonestNote">Aucune modification n’est appliquée sans passer par l’action choisie.</p>
-        </CommandCard>
 
         <section className="adjustSection" aria-labelledby="adjust-actions-title">
           <CommandSectionHeader
@@ -366,16 +384,6 @@ export default function Adjust({ data, onAdjustAction }) {
           </CommandCTA>
         </CommandAIBlock>
 
-        {nextBlock ? (
-          <CommandCard tone="execution" className="adjustNextBlockCard" density="compact">
-            <Target size={20} strokeWidth={2} aria-hidden="true" />
-            <div>
-              <span className="adjustSectionKicker">PROCHAIN BLOC UTILE</span>
-              <strong>{nextBlock.title}</strong>
-              <p>{formatBlockMeta(nextBlock)}</p>
-            </div>
-          </CommandCard>
-        ) : null}
       </div>
     </AppScreen>
   );

@@ -39,4 +39,19 @@ describe("Ajuster route contract", () => {
     expect(app).toContain("Aide-moi à ajuster ma journée.");
     expect(adjust).toContain("Ces actions ouvrent Coach IA ou Planning. Elles ne modifient rien automatiquement.");
   });
+
+  it("prioritizes the recommendation before secondary diagnostics", () => {
+    const adjust = readSrc("pages/Adjust.jsx");
+    const recommendationIndex = adjust.indexOf("adjustRecommendationCard adjustRecommendationCard--primary");
+    const frictionIndex = adjust.indexOf('id="adjust-friction-title"');
+    const trendIndex = adjust.indexOf("<TrendSnapshot trendSnapshot={trendSnapshot} />");
+
+    expect(adjust).toContain("frictionSignals.slice(0, 2)");
+    expect(adjust).toContain("adjustFrictionCard--preview");
+    expect(recommendationIndex).toBeGreaterThan(-1);
+    expect(frictionIndex).toBeGreaterThan(-1);
+    expect(trendIndex).toBeGreaterThan(-1);
+    expect(recommendationIndex).toBeLessThan(frictionIndex);
+    expect(frictionIndex).toBeLessThan(trendIndex);
+  });
 });

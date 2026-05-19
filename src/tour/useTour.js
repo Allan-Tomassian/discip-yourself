@@ -5,12 +5,43 @@ function isTodayVisualSmokeMode() {
   return typeof window !== "undefined" && window.__TODAY_VISUAL_SMOKE__ === true;
 }
 
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+export function isFirstRunActivationCompleteForTour(ui) {
+  if (!isPlainObject(ui?.firstRunV1)) return false;
+  const firstRun = ui.firstRunV1;
+  if (firstRun.status !== "done") return false;
+  if (isPlainObject(firstRun.commitV1) && firstRun.commitV1.status !== "applied") return false;
+  return true;
+}
+
+export function shouldStartTour({
+  ui,
+  onboardingCompleted,
+  totalSteps,
+  isDragging,
+  tourVersion,
+  tourForceStart = ui?.tourForceStart === true,
+  tourSeenVersion = typeof ui?.tourSeenVersion === "number" ? ui.tourSeenVersion : 0,
+  firstRunActivationComplete = isFirstRunActivationCompleteForTour(ui),
+}) {
+  if (!onboardingCompleted || totalSteps === 0 || isDragging) return false;
+  if (tourForceStart) return true;
+  if (firstRunActivationComplete) return false;
+  return tourSeenVersion < tourVersion;
+}
+
 export function useTour({ data, setData, steps, tourVersion }) {
   const safeSteps = useMemo(() => (Array.isArray(steps) ? steps.filter(Boolean) : []), [steps]);
   const totalSteps = safeSteps.length;
   const ui = data?.ui || {};
   const onboardingCompleted = Boolean(ui.onboardingCompleted);
   const isDragging = Boolean(ui.isDragging);
+  const tourForceStart = ui.tourForceStart === true;
+  const tourSeenVersion = typeof ui.tourSeenVersion === "number" ? ui.tourSeenVersion : 0;
+  const firstRunActivationComplete = isFirstRunActivationCompleteForTour(ui);
 
   const [isActive, setIsActive] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
@@ -27,17 +58,17 @@ export function useTour({ data, setData, steps, tourVersion }) {
       setIsActive(false);
       return;
     }
-    if (!onboardingCompleted || totalSteps === 0) {
-      setIsActive(false);
-      return;
-    }
-    if (isDragging) {
-      setIsActive(false);
-      return;
-    }
-    const seenVersion = typeof ui.tourSeenVersion === "number" ? ui.tourSeenVersion : 0;
-    const shouldStart = ui.tourForceStart === true || seenVersion < tourVersion;
-    if (!shouldStart) {
+    if (
+      !shouldStartTour({
+        onboardingCompleted,
+        totalSteps,
+        isDragging,
+        tourVersion,
+        tourForceStart,
+        tourSeenVersion,
+        firstRunActivationComplete,
+      })
+    ) {
       setIsActive(false);
       return;
     }
@@ -49,8 +80,9 @@ export function useTour({ data, setData, steps, tourVersion }) {
     onboardingCompleted,
     totalSteps,
     isDragging,
-    ui.tourForceStart,
-    ui.tourSeenVersion,
+    tourForceStart,
+    tourSeenVersion,
+    firstRunActivationComplete,
     ui.tourStepIndex,
     tourVersion,
   ]);

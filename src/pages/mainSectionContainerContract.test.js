@@ -51,18 +51,43 @@ describe("main section container contract", () => {
     expect(objectives).toContain("objectivesCommandCard");
     expect(objectives).toContain("CommandSectionHeader");
     expect(timeline).toContain("timelineCommandPage");
+    expect(timeline).toContain("CommandMotionReveal");
     expect(timeline).toContain("CommandSectionHeader");
     expect(timeline).toContain("CommandEmptyState");
     expect(timeline).toContain("timelineDateStrip");
     expect(timeline).toContain("timelineDateSeparator");
+    expect(timeline).toContain("timelineNextFocusCard");
     expect(timeline).toContain("getTimelineDisplayTime");
     expect(timeline).toContain("lovableTimelineCardButton");
     expect(timeline).not.toContain('tone="ai"');
     expect(adjust).toContain("adjustCommandPage");
+    expect(adjust).toContain("CommandMotionReveal");
     expect(adjust).toContain("buildAdjustDiagnostic");
     expect(adjust).toContain("CommandAIBlock");
     expect(adjust).toContain("CommandEmptyState");
+    expect(adjust).toContain("visibleFrictionSignals");
     expect(coach).toContain("lovableCoachMessages");
     expect(coach).toContain("lovableCoachComposer");
+  });
+
+  it("applies the shared bottom-clearance token to the main route styles", () => {
+    const indexCss = readSrc("index.css");
+    const todayCss = readSrc("features/today/today.css");
+    const objectivesCss = readSrc("features/objectives/objectives.css");
+    const timelineCss = readSrc("features/planning/timeline.css");
+    const coachCss = readSrc("styles/lovable.css");
+    const adjustCss = readSrc("features/adjust/adjust.css");
+    const commandCss = readSrc("shared/ui/command/command.css");
+
+    expect(indexCss).toContain("--main-tab-bottom-clearance");
+    expect(indexCss).toContain("--main-tab-bottom-padding");
+    expect(todayCss).toContain("var(--main-tab-bottom-clearance");
+    expect(objectivesCss).toContain("var(--main-tab-bottom-clearance");
+    expect(timelineCss).toContain("var(--main-tab-bottom-clearance");
+    expect(coachCss).toContain("var(--main-tab-bottom-clearance");
+    expect(adjustCss).toContain("var(--main-tab-bottom-clearance");
+    expect(commandCss).toContain(".CommandMotionReveal");
+    expect(commandCss).toContain(".CommandPressFeedback");
+    expect(commandCss).toContain("@media (prefers-reduced-motion: reduce)");
   });
 });
