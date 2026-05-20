@@ -201,7 +201,9 @@ export async function seedState(page, state, options = {}) {
     : null;
   const profileUsername = String(profileData?.username || "").toLowerCase();
   await page.addInitScript(
-    ({ key, data, authKey, sessionData, userDataKey, profileKey, profileValue, usernamesKey, profileUsernameValue, profileUserId }) => {
+    ({ seedKey, key, data, authKey, sessionData, userDataKey, profileKey, profileValue, usernamesKey, profileUsernameValue, profileUserId }) => {
+      if (sessionStorage.getItem(seedKey)) return;
+      sessionStorage.setItem(seedKey, "1");
       localStorage.setItem(key, JSON.stringify(data));
       if (sessionData) {
         localStorage.setItem(authKey, JSON.stringify(sessionData));
@@ -218,6 +220,7 @@ export async function seedState(page, state, options = {}) {
       }
     },
     {
+      seedKey: "__discip_e2e_seed_state_applied__",
       key: LS_KEY,
       data: state,
       authKey: E2E_AUTH_SESSION_KEY,

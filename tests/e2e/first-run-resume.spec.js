@@ -238,3 +238,35 @@ test("affiche un plan assiste IA quand starter hints repond dans la fenetre born
   expect(persistedUi?.firstRunV1?.generatedPlans?.source).toBe("ai_assisted_starter");
   expect(persistedUi?.firstRunV1?.selectedPlanId).toBe("recommended");
 });
+
+test("activation complète: commit crée un bloc Today lançable", async ({ page }) => {
+  await installFirstRunStarterHintsMock(page);
+  await bootFirstRunUser(page);
+  await page.getByRole("button", { name: "Commencer" }).click();
+  await page.getByTestId("first-run-why-input").fill("Je veux construire une discipline stable.");
+  await page.getByRole("button", { name: "Continuer" }).click();
+  await page.getByTestId("first-run-primary-goal-input").fill("Relancer mon projet principal");
+  await page.getByText("Stable").click();
+  await page.getByText("Business").click();
+  await page.getByRole("button", { name: "Générer les plans" }).click();
+
+  await expect(page.getByTestId("first-run-screen-compare")).toBeVisible({ timeout: 12_000 });
+  await page.getByRole("button", { name: "Activer ce plan" }).click();
+  await expect(page.getByTestId("first-run-screen-commit")).toBeVisible();
+  await page.getByRole("button", { name: "Activer mon plan" }).click();
+  await expect(page.getByTestId("first-run-screen-discovery")).toBeVisible();
+  await page.getByRole("button", { name: "Entrer dans l'app" }).click();
+
+  await expect(page.getByTestId("today-primary-action-card")).toBeVisible();
+  await expect(page.locator(".todayCommitmentButton")).toBeVisible();
+
+  const persisted = await page.evaluate(() => {
+    const raw = localStorage.getItem("e2e.supabase.user_data.e2e-user-id");
+    return raw ? JSON.parse(raw) : null;
+  });
+  expect((persisted?.occurrences || []).length).toBeGreaterThan(0);
+  expect((persisted?.goals || []).some((goal) => goal?.type === "PROCESS")).toBeTruthy();
+
+  await page.locator(".todayCommitmentButton").click();
+  await expect(page.getByText("Protège ce bloc.")).toBeVisible();
+});

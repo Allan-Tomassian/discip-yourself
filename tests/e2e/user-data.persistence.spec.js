@@ -10,31 +10,12 @@ import {
   seedUserData,
 } from "./utils/seed.js";
 
-async function openPreferencesFromTopMenu(page) {
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const settingsTitle = page.locator("[data-tour-id=\"settings-title\"]");
-    if (await settingsTitle.isVisible().catch(() => false)) return;
-
-    const trigger = page.locator("[data-tour-id=\"topnav-settings\"]");
-    if (await trigger.isVisible().catch(() => false)) {
-      await trigger.click();
-    }
-
-    await page.evaluate(() => {
-      const candidates = Array.from(document.querySelectorAll('[role="menuitem"]'));
-      const target = candidates.find((element) => /Réglages/i.test(element.textContent || ""));
-      if (target instanceof HTMLElement) target.click();
-    });
-
-    if (await settingsTitle.isVisible().catch(() => false)) return;
-
-    const closeButton = page.getByRole("button", { name: /Fermer le menu/i }).first();
-    if (await closeButton.isVisible().catch(() => false)) {
-      await closeButton.click().catch(() => {});
-      await page.waitForTimeout(100);
-    }
-  }
-  throw new Error("Impossible d'ouvrir la sous-vue Réglages depuis le menu topbar.");
+async function openSettingsFromProfileMenu(page) {
+  await page.getByRole("button", { name: "Ouvrir le menu du profil" }).click();
+  await expect(page.getByText("Gérer ton compte et ton accès.")).toBeVisible();
+  await page.getByRole("button", { name: "Paramètres" }).click();
+  await expect(page).toHaveURL(/\/settings$/);
+  await expect(page.locator("[data-tour-id=\"settings-title\"]")).toBeVisible();
 }
 
 test("user_data: charge puis persiste une modification après reload", async ({ page }) => {
@@ -53,19 +34,18 @@ test("user_data: charge puis persiste une modification après reload", async ({ 
   }, LS_KEY);
 
   await page.goto("/");
-  await expect(page.locator("[data-tour-id=\"topnav-tabs\"]")).toBeVisible();
+  await expect(page.getByTestId("today-primary-action-card")).toBeVisible();
 
   await page.getByTestId("user-data-loading-screen").waitFor({ state: "hidden" }).catch(() => {});
-  await openPreferencesFromTopMenu(page);
-  await expect(page.locator("[data-tour-id=\"settings-title\"]")).toBeVisible();
+  await openSettingsFromProfileMenu(page);
+
   const whySection = page.locator("[data-tour-id=\"settings-why\"]");
-  const whyTextarea = whySection.getByRole("textbox", { name: /Texte motivation/i }).first();
+  const whyTextarea = whySection.getByRole("textbox", { name: /Ton pourquoi|Texte motivation/i }).first();
   const whySaveButton = whySection.getByRole("button", { name: "Enregistrer" });
   await expect(whyTextarea).toHaveValue("Pourquoi distant initial");
 
   const updatedWhy = "Pourquoi persistant e2e";
   await whyTextarea.fill(updatedWhy);
-  await expect(whyTextarea).toHaveValue(updatedWhy);
   await expect(whySaveButton).toBeEnabled();
   await whySaveButton.click();
 
@@ -77,8 +57,8 @@ test("user_data: charge puis persiste une modification après reload", async ({ 
   await page.evaluate((key) => localStorage.removeItem(key), LS_KEY);
   const reloaded = await page.context().newPage();
   await reloaded.goto("/");
-  await expect(reloaded.locator("[data-tour-id=\"topnav-tabs\"]")).toBeVisible();
-  await openPreferencesFromTopMenu(reloaded);
+  await expect(reloaded.getByTestId("today-primary-action-card")).toBeVisible();
+  await openSettingsFromProfileMenu(reloaded);
   await expect.poll(async () => {
     return reloaded.evaluate((id) => {
       const raw = localStorage.getItem(`e2e.supabase.user_data.${id}`);

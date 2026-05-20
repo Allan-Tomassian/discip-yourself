@@ -206,6 +206,33 @@ describe("systemAnalysisHistory", () => {
     });
   });
 
+  it("preserves reload-shaped latest analysis records and applied metadata", () => {
+    const rawHistory = {
+      version: 1,
+      latestAnalysisId: "analysis_1",
+      analyses: [
+        validRecord("analysis_1", "2026-05-20T12:00:00.000Z", {
+          status: SYSTEM_ANALYSIS_RECORD_STATUS.APPLIED,
+          appliedCorrectionIds: ["occurrence:0:occ-1:reduce_duration"],
+          changedOccurrenceIds: ["occ-1"],
+          appliedAt: "2026-05-20T14:00:00.000Z",
+        }),
+      ],
+    };
+
+    const normalized = ensureSystemAnalysisHistoryState(rawHistory);
+    const latest = getLatestSystemAnalysisRecord(normalized);
+
+    expect(normalized.latestAnalysisId).toBe("analysis_1");
+    expect(latest).toMatchObject({
+      id: "analysis_1",
+      status: SYSTEM_ANALYSIS_RECORD_STATUS.APPLIED,
+      appliedCorrectionIds: ["occurrence:0:occ-1:reduce_duration"],
+      changedOccurrenceIds: ["occ-1"],
+      appliedAt: "2026-05-20T14:00:00.000Z",
+    });
+  });
+
   it("normalizes malformed history without throwing", () => {
     const history = ensureSystemAnalysisHistoryState({
       latestAnalysisId: "missing",
@@ -237,5 +264,21 @@ describe("systemAnalysisHistory", () => {
     expect(model.title).toBe("Dernière analyse");
     expect(model.isStale).toBe(true);
     expect(model.staleNote).toContain("Ton système a changé");
+  });
+
+  it("does not mark latest-analysis display stale when snapshot hash and period still match", () => {
+    const history = upsertSystemAnalysisRecord(null, validRecord("latest", "2026-05-20T12:00:00.000Z", {
+      snapshotHash: "snapshot_hash_current",
+      period: PERIOD,
+    }));
+    const model = buildSystemAnalysisHistoryDisplayModel({
+      history,
+      currentSnapshot: snapshotFixture({ snapshotHash: "snapshot_hash_current", period: PERIOD }),
+      activeDateKey: "2026-05-20",
+    });
+
+    expect(model.visible).toBe(true);
+    expect(model.isStale).toBe(false);
+    expect(model.staleNote).toBe("");
   });
 });

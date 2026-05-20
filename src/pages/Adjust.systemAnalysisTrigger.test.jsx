@@ -49,6 +49,79 @@ function thinData() {
   };
 }
 
+function latestAnalysisResult() {
+  return {
+    version: 1,
+    period: { startDateKey: "2026-05-14", endDateKey: ACTIVE_DATE, days: 7 },
+    executiveSummary: "Le dernier audit reste disponible après rechargement.",
+    invisibleFriction: [{ title: "Charge concentrée" }],
+    systemWeaknesses: [],
+    strongestPatterns: [],
+    recommendedCorrections: [{ title: "Réduire un bloc" }],
+    correctionDraft: {
+      correctedLoad: {
+        targetBlocksPerDay: 2,
+        maxDailyMinutes: 90,
+        reason: "Charge plus tenable.",
+      },
+      occurrenceAdjustments: [{
+        occurrenceId: "occ_0",
+        action: "reduce_duration",
+        proposedDurationMinutes: 30,
+        reason: "Version plus faisable.",
+        confidence: 0.8,
+      }],
+      objectiveAdjustments: [],
+      actionAdjustments: [],
+      next7DaysPlan: [],
+      validationRequirements: ["user_confirmation"],
+      userConfirmationRequired: true,
+    },
+    next7DaysFocus: [{ title: "Protéger deux blocs courts" }],
+    coachQuestions: [],
+    confidence: 0.72,
+    dataLimitations: ["Snapshot compact."],
+    safetyNotes: [],
+    generatedAt: "2026-05-20T12:30:00.000Z",
+    modelMeta: { model: "test", promptVersion: "system_analysis_v1_0", requestId: "req-1" },
+  };
+}
+
+function dataWithLatestAnalysis() {
+  const data = eligibleData();
+  const result = latestAnalysisResult();
+  data.system_analysis_v1 = {
+    version: 1,
+    latestAnalysisId: "analysis_latest",
+    analyses: [{
+      id: "analysis_latest",
+      version: 1,
+      source: "premium_system_analysis",
+      status: "applied",
+      snapshotHash: "old_snapshot_hash",
+      period: result.period,
+      referenceDateKey: ACTIVE_DATE,
+      generatedAt: result.generatedAt,
+      savedAt: result.generatedAt,
+      result,
+      summary: {
+        executiveSummary: result.executiveSummary,
+        invisibleFriction: ["Charge concentrée"],
+        recommendedCorrections: ["Réduire un bloc"],
+        next7DaysFocus: ["Protéger deux blocs courts"],
+        dataLimitations: ["Snapshot compact."],
+      },
+      eligibilityAtRun: { eligible: true },
+      appliedCorrectionIds: ["occurrence:0:occ_0:reduce_duration"],
+      changedOccurrenceIds: ["occ_0"],
+      appliedAt: "2026-05-20T14:00:00.000Z",
+      modelMeta: result.modelMeta,
+      snapshotMeta: { sourceCounts: { occurrences: 10 }, dataLimitations: ["Snapshot compact."] },
+    }],
+  };
+  return data;
+}
+
 describe("Adjust system analysis trigger contract", () => {
   it("keeps the header entry connected to local system analysis state", () => {
     const source = readSrc("pages/Adjust.jsx");
@@ -144,6 +217,15 @@ describe("Adjust system analysis trigger contract", () => {
     expect(recommendationIndex).toBeGreaterThan(-1);
     expect(previewIndex).toBeGreaterThan(-1);
     expect(recommendationIndex).toBeLessThan(previewIndex);
+  });
+
+  it("renders a reload-shaped latest analysis record after the deterministic recommendation", () => {
+    const html = renderToStaticMarkup(<Adjust data={dataWithLatestAnalysis()} />);
+
+    expect(html).toContain("Dernière analyse");
+    expect(html).toContain("Le dernier audit reste disponible après rechargement.");
+    expect(html).toContain("Ton système a changé depuis cette analyse.");
+    expect(html.indexOf("RECOMMANDATION")).toBeLessThan(html.indexOf("Dernière analyse"));
   });
 
   it("renders the running header state while a request is in progress", () => {

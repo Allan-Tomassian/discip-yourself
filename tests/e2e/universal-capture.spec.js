@@ -1,5 +1,4 @@
 import { test, expect, devices } from "@playwright/test";
-import { createEmptyCreateItemDraft } from "../../src/creation/createItemDraft.js";
 import { buildBaseState, seedState } from "./utils/seed.js";
 
 const iPhone13 = devices["iPhone 13"];
@@ -12,130 +11,34 @@ test.use({
   hasTouch: true,
 });
 
-function buildStateWithCreateDraft() {
-  const state = buildBaseState({ withContent: false });
-  state.ui.createDraft = {
-    ...createEmptyCreateItemDraft(),
-    kind: "action",
-    actionDraft: {
-      ...createEmptyCreateItemDraft().actionDraft,
-      title: "Relancer le devis client",
-      categoryId: "cat_business",
-    },
-    origin: {
-      mainTab: "objectives",
-      sourceSurface: "objectives",
-      categoryId: "cat_business",
-      libraryMode: "category-view",
-    },
-    status: "draft",
-  };
-  return state;
-}
-
-async function attachScreenshot(page, testInfo, name) {
-  const path = testInfo.outputPath(name);
-  await page.screenshot({ path, fullPage: false });
-  await testInfo.attach(name, { path, contentType: "image/png" });
-}
-
-async function openObjectivesCapture(page, state) {
+test("Objectifs: création actuelle passe par l’action liée d’un objectif", async ({ page }) => {
+  const state = buildBaseState({ withContent: true });
+  state.profile = { ...(state.profile || {}), plan: "premium", entitlements: { premium: true } };
   await seedState(page, state);
-  await page.goto("/");
-  await page.getByRole("button", { name: "Objectifs" }).click();
-  await expect(page.locator(".pageHeader .pageTitle")).toHaveText("Objectifs");
-  await page.getByTestId("objectives-universal-capture-button").click();
-  await expect(page.getByTestId("universal-capture-surface")).toBeVisible();
-}
 
-test("objectives universal capture shows one input and discreet draft resume", async ({ page }, testInfo) => {
-  await openObjectivesCapture(page, buildStateWithCreateDraft());
+  await page.goto("/objectives");
+  await expect(page.locator(".pageTitle")).toContainText("Objectifs");
+  await page.getByText("Projet Seed", { exact: true }).click();
+  await page.getByRole("button", { name: /Ajouter une action/i }).click();
 
-  await expect(page.getByText("Qu’est-ce que tu veux faire avancer ?")).toBeVisible();
-  await expect(page.getByTestId("universal-capture-input")).toBeVisible();
-  await expect(page.getByTestId("universal-capture-submit")).toBeDisabled();
-  await expect(page.getByTestId("universal-capture-resume-draft")).toBeVisible();
-  await expect(page.getByText("Créer une action")).toHaveCount(0);
-  await expect(page.getByText("Créer un objectif")).toHaveCount(0);
-  await expect(page.getByText("Passer en mode Plan")).toHaveCount(0);
-
-  await attachScreenshot(page, testInfo, "objectives-universal-capture-open.png");
+  await expect(page).toHaveURL(/\/create$/);
+  await expect(page.locator(".pageTitle")).toContainText("Créer une action");
+  await page.getByPlaceholder(/Envoyer la proposition|Nom de l'action/i).first().fill("Action liée depuis Objectifs");
+  await expect(page.getByRole("button", { name: /Créer l.action|Créer une action/ })).toBeVisible();
 });
 
-test("objectives universal capture routes a concrete intent to prefilled action create-item", async ({ page }, testInfo) => {
-  await openObjectivesCapture(page, buildBaseState({ withContent: false }));
+test("Objectifs: l’ancien universal capture global n’est plus exposé", async ({ page }) => {
+  const state = buildBaseState({ withContent: false });
+  await seedState(page, state);
 
-  await page.getByTestId("universal-capture-input").fill("Appeler le dentiste demain");
-  await page.getByTestId("universal-capture-submit").click();
+  await page.goto("/objectives");
 
-  await expect(page.getByTestId("universal-capture-preview")).toBeVisible();
-  await expect(page.getByTestId("universal-capture-preview-kind")).toHaveText("Action");
-  await expect(page.getByTestId("universal-capture-preview-title")).toHaveText("Appeler le dentiste demain");
-  await expect(page.getByTestId("universal-capture-preview-date")).toHaveText("Demain");
-
-  await page.getByTestId("universal-capture-preview-create").click();
-
-  await expect(page.locator(".pageHeader .pageTitle")).toHaveText("Objectifs");
-  await expect(page.getByText("Appeler le dentiste demain", { exact: true }).first()).toBeVisible();
-
-  await attachScreenshot(page, testInfo, "objectives-universal-capture-action-prefill.png");
-});
-
-test("objectives universal capture routes a goal intent to prefilled outcome create-item", async ({ page }, testInfo) => {
-  await openObjectivesCapture(page, buildBaseState({ withContent: false }));
-
-  await page.getByTestId("universal-capture-input").fill("Lancer la nouvelle page d’accueil");
-  await page.getByTestId("universal-capture-submit").click();
-
-  await expect(page.getByTestId("universal-capture-preview")).toBeVisible();
-  await expect(page.getByTestId("universal-capture-preview-kind")).toHaveText("Objectif");
-  await expect(page.getByTestId("universal-capture-preview-title")).toHaveText("Lancer la nouvelle page d’accueil");
-
-  await page.getByTestId("universal-capture-preview-adjust").click();
-
-  await expect(page.getByText("Créer un objectif")).toBeVisible();
-  await expect(page.locator("input").first()).toHaveValue("Lancer la nouvelle page d’accueil");
-
-  await attachScreenshot(page, testInfo, "objectives-universal-capture-goal-prefill.png");
-});
-
-test("objectives universal capture routes ambiguous or composite intents to coach without auto-send", async ({ page }, testInfo) => {
-  await openObjectivesCapture(page, buildBaseState({ withContent: false }));
-
-  await page.getByTestId("universal-capture-input").fill("sport");
-  await page.getByTestId("universal-capture-submit").click();
+  await expect(page.getByTestId("objectives-universal-capture-button")).toHaveCount(0);
+  await page.getByLabel("Navigation principale").getByRole("button", { name: "Coach IA" }).click();
   await expect(page.getByText("Ton copilote stratégique")).toBeVisible();
+  await page.locator(".coachSurfaceComposerPlus").click();
+  await page.getByRole("menuitem", { name: /Plan/i }).click();
   await expect(page.locator(".lovableCoachTextarea")).toHaveValue(
-    'Aide-moi à clarifier cette intention et à en faire le prochain pas utile : "sport"'
+    "Aide-moi à transformer cette intention en plan clair et actionnable."
   );
-  await attachScreenshot(page, testInfo, "objectives-universal-capture-coach-clarify.png");
-
-  await page.getByRole("button", { name: "Objectifs" }).click();
-  await page.getByTestId("objectives-universal-capture-button").click();
-  await page
-    .getByTestId("universal-capture-input")
-    .fill("Je veux mieux manger, reprendre le sport et organiser mes semaines");
-  await page.getByTestId("universal-capture-submit").click();
-
-  await expect(page.getByText("Ton copilote stratégique")).toBeVisible();
-  await expect(page.locator(".lovableCoachTextarea")).toHaveValue(
-    'Aide-moi à structurer ce que je veux faire avancer à partir de cette intention : "Je veux mieux manger, reprendre le sport et organiser mes semaines"'
-  );
-
-  await attachScreenshot(page, testInfo, "objectives-universal-capture-coach-structuring.png");
-});
-
-test("objectives universal capture keeps medium confidence direct intents on the coach path", async ({ page }, testInfo) => {
-  await openObjectivesCapture(page, buildBaseState({ withContent: false }));
-
-  await page.getByTestId("universal-capture-input").fill("Faire 3 séances de sport par semaine");
-  await page.getByTestId("universal-capture-submit").click();
-
-  await expect(page.getByTestId("universal-capture-preview")).toHaveCount(0);
-  await expect(page.getByText("Ton copilote stratégique")).toBeVisible();
-  await expect(page.locator(".lovableCoachTextarea")).toHaveValue(
-    'Aide-moi à structurer ce que je veux faire avancer à partir de cette intention : "Faire 3 séances de sport par semaine"'
-  );
-
-  await attachScreenshot(page, testInfo, "objectives-universal-capture-medium-confidence-coach.png");
 });

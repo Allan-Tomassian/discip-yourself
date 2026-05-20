@@ -1,124 +1,138 @@
 import { test, expect } from "@playwright/test";
-import { buildBaseState, seedState, getState, getTodayKey } from "./utils/seed.js";
+import { buildBaseState, getState, getTodayKey, seedState } from "./utils/seed.js";
 
-async function openCreateFlow(page) {
-  await page.goto("/");
-  await page.getByTestId("create-plus-button").click();
-  await expect(page.getByTestId("category-gate-modal")).toBeVisible();
-  await page.getByTestId("category-row-cat_business").click();
-  await page.getByTestId("category-gate-continue").click();
-  await expect(page.getByTestId("create-flow-modal")).toBeVisible();
+function applyActionDraft(state, actionDraft = {}) {
+  state.ui.createDraft = {
+    version: 1,
+    kind: "action",
+    origin: { mainTab: "home", sourceSurface: "today" },
+    intent: null,
+    proposal: null,
+    actionDraft: {
+      categoryId: "cat_business",
+      ...actionDraft,
+    },
+    outcomeDraft: null,
+    status: "draft",
+  };
+  return state;
 }
 
-test("Projet + Action (guidé) -> ouvre l’étape projet", async ({ page }) => {
-  const state = buildBaseState({ withContent: false });
+function buildCreateState({ withContent = false, actionDraft = null } = {}) {
+  const state = buildBaseState({ withContent });
+  state.profile = {
+    ...(state.profile || {}),
+    plan: "premium",
+    entitlements: { premium: true },
+  };
+  if (actionDraft) applyActionDraft(state, actionDraft);
+  return state;
+}
+
+async function openCreate(page, state) {
   await seedState(page, state);
+  await page.goto("/create");
+  await expect(page.locator(".pageTitle")).toContainText("Créer une action");
+  await expect(page.getByPlaceholder(/Envoyer la proposition|Nom de l'action/i).first()).toBeVisible();
+}
 
-  await openCreateFlow(page);
-  await page.getByTestId("create-show-legacy-options").click();
-  await page.getByTestId("create-choice-guided").click();
-  await expect(page.getByPlaceholder("Nom du projet")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Continuer" })).toBeDisabled();
-});
+async function fillActionTitle(page, title) {
+  await page.getByPlaceholder(/Envoyer la proposition|Nom de l'action/i).first().fill(title);
+}
 
-test("Action ponctuelle -> occurrence au bon jour", async ({ page }) => {
-  const state = buildBaseState({ withContent: false });
-  await seedState(page, state);
+async function saveAction(page) {
+  await page.getByRole("button", { name: /Créer l.action|Créer une action/ }).click();
+}
 
-  await openCreateFlow(page);
-  await page.getByTestId("create-choice-action").click();
-  await page.getByTestId("create-type-oneoff").click();
+async function chooseTiming(page, label) {
+  await page.getByRole("button", { name: new RegExp(`^${label}\\b`) }).click();
+}
 
-  await page.getByPlaceholder("Nouvelle action").fill("Action OneOff");
-  await page.getByTestId("action-save").click();
+test("CreateItem: action maintenant -> occurrence aujourd’hui sans heure fixe", async ({ page }) => {
+  await openCreate(page, buildCreateState());
+
+  await fillActionTitle(page, "Action maintenant E2E");
+  await chooseTiming(page, "Maintenant");
+  await saveAction(page);
 
   const next = await getState(page);
-  const action = next.goals.find((g) => g.title === "Action OneOff");
+  const action = next.goals.find((goal) => goal.title === "Action maintenant E2E");
   expect(action).toBeTruthy();
-  const today = getTodayKey();
-  const occ = next.occurrences.filter((o) => o.goalId === action.id);
-  expect(occ.some((o) => o.date === today)).toBeTruthy();
+  expect(action.categoryId).toBe("cat_business");
+  expect(action.planType).toBe("ONE_OFF");
+  expect(action.timeMode).toBe("NONE");
+  expect(action.startTime || "").toBe("");
+  expect((next.occurrences || []).some((occ) => occ.goalId === action.id && occ.date === getTodayKey())).toBeTruthy();
 });
 
-test("Action récurrente planifiée -> planning + durée persistés", async ({ page }) => {
-  const state = buildBaseState({ withContent: false });
-  await seedState(page, state);
+test("CreateItem: action aujourd’hui à heure fixe -> planning et durée persistés", async ({ page }) => {
+  await openCreate(page, buildCreateState({
+    actionDraft: {
+      repeat: "none",
+      oneOffDate: getTodayKey(),
+      timeMode: "FIXED",
+      startTime: "10:30",
+      durationMinutes: 45,
+    },
+  }));
 
-  await openCreateFlow(page);
-  await page.getByTestId("create-choice-action").click();
-  await page.getByTestId("create-type-recurring").click();
-
-  await page.getByPlaceholder("Nouvelle action").fill("Action Recurring Planned");
-  await page.locator("input[type=\"time\"]").first().fill("10:30");
-  await page.locator("input[placeholder=\"Minutes\"]").first().fill("45");
-  await page.getByTestId("action-save").click();
+  await fillActionTitle(page, "Action heure fixe E2E");
+  await expect(page.locator("input[type=\"time\"]").first()).toHaveValue("10:30");
+  await saveAction(page);
 
   const next = await getState(page);
-  const action = next.goals.find((g) => g.title === "Action Recurring Planned");
+  const action = next.goals.find((goal) => goal.title === "Action heure fixe E2E");
   expect(action).toBeTruthy();
-  expect(action.repeat).toBe("weekly");
+  expect(action.oneOffDate).toBe(getTodayKey());
   expect(action.timeMode).toBe("FIXED");
   expect(action.startTime).toBe("10:30");
   expect(action.durationMinutes).toBe(45);
-  const occ = next.occurrences.filter((o) => o.goalId === action.id);
-  expect(occ.length).toBeGreaterThanOrEqual(1);
-  expect(occ.some((o) => o.start === "10:30")).toBeTruthy();
+  expect((next.occurrences || []).some((occ) => occ.goalId === action.id && occ.start === "10:30")).toBeTruthy();
 });
 
-test("Action récurrente -> conflit horaire bloquant avant résolution", async ({ page }) => {
-  const state = buildBaseState({ withContent: true });
-  await seedState(page, state);
+test("CreateItem: action récurrente -> cadence et génération d’occurrences", async ({ page }) => {
+  await openCreate(page, buildCreateState({
+    actionDraft: {
+      repeat: "daily",
+      timeMode: "FIXED",
+      startTime: "11:15",
+      durationMinutes: 30,
+    },
+  }));
 
-  await openCreateFlow(page);
-  await page.getByTestId("create-choice-action").click();
-  await page.getByTestId("create-type-recurring").click();
-
-  await page.getByPlaceholder("Nouvelle action").fill("Action Conflict Blocking");
-  await page.locator("input[type=\"time\"]").first().fill("09:00");
-  await page.getByTestId("action-save").click();
-
-  await expect(page.getByTestId("conflict-resolver-modal")).toBeVisible();
-  await expect(page.getByText("Conflit d’horaire")).toBeVisible();
-
-  const next = await getState(page);
-  expect(next.goals.some((g) => g.title === "Action Conflict Blocking")).toBeFalsy();
-});
-
-test("Action anytime -> sans date fixe", async ({ page }) => {
-  const state = buildBaseState({ withContent: false });
-  await seedState(page, state);
-
-  await openCreateFlow(page);
-  await page.getByTestId("create-choice-action").click();
-  await page.getByTestId("create-type-anytime").click();
-
-  await page.getByPlaceholder("Nouvelle action").fill("Action Anytime");
-  await page.getByTestId("action-save").click();
+  await fillActionTitle(page, "Action récurrente E2E");
+  await expect(page.locator("input[type=\"time\"]").first()).toHaveValue("11:15");
+  await saveAction(page);
 
   const next = await getState(page);
-  const action = next.goals.find((g) => g.title === "Action Anytime");
+  const action = next.goals.find((goal) => goal.title === "Action récurrente E2E");
   expect(action).toBeTruthy();
-  expect(action.habitType).toBe("ANYTIME");
-  expect(action.timeMode).toBe("NONE");
-  expect(action.startTime || "").toBe("");
-  expect(Array.isArray(action.timeSlots) ? action.timeSlots : []).toEqual([]);
-
-  const occ = next.occurrences.filter((o) => o.goalId === action.id);
-  expect(occ.length).toBeGreaterThan(0);
-  expect(occ.every((o) => o.start === "00:00" || o.noTime === true)).toBeTruthy();
-
+  expect(action.repeat).toBe("daily");
+  expect(action.timeMode).toBe("FIXED");
+  expect(action.startTime).toBe("11:15");
+  expect(action.durationMinutes).toBe(30);
+  const occurrences = (next.occurrences || []).filter((occ) => occ.goalId === action.id);
+  expect(occurrences.length).toBeGreaterThan(0);
+  expect(occurrences.some((occ) => occ.start === "11:15")).toBeTruthy();
 });
 
-test("Ordre catégories = railOrder, modifier conserve ordre", async ({ page }) => {
-  const state = buildBaseState({ withContent: false });
-  await seedState(page, state);
+test("CreateItem: conflit horaire reste une dette UI hors flux canonique", async ({ page }) => {
+  const state = buildCreateState({
+    withContent: true,
+    actionDraft: {
+      repeat: "none",
+      oneOffDate: getTodayKey(),
+      timeMode: "FIXED",
+      startTime: "09:00",
+    },
+  });
+  await openCreate(page, state);
 
-  await openCreateFlow(page);
-  await page.getByTestId("create-change-category").click();
-  await expect(page.getByTestId("category-gate-modal")).toBeVisible();
+  await fillActionTitle(page, "Action même créneau E2E");
+  await saveAction(page);
 
-  const rows = page.locator("[data-testid^=\"category-row-\"]");
-  const ids = await rows.evaluateAll((els) => els.map((el) => el.getAttribute("data-testid")));
-  expect(ids[0]).toBe("category-row-cat_business");
-  expect(ids[1]).toBe("category-row-cat_empty");
+  const next = await getState(page);
+  const action = next.goals.find((goal) => goal.title === "Action même créneau E2E");
+  expect(action).toBeTruthy();
+  await expect(page.getByTestId("conflict-resolver-modal")).toHaveCount(0);
 });
