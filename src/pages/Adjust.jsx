@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   BrainCircuit,
@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import { AppScreen } from "../shared/ui/app";
 import SystemAnalysisEntryButton from "../components/system-analysis/SystemAnalysisEntryButton";
+import SystemAnalysisResultPreview from "../components/system-analysis/SystemAnalysisResultPreview";
+import { useAuth } from "../auth/useAuth";
 import {
   CommandAIBlock,
   CommandBadge,
@@ -26,6 +28,7 @@ import { buildAdjustSystemSignalPreview } from "../features/adjust/adjustSystemS
 import { buildSystemAnalysisEligibility } from "../features/system-analysis/systemAnalysisEligibility";
 import { buildSystemAnalysisEntryModel } from "../features/system-analysis/systemAnalysisEntryModel";
 import { buildSystemAnalysisSnapshot } from "../features/system-analysis/systemAnalysisSnapshot";
+import { requestAiSystemAnalysis } from "../infra/aiSystemAnalysisClient";
 import { getPrimarySystemSignal } from "../logic/systemSignals";
 import { fromLocalDateKey, normalizeLocalDateKey, todayLocalKey } from "../utils/datetime";
 import "../features/adjust/adjust.css";
@@ -96,6 +99,47 @@ function resolveStateLabel(summary) {
 
 function buildSystemAnalysisReferenceNow(dateKey) {
   return new Date(`${dateKey}T12:00:00`);
+}
+
+function resolveBrowserLocale() {
+  if (typeof navigator !== "undefined" && typeof navigator.language === "string" && navigator.language.trim()) {
+    return navigator.language;
+  }
+  return "fr-FR";
+}
+
+function resolveBrowserTimezone() {
+  try {
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return typeof timezone === "string" && timezone.trim() ? timezone : "Europe/Paris";
+  } catch {
+    return "Europe/Paris";
+  }
+}
+
+function createInitialSystemAnalysisState() {
+  return {
+    status: "idle",
+    result: null,
+    errorCode: "",
+    message: "",
+    missingRequirements: [],
+    requestId: null,
+  };
+}
+
+function resolveSystemAnalysisStatus(result) {
+  const code = String(result?.errorCode || "").trim().toUpperCase();
+  if (code === "PREMIUM_REQUIRED") return "premium_required";
+  if (code === "SYSTEM_ANALYSIS_INELIGIBLE") return "ineligible";
+  if (code === "SYSTEM_ANALYSIS_PROVIDER_TIMEOUT") return "timeout";
+  return "error";
+}
+
+function resolveSystemAnalysisAvailabilityState({ requestState, fallbackState }) {
+  if (requestState?.status === "loading") return "running";
+  if (requestState?.errorCode === "QUOTA_EXCEEDED") return "quota_exhausted";
+  return fallbackState;
 }
 
 function TrendSnapshot({ trendSnapshot }) {
@@ -207,6 +251,9 @@ export default function Adjust({
   onSystemAnalysisEntry,
   systemAnalysisAvailabilityState = "ready",
 }) {
+  const { session } = useAuth();
+  const [systemAnalysisRequestState, setSystemAnalysisRequestState] = useState(createInitialSystemAnalysisState);
+  const systemAnalysisAbortRef = useRef(null);
   const safeData = useMemo(() => (data && typeof data === "object" ? data : {}), [data]);
   const activeDateKey =
     normalizeLocalDateKey(safeData?.ui?.selectedDateKey) ||
@@ -245,22 +292,108 @@ export default function Adjust({
     }),
     [activeDateKey, safeData, systemAnalysisSnapshot]
   );
+  const resolvedSystemAnalysisAvailabilityState = resolveSystemAnalysisAvailabilityState({
+    requestState: systemAnalysisRequestState,
+    fallbackState: systemAnalysisAvailabilityState,
+  });
   const systemAnalysisEntryModel = useMemo(
     () => buildSystemAnalysisEntryModel({
       eligibility: systemAnalysisEligibility,
-      availabilityState: systemAnalysisAvailabilityState,
+      availabilityState: resolvedSystemAnalysisAvailabilityState,
     }),
-    [systemAnalysisAvailabilityState, systemAnalysisEligibility]
+    [resolvedSystemAnalysisAvailabilityState, systemAnalysisEligibility]
   );
+
+  useEffect(() => () => {
+    systemAnalysisAbortRef.current?.abort();
+  }, []);
+
+  const handleSystemAnalysisEntry = useCallback(async () => {
+    onSystemAnalysisEntry?.({
+      status: systemAnalysisEntryModel.state,
+      eligibility: systemAnalysisEligibility,
+      snapshot: systemAnalysisSnapshot,
+    });
+
+    if (systemAnalysisRequestState.status === "loading") return;
+
+    if (!systemAnalysisEligibility?.eligible) {
+      setSystemAnalysisRequestState({
+        status: "ineligible",
+        result: null,
+        errorCode: "SYSTEM_ANALYSIS_INELIGIBLE",
+        message: systemAnalysisEligibility?.unlockCopy || "Continue à exécuter tes blocs pendant quelques jours.",
+        missingRequirements: Array.isArray(systemAnalysisEligibility?.missingRequirements)
+          ? systemAnalysisEligibility.missingRequirements
+          : [],
+        requestId: null,
+      });
+      return;
+    }
+
+    systemAnalysisAbortRef.current?.abort();
+    const controller = new AbortController();
+    systemAnalysisAbortRef.current = controller;
+    setSystemAnalysisRequestState({
+      status: "loading",
+      result: null,
+      errorCode: "",
+      message: "",
+      missingRequirements: [],
+      requestId: null,
+    });
+
+    const result = await requestAiSystemAnalysis({
+      snapshot: systemAnalysisSnapshot,
+      state: safeData,
+      locale: resolveBrowserLocale(),
+      timezone: resolveBrowserTimezone(),
+      referenceDateKey: activeDateKey,
+      accessToken: session?.access_token || "",
+      signal: controller.signal,
+    });
+
+    if (controller.signal.aborted) return;
+    systemAnalysisAbortRef.current = null;
+
+    if (result.ok) {
+      setSystemAnalysisRequestState({
+        status: "success",
+        result: result.result,
+        errorCode: "",
+        message: "",
+        missingRequirements: [],
+        requestId: result.requestId || null,
+      });
+      return;
+    }
+
+    setSystemAnalysisRequestState({
+      status: resolveSystemAnalysisStatus(result),
+      result: null,
+      errorCode: result.errorCode || "UNKNOWN",
+      message: result.errorMessage || "",
+      missingRequirements: Array.isArray(result.errorDetails?.missingRequirements)
+        ? result.errorDetails.missingRequirements
+        : [],
+      requestId: result.requestId || null,
+    });
+  }, [
+    activeDateKey,
+    onSystemAnalysisEntry,
+    safeData,
+    session?.access_token,
+    systemAnalysisEligibility,
+    systemAnalysisEntryModel.state,
+    systemAnalysisRequestState.status,
+    systemAnalysisSnapshot,
+  ]);
+
   const systemAnalysisHeaderAction = (
     <SystemAnalysisEntryButton
       className="adjustSystemAnalysisEntryButton"
       model={systemAnalysisEntryModel}
-      onClick={() => onSystemAnalysisEntry?.({
-        status: systemAnalysisEntryModel.state,
-        eligibility: systemAnalysisEligibility,
-        snapshot: systemAnalysisSnapshot,
-      })}
+      onClick={handleSystemAnalysisEntry}
     />
   );
 
@@ -348,6 +481,15 @@ export default function Adjust({
           ) : null}
           <p className="adjustHonestNote">Aucune modification n’est appliquée sans passer par l’action choisie.</p>
         </CommandCard>
+
+        <SystemAnalysisResultPreview
+          status={systemAnalysisRequestState.status}
+          result={systemAnalysisRequestState.result}
+          errorCode={systemAnalysisRequestState.errorCode}
+          message={systemAnalysisRequestState.message}
+          missingRequirements={systemAnalysisRequestState.missingRequirements}
+          onRetry={handleSystemAnalysisEntry}
+        />
 
         {nextBlock ? (
           <CommandCard tone="execution" className="adjustNextBlockCard" density="compact">
