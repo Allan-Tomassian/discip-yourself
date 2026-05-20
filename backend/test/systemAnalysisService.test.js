@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   buildSystemAnalysisSystemPrompt,
   buildSystemAnalysisUserPrompt,
+  resolveSystemAnalysisModelConfig,
   resolveSystemAnalysisModel,
   resolveSystemAnalysisPromptVersion,
   resolveSystemAnalysisTimeoutMs,
@@ -187,9 +188,11 @@ test("runSystemAnalysisService uses dedicated model, timeout, prompt version, an
   assert.equal(result.response.modelMeta.model, "gpt-system-analysis");
   assert.equal(result.response.modelMeta.promptVersion, "system_analysis_test_v9");
   assert.equal(result.response.modelMeta.requestId, "req-service");
+  assert.equal(result.diagnostics.modelClass, "premium_deep_analysis");
 });
 
 test("system analysis config helpers apply defaults and timeout cap", () => {
+  assert.equal(resolveSystemAnalysisModelConfig({ config: {} }).modelClass, "premium_deep_analysis");
   assert.equal(resolveSystemAnalysisModel({ config: {} }), "gpt-5.4");
   assert.equal(resolveSystemAnalysisPromptVersion({ config: {} }), "system_analysis_v1_0");
   assert.equal(resolveSystemAnalysisTimeoutMs({ config: {} }), 65000);

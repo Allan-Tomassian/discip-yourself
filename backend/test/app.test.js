@@ -1513,7 +1513,11 @@ test("POST /ai/first-run-starter-hints returns compact hints without commitDraft
   let requestedUserPrompt = null;
   const insertedLogs = [];
   const app = await buildApp({
-    config: TEST_CONFIG_WITH_OPENAI,
+    config: {
+      ...TEST_CONFIG_WITH_OPENAI,
+      FIRST_RUN_PLAN_OPENAI_MODEL: "gpt-deep-first-run-plan",
+      AI_MODEL_STRUCTURED_JSON_SMALL: "gpt-structured-small",
+    },
     verifyAccessToken: async () => ({ id: "user-first-run-starter-hints" }),
   });
   app.supabase = createFakeSupabase({
@@ -1567,13 +1571,15 @@ test("POST /ai/first-run-starter-hints returns compact hints without commitDraft
   assert.equal(body.riskRituals[0].title, "Revue anti-cigarette");
   assert.equal(body.commitDraft, undefined);
   assert.equal(body.occurrences, undefined);
-  assert.equal(requestedModel, "gpt-4.1-mini");
+  assert.equal(requestedModel, "gpt-structured-small");
   assert.equal(requestedTimeout, 10000);
   assert.match(requestedUserPrompt, /No dates, no schedule, no occurrence ids, no commitDraft/);
   assert.match(requestedUserPrompt, /First Access et auth/);
   assert.equal(insertedLogs[0]?.coach_kind, "first-run-starter-hints");
   assert.equal(insertedLogs[0]?.route, "/ai/first-run-starter-hints");
   assert.equal(insertedLogs[0]?.feature_id, "first_run_starter_hints");
+  assert.equal(insertedLogs[0]?.model, "gpt-structured-small");
+  assert.equal(insertedLogs[0]?.model_class, "structured_json_small");
   assert.equal(insertedLogs[0]?.counts_for_quota, true);
   await app.close();
 });
@@ -1628,7 +1634,10 @@ test("POST /ai/first-run-why-clarification returns compact clarification without
   let requestedUserPrompt = null;
   const insertedLogs = [];
   const app = await buildApp({
-    config: TEST_CONFIG_WITH_OPENAI,
+    config: {
+      ...TEST_CONFIG_WITH_OPENAI,
+      AI_MODEL_STRUCTURED_JSON_SMALL: "gpt-why-structured-small",
+    },
     verifyAccessToken: async () => ({ id: "user-first-run-why-clarification" }),
   });
   app.supabase = createFakeSupabase({
@@ -1684,12 +1693,14 @@ test("POST /ai/first-run-why-clarification returns compact clarification without
   assert.equal(body.weekSchedule, undefined);
   assert.equal(body.diagnosis, undefined);
   assert.equal(body.medical, undefined);
-  assert.equal(requestedModel, "gpt-4.1-mini");
+  assert.equal(requestedModel, "gpt-why-structured-small");
   assert.equal(requestedTimeout, 8000);
   assert.match(requestedUserPrompt, /Do not include fields named commitDraft, occurrences, weekSchedule/);
   assert.equal(insertedLogs[0]?.coach_kind, "first-run-why-clarification");
   assert.equal(insertedLogs[0]?.route, "/ai/first-run-why-clarification");
   assert.equal(insertedLogs[0]?.feature_id, "why_clarification");
+  assert.equal(insertedLogs[0]?.model, "gpt-why-structured-small");
+  assert.equal(insertedLogs[0]?.model_class, "structured_json_small");
   assert.equal(insertedLogs[0]?.counts_for_quota, true);
   await app.close();
 });
@@ -3291,7 +3302,7 @@ test("POST /ai/session-guidance prepare returns an explicit provider timeout err
   await app.close();
 });
 
-test("POST /ai/session-guidance adjust and tool keep the global OpenAI model and global timeout behavior", async () => {
+test("POST /ai/session-guidance adjust and tool use session guidance model-class routing", async () => {
   const requestedInvocations = [];
   const currentRunbook = createValidSessionPreparedRunbook();
   const app = await buildApp({
@@ -3399,25 +3410,28 @@ test("POST /ai/session-guidance adjust and tool keep the global OpenAI model and
   assert.equal(toolPayload.meta.model, undefined);
   assert.equal(toolPayload.meta.promptVersion, undefined);
   assert.deepEqual(requestedInvocations, [
-    { model: "gpt-4.1-mini", timeout: null },
-    { model: "gpt-4.1-mini", timeout: null },
+    { model: "gpt-4.1-mini", timeout: 60000 },
+    { model: "gpt-4.1-mini", timeout: 60000 },
   ]);
   await app.close();
 });
 
-test("POST /ai/now keeps the global OpenAI model when session prepare overrides are configured", async () => {
+test("POST /ai/now uses tactical model-class routing when session prepare overrides are configured", async () => {
   let requestedModel = null;
   let requestedTimeout = null;
+  const insertedLogs = [];
   const app = await buildApp({
     config: {
       ...TEST_CONFIG_WITH_OPENAI,
       SESSION_GUIDANCE_PREPARE_OPENAI_MODEL: "gpt-5.4-custom-prepare",
       SESSION_GUIDANCE_PREPARE_OPENAI_TIMEOUT_MS: 18000,
+      AI_MODEL_FAST_LOW_COST_TEXT: "gpt-fast-tactical",
     },
     verifyAccessToken: async () => ({ id: "user-now-global-model" }),
   });
   app.supabase = createFakeSupabase({
     userData: createCoachContextUserData(),
+    insertedLogs,
   });
   app.openai = {
     chat: {
@@ -3452,8 +3466,11 @@ test("POST /ai/now keeps the global OpenAI model when session prepare overrides 
   });
 
   assert.equal(response.statusCode, 200);
-  assert.equal(requestedModel, "gpt-4.1-mini");
-  assert.equal(requestedTimeout, null);
+  assert.equal(requestedModel, "gpt-fast-tactical");
+  assert.equal(requestedTimeout, 20000);
+  assert.equal(insertedLogs[0]?.feature_id, "today_ai_insight");
+  assert.equal(insertedLogs[0]?.model, "gpt-fast-tactical");
+  assert.equal(insertedLogs[0]?.model_class, "fast_low_cost_text");
   await app.close();
 });
 
@@ -3642,6 +3659,8 @@ test("POST /ai/session-guidance returns an AI premium runbook with quality metad
   assert.equal(insertedLogs[0]?.coach_kind, "session-guidance");
   assert.equal(insertedLogs[0]?.route, "/ai/session-guidance");
   assert.equal(insertedLogs[0]?.feature_id, "session_guidance");
+  assert.equal(insertedLogs[0]?.model, "gpt-5.4");
+  assert.equal(insertedLogs[0]?.model_class, "reasoning_deep");
   assert.equal(insertedLogs[0]?.counts_for_quota, true);
   assert.equal(insertedLogs[0]?.mode, "prepare");
   assert.equal(insertedLogs[0]?.protocol_type, "sport");

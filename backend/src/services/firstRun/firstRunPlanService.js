@@ -8,7 +8,9 @@ import {
   firstRunPlanResponseSchema,
 } from "../../schemas/firstRun.js";
 import { hashValue } from "../logging.js";
+import { resolveAiModelConfig } from "../aiModelRouting.js";
 import { USER_AI_CATEGORY_META } from "../../../../src/domain/userAiProfile.js";
+import { AI_FEATURE_IDS } from "../../../../src/domain/aiPolicy.js";
 import {
   addDaysLocal,
   appDowFromDate,
@@ -480,14 +482,21 @@ function extractPayloadCandidate(message) {
   }
 }
 
-function resolveFirstRunPlanOpenAiModel(app) {
-  return String(app?.config?.FIRST_RUN_PLAN_OPENAI_MODEL || "").trim() || DEFAULT_FIRST_RUN_PLAN_MODEL;
-}
-
-function resolveFirstRunPlanOpenAiTimeoutMs(app) {
-  const configuredTimeout = Number(app?.config?.FIRST_RUN_PLAN_OPENAI_TIMEOUT_MS);
-  if (!Number.isFinite(configuredTimeout) || configuredTimeout <= 0) return DEFAULT_FIRST_RUN_PLAN_TIMEOUT_MS;
-  return Math.max(MIN_FIRST_RUN_PLAN_TIMEOUT_MS, Math.round(configuredTimeout));
+function resolveFirstRunPlanModelConfig(app) {
+  return resolveAiModelConfig({
+    featureId: AI_FEATURE_IDS.FIRST_RUN_FULL_PLAN_LEGACY,
+    config: app?.config,
+    routeOverride: {
+      model: app?.config?.FIRST_RUN_PLAN_OPENAI_MODEL,
+      timeoutMs: app?.config?.FIRST_RUN_PLAN_OPENAI_TIMEOUT_MS,
+      promptVersion: FIRST_RUN_PLAN_PROMPT_VERSION,
+      defaultModel: DEFAULT_FIRST_RUN_PLAN_MODEL,
+      defaultTimeoutMs: DEFAULT_FIRST_RUN_PLAN_TIMEOUT_MS,
+      minTimeoutMs: MIN_FIRST_RUN_PLAN_TIMEOUT_MS,
+      maxTimeoutMs: 90_000,
+      allowGlobalFallback: false,
+    },
+  });
 }
 
 function buildWeeklyMinuteBands(capacity) {
@@ -1526,10 +1535,17 @@ function validatePlanDivergence(plans = [], context) {
   }
 }
 
-function buildFirstRunPlanServiceDiagnostics({ providerMs = null, totalMs = null, repairTotals = null, plans = [] } = {}) {
+function buildFirstRunPlanServiceDiagnostics({
+  providerMs = null,
+  totalMs = null,
+  repairTotals = null,
+  plans = [],
+  modelClass = null,
+} = {}) {
   return {
     providerMs: toRoundedInt(providerMs, null),
     totalMs: toRoundedInt(totalMs, null),
+    modelClass,
     repairedOccurrenceCount: toRoundedInt(repairTotals?.repairedOccurrenceCount, 0),
     repairedMinutesDelta: toRoundedInt(repairTotals?.repairedMinutesDelta, 0),
     activeDays: plans.map((plan) => toRoundedInt(plan?.comparisonMetrics?.activeDays, 0)),
@@ -1609,6 +1625,7 @@ function normalizeProviderPayload(providerPayload, context, requestMeta) {
       totalMs: requestMeta.totalMs,
       repairTotals,
       plans,
+      modelClass: requestMeta.modelClass,
     }),
   };
 }
@@ -1617,8 +1634,9 @@ async function runOpenAiFirstRunPlan({ app, context }) {
   if (!app.openai || !String(app?.config?.OPENAI_API_KEY || "").trim()) {
     throw createBackendError("FIRST_RUN_PLAN_BACKEND_UNAVAILABLE");
   }
-  const requestModel = resolveFirstRunPlanOpenAiModel(app);
-  const requestTimeout = resolveFirstRunPlanOpenAiTimeoutMs(app);
+  const modelConfig = resolveFirstRunPlanModelConfig(app);
+  const requestModel = modelConfig.model;
+  const requestTimeout = modelConfig.timeoutMs;
   let completion;
   const providerStartedAt = Date.now();
   try {
@@ -1648,6 +1666,9 @@ async function runOpenAiFirstRunPlan({ app, context }) {
         "FIRST_RUN_PLAN_PROVIDER_TIMEOUT",
         {
           ...buildProviderTimeoutDetails({ timeoutMs: requestTimeout }),
+          model: requestModel,
+          modelClass: modelConfig.modelClass,
+          promptVersion: FIRST_RUN_PLAN_PROMPT_VERSION,
           providerMs,
           totalMs: providerMs,
         }
@@ -1664,6 +1685,9 @@ async function runOpenAiFirstRunPlan({ app, context }) {
       "INVALID_FIRST_RUN_PLAN_RESPONSE",
       {
         ...buildInvalidResponseDetails(),
+        model: requestModel,
+        modelClass: modelConfig.modelClass,
+        promptVersion: FIRST_RUN_PLAN_PROMPT_VERSION,
         providerMs,
         totalMs: providerMs,
       }
@@ -1676,6 +1700,9 @@ async function runOpenAiFirstRunPlan({ app, context }) {
       "INVALID_FIRST_RUN_PLAN_RESPONSE",
       {
         ...buildInvalidResponseDetails(),
+        model: requestModel,
+        modelClass: modelConfig.modelClass,
+        promptVersion: FIRST_RUN_PLAN_PROMPT_VERSION,
         providerMs,
         totalMs: providerMs,
       }
@@ -1686,6 +1713,7 @@ async function runOpenAiFirstRunPlan({ app, context }) {
     return {
       candidate: firstRunPlanProviderSchema.parse(candidate),
       model: requestModel,
+      modelClass: modelConfig.modelClass,
       promptVersion: FIRST_RUN_PLAN_PROMPT_VERSION,
       providerMs,
     };
@@ -1698,6 +1726,9 @@ async function runOpenAiFirstRunPlan({ app, context }) {
           ...buildInvalidResponseDetails({
           zodIssuePaths: error.issues.map((issue) => formatIssuePath(issue)).filter(Boolean).slice(0, 16),
           }),
+          model: requestModel,
+          modelClass: modelConfig.modelClass,
+          promptVersion: FIRST_RUN_PLAN_PROMPT_VERSION,
           providerMs,
           totalMs: providerMs,
         }
@@ -1718,6 +1749,7 @@ export async function runFirstRunPlanService({ app, context }) {
     return normalizeProviderPayload(provider.candidate, context, {
       inputHash,
       model: provider.model,
+      modelClass: provider.modelClass,
       promptVersion: provider.promptVersion,
       providerMs: provider.providerMs,
       totalMs,

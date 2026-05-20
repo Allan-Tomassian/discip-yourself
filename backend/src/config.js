@@ -18,6 +18,9 @@ function parseBooleanFlag(raw) {
   return value === "1" || value === "true" || value === "yes" || value === "on";
 }
 
+const optionalEnvString = z.string().optional().default("");
+const optionalEnvNumber = z.union([z.string(), z.number()]).optional().default("");
+
 function isPlaceholderValue(raw) {
   const value = String(raw || "").trim();
   if (!value) return false;
@@ -70,6 +73,20 @@ const envSchema = z.object({
     .refine((value) => !value || !isPlaceholderValue(value), "OPENAI_API_KEY must be empty or a real server-only key."),
   OPENAI_MODEL: z.string().optional().default("gpt-4.1-mini"),
   OPENAI_DEFAULT_TIMEOUT_MS: z.coerce.number().int().min(1000).max(90000).optional().default(30000),
+  AI_MODEL_FAST_LOW_COST_TEXT: optionalEnvString,
+  AI_MODEL_STRUCTURED_JSON_SMALL: optionalEnvString,
+  AI_MODEL_REASONING_MEDIUM: optionalEnvString,
+  AI_MODEL_REASONING_DEEP: optionalEnvString,
+  AI_MODEL_PREMIUM_DEEP_ANALYSIS: optionalEnvString,
+  AI_MODEL_MULTIMODAL_VISION: optionalEnvString,
+  AI_MODEL_DOCUMENT_SUMMARY: optionalEnvString,
+  AI_TIMEOUT_FAST_LOW_COST_TEXT_MS: optionalEnvNumber,
+  AI_TIMEOUT_STRUCTURED_JSON_SMALL_MS: optionalEnvNumber,
+  AI_TIMEOUT_REASONING_MEDIUM_MS: optionalEnvNumber,
+  AI_TIMEOUT_REASONING_DEEP_MS: optionalEnvNumber,
+  AI_TIMEOUT_PREMIUM_DEEP_ANALYSIS_MS: optionalEnvNumber,
+  AI_TIMEOUT_MULTIMODAL_VISION_MS: optionalEnvNumber,
+  AI_TIMEOUT_DOCUMENT_SUMMARY_MS: optionalEnvNumber,
   FIRST_RUN_PLAN_OPENAI_MODEL: z.string().optional().default(""),
   FIRST_RUN_PLAN_OPENAI_TIMEOUT_MS: z.coerce.number().int().min(1000).max(90000).optional().default(55000),
   FIRST_RUN_STARTER_HINTS_OPENAI_MODEL: z.string().optional().default(""),

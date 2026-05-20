@@ -8,8 +8,10 @@ import {
   firstRunStarterRiskRitualSchema,
 } from "../../schemas/firstRun.js";
 import { hashValue } from "../logging.js";
+import { resolveAiModelConfig } from "../aiModelRouting.js";
 import { USER_AI_CATEGORY_META } from "../../../../src/domain/userAiProfile.js";
 import { serializeFirstRunStarterHintsInput } from "../../../../src/features/first-run/firstRunPlanContract.js";
+import { AI_FEATURE_IDS } from "../../../../src/domain/aiPolicy.js";
 
 const DEFAULT_FIRST_RUN_STARTER_HINTS_MODEL = "gpt-4.1-mini";
 const DEFAULT_FIRST_RUN_STARTER_HINTS_TIMEOUT_MS = 10000;
@@ -55,20 +57,21 @@ function isOpenAiRequestTimeoutError(error) {
   );
 }
 
-function resolveStarterHintsModel(app) {
-  return (
-    String(app?.config?.FIRST_RUN_STARTER_HINTS_OPENAI_MODEL || "").trim() ||
-    String(app?.config?.FIRST_RUN_PLAN_OPENAI_MODEL || "").trim() ||
-    DEFAULT_FIRST_RUN_STARTER_HINTS_MODEL
-  );
-}
-
-function resolveStarterHintsTimeoutMs(app) {
-  const configuredTimeout = Number(app?.config?.FIRST_RUN_STARTER_HINTS_OPENAI_TIMEOUT_MS);
-  const timeout = Number.isFinite(configuredTimeout) && configuredTimeout > 0
-    ? Math.round(configuredTimeout)
-    : DEFAULT_FIRST_RUN_STARTER_HINTS_TIMEOUT_MS;
-  return Math.min(MAX_FIRST_RUN_STARTER_HINTS_TIMEOUT_MS, Math.max(1000, timeout));
+function resolveStarterHintsModelConfig(app) {
+  return resolveAiModelConfig({
+    featureId: AI_FEATURE_IDS.FIRST_RUN_STARTER_HINTS,
+    config: app?.config,
+    routeOverride: {
+      model: app?.config?.FIRST_RUN_STARTER_HINTS_OPENAI_MODEL,
+      timeoutMs: app?.config?.FIRST_RUN_STARTER_HINTS_OPENAI_TIMEOUT_MS,
+      promptVersion: FIRST_RUN_STARTER_HINTS_PROMPT_VERSION,
+      defaultModel: DEFAULT_FIRST_RUN_STARTER_HINTS_MODEL,
+      defaultTimeoutMs: DEFAULT_FIRST_RUN_STARTER_HINTS_TIMEOUT_MS,
+      minTimeoutMs: 1000,
+      maxTimeoutMs: MAX_FIRST_RUN_STARTER_HINTS_TIMEOUT_MS,
+      allowGlobalFallback: true,
+    },
+  });
 }
 
 function buildCategoryCatalog() {
@@ -164,8 +167,9 @@ async function runOpenAiStarterHints({ app, context }) {
     throw createBackendError("FIRST_RUN_STARTER_HINTS_BACKEND_UNAVAILABLE");
   }
 
-  const requestModel = resolveStarterHintsModel(app);
-  const requestTimeout = resolveStarterHintsTimeoutMs(app);
+  const modelConfig = resolveStarterHintsModelConfig(app);
+  const requestModel = modelConfig.model;
+  const requestTimeout = modelConfig.timeoutMs;
   const providerStartedAt = Date.now();
   let completion;
   try {
@@ -194,6 +198,9 @@ async function runOpenAiStarterHints({ app, context }) {
         providerStatus: "timeout",
         rejectionStage: "provider_timeout",
         rejectionReason: "provider_timeout",
+        model: requestModel,
+        modelClass: modelConfig.modelClass,
+        promptVersion: FIRST_RUN_STARTER_HINTS_PROMPT_VERSION,
         validationPassed: false,
         richnessPassed: false,
         timeoutMs: requestTimeout,
@@ -209,6 +216,9 @@ async function runOpenAiStarterHints({ app, context }) {
   if (!message || message.refusal) {
     throw createBackendError("INVALID_FIRST_RUN_STARTER_HINTS_RESPONSE", "INVALID_FIRST_RUN_STARTER_HINTS_RESPONSE", {
       ...buildInvalidResponseDetails(),
+      model: requestModel,
+      modelClass: modelConfig.modelClass,
+      promptVersion: FIRST_RUN_STARTER_HINTS_PROMPT_VERSION,
       providerMs,
       totalMs: providerMs,
     });
@@ -218,6 +228,9 @@ async function runOpenAiStarterHints({ app, context }) {
   if (!candidate) {
     throw createBackendError("INVALID_FIRST_RUN_STARTER_HINTS_RESPONSE", "INVALID_FIRST_RUN_STARTER_HINTS_RESPONSE", {
       ...buildInvalidResponseDetails(),
+      model: requestModel,
+      modelClass: modelConfig.modelClass,
+      promptVersion: FIRST_RUN_STARTER_HINTS_PROMPT_VERSION,
       providerMs,
       totalMs: providerMs,
     });
@@ -227,6 +240,7 @@ async function runOpenAiStarterHints({ app, context }) {
     return {
       candidate: firstRunStarterHintsProviderSchema.parse(candidate),
       model: requestModel,
+      modelClass: modelConfig.modelClass,
       promptVersion: FIRST_RUN_STARTER_HINTS_PROMPT_VERSION,
       providerMs,
     };
@@ -236,6 +250,9 @@ async function runOpenAiStarterHints({ app, context }) {
         ...buildInvalidResponseDetails({
           zodIssuePaths: error.issues.map((issue) => formatIssuePath(issue)).filter(Boolean).slice(0, 16),
         }),
+        model: requestModel,
+        modelClass: modelConfig.modelClass,
+        promptVersion: FIRST_RUN_STARTER_HINTS_PROMPT_VERSION,
         providerMs,
         totalMs: providerMs,
       });
@@ -268,6 +285,7 @@ export async function runFirstRunStarterHintsService({ app, context }) {
       response: firstRunStarterHintsResponseSchema.parse(response),
       diagnostics: {
         model: provider.model,
+        modelClass: provider.modelClass,
         promptVersion: provider.promptVersion,
         providerMs: provider.providerMs,
         totalMs: Math.max(0, Date.now() - startedAt),

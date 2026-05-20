@@ -645,15 +645,19 @@ async function handleCoachRoute({
   const contextData = sanitizeUserDataForAiContext(snapshot.userData);
   const activeSessionDiagnostics = describeActiveSessionPayload(snapshot.userData);
   try {
-    const context = contextBuilder({
-      data: contextData,
-      selectedDateKey: parsedBody.data.selectedDateKey,
-      activeCategoryId: parsedBody.data.activeCategoryId,
-      quotaState,
-      requestId: request.requestId,
-      trigger: parsedBody.data.trigger,
-      body: parsedBody.data,
-    });
+    const featureId = resolveCoachRouteFeatureId({ coachKind, body: parsedBody.data, planTier: quotaState.planTier });
+    const context = {
+      ...contextBuilder({
+        data: contextData,
+        selectedDateKey: parsedBody.data.selectedDateKey,
+        activeCategoryId: parsedBody.data.activeCategoryId,
+        quotaState,
+        requestId: request.requestId,
+        trigger: parsedBody.data.trigger,
+        body: parsedBody.data,
+      }),
+      featureId,
+    };
 
     let runnerResult;
     try {
@@ -707,10 +711,12 @@ async function handleCoachRoute({
       coachKind,
       route,
       routeName: routeNameFromPath(route),
-      featureId: resolveCoachRouteFeatureId({ coachKind, body: parsedBody.data, planTier: quotaState.planTier }),
+      featureId,
       planTier: quotaState.planTier,
       decisionSource: response.decisionSource,
       statusCode: 200,
+      model: context.aiModelConfig?.model || null,
+      modelClass: context.aiModelConfig?.modelClass || null,
       countsForQuota: true,
       inputBytes: safeJsonByteLength(parsedBody.data),
       outputBytes: safeJsonByteLength(response),
@@ -1078,6 +1084,7 @@ async function handleSystemAnalysisRoute({ app, request, reply }) {
         errorDetails?.providerStatus ||
         (responseErrorCode === "INVALID_SYSTEM_ANALYSIS_RESPONSE" ? "invalid_response" : "error"),
       model: errorDetails?.model || null,
+      modelClass: errorDetails?.modelClass || null,
       providerMs: Number.isFinite(errorDetails?.providerMs) ? Math.round(errorDetails.providerMs) : null,
       rejectionStage: errorDetails?.rejectionStage || null,
       rejectionReason: errorDetails?.rejectionReason || null,
@@ -1151,6 +1158,7 @@ async function handleSystemAnalysisRoute({ app, request, reply }) {
       period: body.snapshot.period,
       promptVersion,
       model: serviceResult.diagnostics?.model || null,
+      modelClass: serviceResult.diagnostics?.modelClass || null,
       status: "ok",
       providerMs: serviceResult.diagnostics?.providerMs || null,
     },
@@ -1170,6 +1178,7 @@ async function handleSystemAnalysisRoute({ app, request, reply }) {
     protocolType: promptVersion,
     promptVersion,
     model: serviceResult.diagnostics?.model || parsedResponse.data.modelMeta?.model || null,
+    modelClass: serviceResult.diagnostics?.modelClass || null,
     providerStatus: "ok",
     providerMs: Number.isFinite(serviceResult.diagnostics?.providerMs)
       ? Math.round(serviceResult.diagnostics.providerMs)
@@ -1397,6 +1406,8 @@ async function handleSessionGuidanceRoute({ app, request, reply }) {
       mode: parsedBody.data.mode,
       protocolType: parsedBody.data.protocolType,
       providerStatus: errorDetails?.providerStatus || (errorCode === "INVALID_SESSION_GUIDANCE_RESPONSE" ? "invalid_response" : "error"),
+      model: errorDetails?.model || context.aiModelConfig?.model || null,
+      modelClass: errorDetails?.modelClass || context.aiModelConfig?.modelClass || null,
       countsForQuota: false,
       rejectionStage: errorDetails?.rejectionStage || null,
       rejectionReason: errorDetails?.rejectionReason || null,
@@ -1475,7 +1486,8 @@ async function handleSessionGuidanceRoute({ app, request, reply }) {
     mode: parsedBody.data.mode,
     protocolType: parsedBody.data.protocolType,
     providerStatus: "ok",
-    model: parsedResponse.data.meta?.model || null,
+    model: parsedResponse.data.meta?.model || context.aiModelConfig?.model || null,
+    modelClass: context.aiModelConfig?.modelClass || null,
     promptVersion: parsedResponse.data.meta?.promptVersion || null,
     countsForQuota: true,
     rejectionStage: prepareQuality?.rejectionStage || null,
@@ -1666,6 +1678,7 @@ async function handleFirstRunWhyClarificationRoute({ app, request, reply }) {
       mode: "why_clarification",
       promptVersion: errorDetails?.promptVersion || null,
       model: errorDetails?.model || null,
+      modelClass: errorDetails?.modelClass || null,
       providerStatus:
         errorDetails?.providerStatus ||
         (errorCode === "INVALID_FIRST_RUN_WHY_CLARIFICATION_RESPONSE" ? "invalid_response" : "error"),
@@ -1712,6 +1725,7 @@ async function handleFirstRunWhyClarificationRoute({ app, request, reply }) {
       providerStatus: "invalid_response",
       promptVersion: serviceDiagnostics?.promptVersion || null,
       model: serviceDiagnostics?.model || null,
+      modelClass: serviceDiagnostics?.modelClass || null,
       countsForQuota: false,
       rejectionStage: "response_schema",
       rejectionReason: "provider_parse_failed",
@@ -1745,6 +1759,7 @@ async function handleFirstRunWhyClarificationRoute({ app, request, reply }) {
     providerStatus: "ok",
     promptVersion: serviceDiagnostics?.promptVersion || null,
     model: serviceDiagnostics?.model || null,
+    modelClass: serviceDiagnostics?.modelClass || null,
     countsForQuota: true,
     providerMs: Number.isFinite(serviceDiagnostics?.providerMs) ? Math.round(serviceDiagnostics.providerMs) : null,
     rejectionStage: null,
@@ -1933,6 +1948,7 @@ async function handleFirstRunPlanRoute({ app, request, reply }) {
       mode: "generate",
       promptVersion: errorDetails?.promptVersion || null,
       model: errorDetails?.model || null,
+      modelClass: errorDetails?.modelClass || null,
       providerStatus:
         errorDetails?.providerStatus || (errorCode === "INVALID_FIRST_RUN_PLAN_RESPONSE" ? "invalid_response" : "error"),
       countsForQuota: false,
@@ -1982,6 +1998,7 @@ async function handleFirstRunPlanRoute({ app, request, reply }) {
       mode: "generate",
       promptVersion: serviceDiagnostics?.promptVersion || null,
       model: serviceDiagnostics?.model || null,
+      modelClass: serviceDiagnostics?.modelClass || null,
       providerStatus: "invalid_response",
       countsForQuota: false,
       rejectionStage: "response_schema",
@@ -2020,6 +2037,7 @@ async function handleFirstRunPlanRoute({ app, request, reply }) {
     mode: "generate",
     promptVersion: serviceDiagnostics?.promptVersion || null,
     model: serviceDiagnostics?.model || null,
+    modelClass: serviceDiagnostics?.modelClass || null,
     providerStatus: "ok",
     countsForQuota: true,
     providerMs: successMetrics.providerMs,
@@ -2213,6 +2231,7 @@ async function handleFirstRunStarterHintsRoute({ app, request, reply }) {
       mode: "starter_hints",
       promptVersion: errorDetails?.promptVersion || null,
       model: errorDetails?.model || null,
+      modelClass: errorDetails?.modelClass || null,
       providerStatus:
         errorDetails?.providerStatus ||
         (errorCode === "INVALID_FIRST_RUN_STARTER_HINTS_RESPONSE" ? "invalid_response" : "error"),
@@ -2258,6 +2277,7 @@ async function handleFirstRunStarterHintsRoute({ app, request, reply }) {
       mode: "starter_hints",
       promptVersion: serviceDiagnostics?.promptVersion || null,
       model: serviceDiagnostics?.model || null,
+      modelClass: serviceDiagnostics?.modelClass || null,
       providerStatus: "invalid_response",
       countsForQuota: false,
       rejectionStage: "response_schema",
@@ -2292,6 +2312,7 @@ async function handleFirstRunStarterHintsRoute({ app, request, reply }) {
     providerStatus: "ok",
     promptVersion: serviceDiagnostics?.promptVersion || null,
     model: serviceDiagnostics?.model || null,
+    modelClass: serviceDiagnostics?.modelClass || null,
     countsForQuota: true,
     providerMs: Number.isFinite(serviceDiagnostics?.providerMs) ? Math.round(serviceDiagnostics.providerMs) : null,
     rejectionStage: null,

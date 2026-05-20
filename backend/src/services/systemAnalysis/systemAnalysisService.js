@@ -5,6 +5,8 @@ import {
   systemAnalysisProviderResponseSchema,
   systemAnalysisPublicResponseSchema,
 } from "../../schemas/systemAnalysis.js";
+import { resolveAiModelConfig } from "../aiModelRouting.js";
+import { AI_FEATURE_IDS } from "../../../../src/domain/aiPolicy.js";
 
 const DEFAULT_SYSTEM_ANALYSIS_MODEL = "gpt-5.4";
 const DEFAULT_SYSTEM_ANALYSIS_TIMEOUT_MS = 65000;
@@ -122,17 +124,29 @@ function extractPayloadCandidate(message) {
   }
 }
 
+export function resolveSystemAnalysisModelConfig(app) {
+  return resolveAiModelConfig({
+    featureId: AI_FEATURE_IDS.SYSTEM_ANALYSIS,
+    config: app?.config,
+    routeOverride: {
+      model: app?.config?.SYSTEM_ANALYSIS_MODEL,
+      timeoutMs: app?.config?.SYSTEM_ANALYSIS_TIMEOUT_MS,
+      promptVersion: resolveSystemAnalysisPromptVersion(app),
+      defaultModel: DEFAULT_SYSTEM_ANALYSIS_MODEL,
+      defaultTimeoutMs: DEFAULT_SYSTEM_ANALYSIS_TIMEOUT_MS,
+      minTimeoutMs: 1000,
+      maxTimeoutMs: MAX_SYSTEM_ANALYSIS_TIMEOUT_MS,
+      allowGlobalFallback: false,
+    },
+  });
+}
+
 export function resolveSystemAnalysisModel(app) {
-  return String(app?.config?.SYSTEM_ANALYSIS_MODEL || "").trim() || DEFAULT_SYSTEM_ANALYSIS_MODEL;
+  return resolveSystemAnalysisModelConfig(app).model;
 }
 
 export function resolveSystemAnalysisTimeoutMs(app) {
-  const configuredTimeout = Number(app?.config?.SYSTEM_ANALYSIS_TIMEOUT_MS);
-  const timeout =
-    Number.isFinite(configuredTimeout) && configuredTimeout > 0
-      ? Math.round(configuredTimeout)
-      : DEFAULT_SYSTEM_ANALYSIS_TIMEOUT_MS;
-  return Math.min(MAX_SYSTEM_ANALYSIS_TIMEOUT_MS, Math.max(1000, timeout));
+  return resolveSystemAnalysisModelConfig(app).timeoutMs;
 }
 
 export function resolveSystemAnalysisPromptVersion(app) {
@@ -311,7 +325,15 @@ export function validateSystemAnalysisGovernance(result, { snapshot, state } = {
   };
 }
 
-function throwInvalidResponse({ error, providerMs, totalMs, governanceIssues = [] } = {}) {
+function throwInvalidResponse({
+  error,
+  providerMs,
+  totalMs,
+  governanceIssues = [],
+  model = null,
+  modelClass = null,
+  promptVersion = null,
+} = {}) {
   const zodIssuePaths =
     error instanceof z.ZodError
       ? error.issues.map((issue) => formatIssuePath(issue)).filter(Boolean).slice(0, 24)
@@ -326,6 +348,9 @@ function throwInvalidResponse({ error, providerMs, totalMs, governanceIssues = [
       }),
       providerMs: Number.isFinite(providerMs) ? Math.round(providerMs) : null,
       totalMs: Number.isFinite(totalMs) ? Math.round(totalMs) : null,
+      model,
+      modelClass,
+      promptVersion,
     }
   );
 }
@@ -335,8 +360,9 @@ async function runOpenAiSystemAnalysis({ app, context }) {
     throw createBackendError("SYSTEM_ANALYSIS_BACKEND_UNAVAILABLE");
   }
 
-  const requestModel = resolveSystemAnalysisModel(app);
-  const requestTimeout = resolveSystemAnalysisTimeoutMs(app);
+  const modelConfig = resolveSystemAnalysisModelConfig(app);
+  const requestModel = modelConfig.model;
+  const requestTimeout = modelConfig.timeoutMs;
   const providerStartedAt = Date.now();
   let completion;
 
@@ -367,6 +393,9 @@ async function runOpenAiSystemAnalysis({ app, context }) {
         "SYSTEM_ANALYSIS_PROVIDER_TIMEOUT",
         {
           ...buildProviderTimeoutDetails({ timeoutMs: requestTimeout, providerMs }),
+          model: requestModel,
+          modelClass: modelConfig.modelClass,
+          promptVersion: context.promptVersion,
           totalMs: providerMs,
         }
       );
@@ -378,6 +407,9 @@ async function runOpenAiSystemAnalysis({ app, context }) {
         providerStatus: "error",
         rejectionStage: "provider",
         rejectionReason: "provider_failed",
+        model: requestModel,
+        modelClass: modelConfig.modelClass,
+        promptVersion: context.promptVersion,
         validationPassed: false,
         providerMs,
         totalMs: providerMs,
@@ -388,22 +420,46 @@ async function runOpenAiSystemAnalysis({ app, context }) {
   const providerMs = Math.max(0, Date.now() - providerStartedAt);
   const message = completion.choices?.[0]?.message || null;
   if (!message || message.refusal) {
-    throwInvalidResponse({ providerMs, totalMs: providerMs });
+    throwInvalidResponse({
+      providerMs,
+      totalMs: providerMs,
+      governanceIssues: [],
+      error: null,
+      model: requestModel,
+      modelClass: modelConfig.modelClass,
+      promptVersion: context.promptVersion,
+    });
   }
   const candidate = extractPayloadCandidate(message);
   if (!candidate) {
-    throwInvalidResponse({ providerMs, totalMs: providerMs });
+    throwInvalidResponse({
+      providerMs,
+      totalMs: providerMs,
+      governanceIssues: [],
+      error: null,
+      model: requestModel,
+      modelClass: modelConfig.modelClass,
+      promptVersion: context.promptVersion,
+    });
   }
 
   try {
     return {
       candidate: systemAnalysisProviderResponseSchema.parse(candidate),
       model: requestModel,
+      modelClass: modelConfig.modelClass,
       promptVersion: context.promptVersion,
       providerMs,
     };
   } catch (error) {
-    throwInvalidResponse({ error, providerMs, totalMs: providerMs });
+    throwInvalidResponse({
+      error,
+      providerMs,
+      totalMs: providerMs,
+      model: requestModel,
+      modelClass: modelConfig.modelClass,
+      promptVersion: context.promptVersion,
+    });
   }
 }
 
@@ -439,6 +495,9 @@ export async function runSystemAnalysisService({ app, context }) {
       providerMs: provider.providerMs,
       totalMs,
       governanceIssues: governance.issues,
+      model: provider.model,
+      modelClass: provider.modelClass,
+      promptVersion,
     });
   }
   return {
@@ -448,6 +507,7 @@ export async function runSystemAnalysisService({ app, context }) {
       totalMs,
       promptVersion,
       model: provider.model,
+      modelClass: provider.modelClass,
       governanceIssues: governance.issues,
     },
   };

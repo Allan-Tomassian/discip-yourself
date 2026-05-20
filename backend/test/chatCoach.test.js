@@ -50,30 +50,38 @@ function createLoggerRecorder() {
 
 test("runChatCoach logs the AI resolution path explicitly", async () => {
   const { entries, logger } = createLoggerRecorder();
+  let requestedModel = null;
+  let requestedTimeout = null;
   const app = {
     config: {
       OPENAI_API_KEY: "test-openai-key",
       OPENAI_MODEL: "gpt-4.1-mini",
+      OPENAI_DEFAULT_TIMEOUT_MS: 20000,
+      AI_MODEL_FAST_LOW_COST_TEXT: "gpt-fast-free",
     },
     openai: {
       chat: {
         completions: {
-          parse: async () => ({
-            choices: [
-              {
-                message: {
-                  parsed: {
-                    kind: "conversation",
-                    mode: "free",
-                    message: "Commence par un seul pas concret aujourd’hui.",
-                    primaryAction: null,
-                    secondaryAction: null,
-                    proposal: null,
+          parse: async (input, options) => {
+            requestedModel = input?.model || null;
+            requestedTimeout = options?.timeout ?? null;
+            return {
+              choices: [
+                {
+                  message: {
+                    parsed: {
+                      kind: "conversation",
+                      mode: "free",
+                      message: "Commence par un seul pas concret aujourd’hui.",
+                      primaryAction: null,
+                      secondaryAction: null,
+                      proposal: null,
+                    },
                   },
                 },
-              },
-            ],
-          }),
+              ],
+            };
+          },
         },
       },
     },
@@ -87,6 +95,10 @@ test("runChatCoach logs the AI resolution path explicitly", async () => {
 
   assert.equal(payload.decisionSource, "ai");
   assert.equal(payload.meta.fallbackReason, "none");
+  assert.equal(requestedModel, "gpt-fast-free");
+  assert.equal(requestedTimeout, 20000);
+  assert.equal(payload.meta.requestId, "req-chat-1");
+  assert.equal(payload.mode, "free");
   assert.equal(entries.length, 1);
   assert.equal(entries[0].level, "info");
   assert.equal(entries[0].message, "Chat coach resolved with AI");
@@ -98,6 +110,88 @@ test("runChatCoach logs the AI resolution path explicitly", async () => {
   assert.deepEqual(entries[0].payload.behaviorOverlays, ["choice_narrowing"]);
   assert.equal(entries[0].payload.behaviorHorizon, "today");
   assert.equal(entries[0].payload.behaviorIntensity, "standard");
+});
+
+test("runChatCoach routes plan mode through the reasoning medium model class", async () => {
+  const { entries, logger } = createLoggerRecorder();
+  let requestedModel = null;
+  let requestedTimeout = null;
+  const app = {
+    config: {
+      OPENAI_API_KEY: "test-openai-key",
+      OPENAI_MODEL: "gpt-4.1-mini",
+      AI_MODEL_REASONING_MEDIUM: "gpt-reasoning-medium",
+    },
+    openai: {
+      chat: {
+        completions: {
+          parse: async (input, options) => {
+            requestedModel = input?.model || null;
+            requestedTimeout = options?.timeout ?? null;
+            return {
+              choices: [
+                {
+                  message: {
+                    parsed: {
+                      kind: "conversation",
+                      mode: "plan",
+                      message: "Je prépare une proposition simple.",
+                      primaryAction: null,
+                      secondaryAction: null,
+                      proposal: {
+                        kind: "action",
+                        categoryDraft: null,
+                        outcomeDraft: null,
+                        actionDrafts: [
+                          {
+                            title: "Bloc projet court",
+                            categoryId: "cat-1",
+                            outcomeId: null,
+                            priority: "prioritaire",
+                            repeat: "none",
+                            oneOffDate: "2026-03-06",
+                            daysOfWeek: [],
+                            timeMode: "FIXED",
+                            startTime: "09:00",
+                            durationMinutes: 25,
+                            notes: null,
+                          },
+                        ],
+                        unresolvedQuestions: [],
+                        requiresValidation: true,
+                      },
+                    },
+                  },
+                },
+              ],
+            };
+          },
+        },
+      },
+    },
+    log: logger,
+  };
+
+  const payload = await runChatCoach({
+    app,
+    context: createChatContext({
+      chatMode: "plan",
+      featureId: "coach_plan",
+      coachBehavior: {
+        mode: "action",
+        overlays: ["plan_builder"],
+        horizon: "short_plan",
+        intensity: "standard",
+      },
+    }),
+  });
+
+  assert.equal(payload.decisionSource, "ai");
+  assert.equal(payload.mode, "plan");
+  assert.equal(requestedModel, "gpt-reasoning-medium");
+  assert.equal(requestedTimeout, 35000);
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].payload.chatMode, "plan");
 });
 
 test("runChatCoach logs openai_key_missing when chat falls back without a key", async () => {

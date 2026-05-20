@@ -7,6 +7,7 @@ import {
   coachPlanConversationPayloadSchema,
 } from "../../schemas/coach.js";
 import {
+  AI_FEATURE_IDS,
   COACH_CHAT_MODES,
   isConversationCoachMode,
   LOCAL_ANALYSIS_SURFACES,
@@ -14,6 +15,7 @@ import {
 } from "../../../../src/domain/aiPolicy.js";
 import { AI_INTENTS } from "../../../../src/domain/aiIntent.js";
 import { isSimpleGreetingMessage, normalizeCoachBehaviorText } from "./coachBehavior.js";
+import { resolveAiModelConfig } from "../aiModelRouting.js";
 
 const DEFAULT_OUTPUT_LOCALE = "fr-FR";
 const TEXT_LIMITS = Object.freeze({
@@ -1095,6 +1097,13 @@ function resolveSchemaName(kind, context) {
   return "coach_local_analysis_payload";
 }
 
+function resolveOpenAiCoachFeatureId(kind, context = {}) {
+  if (context.featureId) return context.featureId;
+  if (kind === "chat" && context.chatMode === COACH_CHAT_MODES.PLAN) return AI_FEATURE_IDS.COACH_PLAN;
+  if (kind === "chat") return AI_FEATURE_IDS.COACH_CHAT_FREE;
+  return AI_FEATURE_IDS.TODAY_AI_INSIGHT;
+}
+
 function normalizePayloadCandidateForKind(kind, context, candidate) {
   if (kind !== "chat") return normalizeCoachPayloadCandidate(candidate);
   if (isConversationCoachMode(context.chatMode)) {
@@ -1117,21 +1126,37 @@ export async function runOpenAiCoach({ app, kind, context }) {
   if (!app.openai || !app.config?.OPENAI_API_KEY) return null;
   const prompt = resolvePrompt(kind, context);
   const responseSchema = resolveSchema(kind, context);
-  const completion = await app.openai.chat.completions.parse({
-    model: app.config.OPENAI_MODEL,
-    temperature: 0.2,
-    response_format: zodResponseFormat(responseSchema, resolveSchemaName(kind, context)),
-    messages: [
-      {
-        role: "system",
-        content: buildSystemPrompt(context?.locale),
-      },
-      {
-        role: "user",
-        content: prompt,
-      },
-    ],
+  const modelConfig = resolveAiModelConfig({
+    featureId: resolveOpenAiCoachFeatureId(kind, context),
+    config: app?.config,
+    routeOverride: {
+      defaultModel: String(app?.config?.OPENAI_MODEL || "").trim() || "gpt-4.1-mini",
+      defaultTimeoutMs: app?.config?.OPENAI_DEFAULT_TIMEOUT_MS,
+      minTimeoutMs: 1000,
+      maxTimeoutMs: 90_000,
+      allowGlobalFallback: true,
+    },
   });
+  context.aiModelConfig = modelConfig;
+  const requestOptions = Number.isFinite(modelConfig.timeoutMs) ? { timeout: modelConfig.timeoutMs } : undefined;
+  const completion = await app.openai.chat.completions.parse(
+    {
+      model: modelConfig.model,
+      temperature: 0.2,
+      response_format: zodResponseFormat(responseSchema, resolveSchemaName(kind, context)),
+      messages: [
+        {
+          role: "system",
+          content: buildSystemPrompt(context?.locale),
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+    },
+    requestOptions
+  );
   const message = completion.choices?.[0]?.message || null;
   if (!message) {
     throw new OpenAiModelOutputError(MODEL_OUTPUT_ISSUE_CODE.EMPTY_MESSAGE);

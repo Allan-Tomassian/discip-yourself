@@ -13,7 +13,9 @@ import {
   normalizePreparedSessionToolPlan,
   normalizePreparedSessionToolResult,
 } from "../../../../src/features/session/sessionTools.js";
+import { AI_FEATURE_IDS } from "../../../../src/domain/aiPolicy.js";
 import { sessionGuidanceResponseSchema } from "../../schemas/coach.js";
+import { resolveAiModelConfig } from "../aiModelRouting.js";
 
 const PREPARE_TOOL_SOURCE = "ai_premium";
 const ADAPT_TOOL_SOURCE = "ai_assist";
@@ -383,28 +385,32 @@ function resolveSchemaName(context) {
   return "session_guidance_tool_payload";
 }
 
-function resolveSessionGuidanceOpenAiModel(app, context) {
-  if (context.mode !== "prepare") return app.config.OPENAI_MODEL;
-  return String(app?.config?.SESSION_GUIDANCE_PREPARE_OPENAI_MODEL || "").trim() || DEFAULT_SESSION_GUIDANCE_PREPARE_MODEL;
-}
-
-function resolveSessionGuidanceOpenAiTimeoutMs(app, context) {
-  if (context.mode !== "prepare") return null;
-  const configuredTimeout = Number(app?.config?.SESSION_GUIDANCE_PREPARE_OPENAI_TIMEOUT_MS);
-  return Number.isFinite(configuredTimeout) && configuredTimeout > 0
-    ? Math.max(1000, Math.round(configuredTimeout))
-    : DEFAULT_SESSION_GUIDANCE_PREPARE_TIMEOUT_MS;
+function resolveSessionGuidanceModelConfig(app, context) {
+  const isPrepare = context.mode === "prepare";
+  return resolveAiModelConfig({
+    featureId: AI_FEATURE_IDS.SESSION_GUIDANCE,
+    config: app?.config,
+    routeOverride: {
+      model: isPrepare ? app?.config?.SESSION_GUIDANCE_PREPARE_OPENAI_MODEL : null,
+      timeoutMs: isPrepare ? app?.config?.SESSION_GUIDANCE_PREPARE_OPENAI_TIMEOUT_MS : null,
+      promptVersion: isPrepare ? SESSION_GUIDANCE_PREPARE_PROMPT_VERSION : null,
+      defaultModel: isPrepare ? DEFAULT_SESSION_GUIDANCE_PREPARE_MODEL : String(app?.config?.OPENAI_MODEL || "").trim(),
+      defaultTimeoutMs: isPrepare ? DEFAULT_SESSION_GUIDANCE_PREPARE_TIMEOUT_MS : null,
+      minTimeoutMs: isPrepare ? 1000 : 45_000,
+      maxTimeoutMs: 65_000,
+      allowGlobalFallback: !isPrepare,
+    },
+  });
 }
 
 async function runOpenAiSessionGuidance({ app, context }) {
   if (!app.openai || !String(app?.config?.OPENAI_API_KEY || "").trim()) {
     throw createBackendError("SESSION_GUIDANCE_BACKEND_UNAVAILABLE");
   }
-  const requestOptions =
-    context.mode === "prepare"
-      ? { timeout: resolveSessionGuidanceOpenAiTimeoutMs(app, context) }
-      : undefined;
-  const requestModel = resolveSessionGuidanceOpenAiModel(app, context);
+  const modelConfig = resolveSessionGuidanceModelConfig(app, context);
+  context.aiModelConfig = modelConfig;
+  const requestOptions = Number.isFinite(modelConfig.timeoutMs) ? { timeout: modelConfig.timeoutMs } : undefined;
+  const requestModel = modelConfig.model;
   let completion;
   try {
     completion = await app.openai.chat.completions.parse(
@@ -462,7 +468,8 @@ async function runOpenAiSessionGuidance({ app, context }) {
   try {
     return {
       candidate: resolveCandidateSchema(context).parse(candidate),
-      model: context.mode === "prepare" ? requestModel : null,
+      model: requestModel,
+      modelClass: modelConfig.modelClass,
       promptVersion: context.mode === "prepare" ? SESSION_GUIDANCE_PREPARE_PROMPT_VERSION : null,
     };
   } catch (error) {

@@ -7,6 +7,8 @@ import {
   firstRunWhyClarificationDraftSchema,
   firstRunWhyClarificationResponseSchema,
 } from "../../schemas/firstRun.js";
+import { resolveAiModelConfig } from "../aiModelRouting.js";
+import { AI_FEATURE_IDS } from "../../../../src/domain/aiPolicy.js";
 
 const DEFAULT_FIRST_RUN_WHY_CLARIFICATION_MODEL = "gpt-4.1-mini";
 const DEFAULT_FIRST_RUN_WHY_CLARIFICATION_TIMEOUT_MS = 8000;
@@ -48,20 +50,21 @@ function isOpenAiRequestTimeoutError(error) {
   );
 }
 
-function resolveWhyClarificationModel(app) {
-  return (
-    String(app?.config?.FIRST_RUN_WHY_CLARIFICATION_OPENAI_MODEL || "").trim() ||
-    String(app?.config?.OPENAI_MODEL || "").trim() ||
-    DEFAULT_FIRST_RUN_WHY_CLARIFICATION_MODEL
-  );
-}
-
-function resolveWhyClarificationTimeoutMs(app) {
-  const configuredTimeout = Number(app?.config?.FIRST_RUN_WHY_CLARIFICATION_OPENAI_TIMEOUT_MS);
-  const timeout = Number.isFinite(configuredTimeout) && configuredTimeout > 0
-    ? Math.round(configuredTimeout)
-    : DEFAULT_FIRST_RUN_WHY_CLARIFICATION_TIMEOUT_MS;
-  return Math.min(MAX_FIRST_RUN_WHY_CLARIFICATION_TIMEOUT_MS, Math.max(1000, timeout));
+function resolveWhyClarificationModelConfig(app) {
+  return resolveAiModelConfig({
+    featureId: AI_FEATURE_IDS.WHY_CLARIFICATION,
+    config: app?.config,
+    routeOverride: {
+      model: app?.config?.FIRST_RUN_WHY_CLARIFICATION_OPENAI_MODEL,
+      timeoutMs: app?.config?.FIRST_RUN_WHY_CLARIFICATION_OPENAI_TIMEOUT_MS,
+      promptVersion: FIRST_RUN_WHY_CLARIFICATION_PROMPT_VERSION,
+      defaultModel: DEFAULT_FIRST_RUN_WHY_CLARIFICATION_MODEL,
+      defaultTimeoutMs: DEFAULT_FIRST_RUN_WHY_CLARIFICATION_TIMEOUT_MS,
+      minTimeoutMs: 1000,
+      maxTimeoutMs: MAX_FIRST_RUN_WHY_CLARIFICATION_TIMEOUT_MS,
+      allowGlobalFallback: true,
+    },
+  });
 }
 
 function buildSystemPrompt() {
@@ -133,8 +136,9 @@ async function runOpenAiWhyClarification({ app, context }) {
     throw createBackendError("FIRST_RUN_WHY_CLARIFICATION_BACKEND_UNAVAILABLE");
   }
 
-  const requestModel = resolveWhyClarificationModel(app);
-  const requestTimeout = resolveWhyClarificationTimeoutMs(app);
+  const modelConfig = resolveWhyClarificationModelConfig(app);
+  const requestModel = modelConfig.model;
+  const requestTimeout = modelConfig.timeoutMs;
   const providerStartedAt = Date.now();
   let completion;
   try {
@@ -157,6 +161,9 @@ async function runOpenAiWhyClarification({ app, context }) {
         providerStatus: "timeout",
         rejectionStage: "provider_timeout",
         rejectionReason: "provider_timeout",
+        model: requestModel,
+        modelClass: modelConfig.modelClass,
+        promptVersion: FIRST_RUN_WHY_CLARIFICATION_PROMPT_VERSION,
         validationPassed: false,
         richnessPassed: false,
         timeoutMs: requestTimeout,
@@ -172,6 +179,9 @@ async function runOpenAiWhyClarification({ app, context }) {
   if (!message || message.refusal) {
     throw createBackendError("INVALID_FIRST_RUN_WHY_CLARIFICATION_RESPONSE", "INVALID_FIRST_RUN_WHY_CLARIFICATION_RESPONSE", {
       ...buildInvalidResponseDetails(),
+      model: requestModel,
+      modelClass: modelConfig.modelClass,
+      promptVersion: FIRST_RUN_WHY_CLARIFICATION_PROMPT_VERSION,
       providerMs,
       totalMs: providerMs,
     });
@@ -181,6 +191,9 @@ async function runOpenAiWhyClarification({ app, context }) {
   if (!candidate) {
     throw createBackendError("INVALID_FIRST_RUN_WHY_CLARIFICATION_RESPONSE", "INVALID_FIRST_RUN_WHY_CLARIFICATION_RESPONSE", {
       ...buildInvalidResponseDetails(),
+      model: requestModel,
+      modelClass: modelConfig.modelClass,
+      promptVersion: FIRST_RUN_WHY_CLARIFICATION_PROMPT_VERSION,
       providerMs,
       totalMs: providerMs,
     });
@@ -190,6 +203,7 @@ async function runOpenAiWhyClarification({ app, context }) {
     return {
       candidate: firstRunWhyClarificationProviderSchema.parse(candidate),
       model: requestModel,
+      modelClass: modelConfig.modelClass,
       promptVersion: FIRST_RUN_WHY_CLARIFICATION_PROMPT_VERSION,
       providerMs,
     };
@@ -202,6 +216,9 @@ async function runOpenAiWhyClarification({ app, context }) {
           ? error.issues.map((issue) => formatIssuePath(issue)).filter(Boolean).slice(0, 16)
           : [],
       }),
+      model: requestModel,
+      modelClass: modelConfig.modelClass,
+      promptVersion: FIRST_RUN_WHY_CLARIFICATION_PROMPT_VERSION,
       providerMs,
       totalMs: providerMs,
     });
@@ -210,7 +227,7 @@ async function runOpenAiWhyClarification({ app, context }) {
 
 export async function runFirstRunWhyClarificationService({ app, context }) {
   const startedAt = Date.now();
-  const { candidate, model, promptVersion, providerMs } = await runOpenAiWhyClarification({ app, context });
+  const { candidate, model, modelClass, promptVersion, providerMs } = await runOpenAiWhyClarification({ app, context });
   const response = {
     version: 1,
     source: "ai_why_clarification",
@@ -242,6 +259,7 @@ export async function runFirstRunWhyClarificationService({ app, context }) {
     response: parsedResponse.data,
     diagnostics: {
       model,
+      modelClass,
       promptVersion,
       providerMs,
       totalMs: Date.now() - startedAt,
