@@ -15,7 +15,14 @@ import {
   CommandEmptyState,
   CommandSectionHeader,
 } from "../shared/ui/command";
-import { buildTimelineDateStrip, getTimelineDisplayTime } from "./timelineDisplayModel";
+import {
+  buildTimelineDateStrip,
+  getTimelineDisplayTime,
+  getTimelineStatusLabel,
+  isTimelineNextFocusCandidate,
+  resolveTimelineExecutionStatus,
+  resolveTimelineTone,
+} from "./timelineDisplayModel";
 import { TIMELINE_SCREEN_COPY } from "../ui/labels";
 import { addDaysLocal, fromLocalDateKey, getWeekdayShortLabel, normalizeLocalDateKey, todayLocalKey } from "../utils/datetime";
 import "../features/planning/timeline.css";
@@ -89,22 +96,6 @@ function buildWindowEntries(entries, anchorDateKey) {
     .slice(0, 10);
 }
 
-function statusLabel(status) {
-  if (status === "done") return TIMELINE_SCREEN_COPY.completed;
-  if (status === "in_progress") return "En cours";
-  if (status === "partial") return "En pause";
-  if (status === "blocked") return "Bloquée";
-  if (status === "reported") return "Reportée";
-  return TIMELINE_SCREEN_COPY.upcoming;
-}
-
-function resolveTimelineTone(status, { isCurrent = false, isSelectedDay = false } = {}) {
-  if (status === "done" || status === "in_progress") return "execution";
-  if (status === "partial" || status === "blocked" || status === "reported") return "attention";
-  if (isCurrent && isSelectedDay) return "execution";
-  return "neutral";
-}
-
 function formatTimelineTime(entry) {
   const occurrence = entry?.targetOccurrence || entry?.occurrence || null;
   return getTimelineDisplayTime({ startTime: entry?.startTime, occurrence, goal: entry?.goal });
@@ -112,12 +103,6 @@ function formatTimelineTime(entry) {
 
 function formatDurationLabel(minutes) {
   return Number.isFinite(minutes) ? `${minutes} min` : "Libre";
-}
-
-function resolveCurrentStatus({ occurrence, groupedOccurrences = [], activeOccurrenceId = null }) {
-  if (activeOccurrenceId && groupedOccurrences.some((entry) => entry.id === activeOccurrenceId)) return "in_progress";
-  if (activeOccurrenceId && occurrence?.id === activeOccurrenceId) return "in_progress";
-  return String(occurrence?.status || "");
 }
 
 function canGroupGoal(goal, occurrences) {
@@ -172,7 +157,7 @@ function buildTimelineCategoryOptions({ categories, occurrenceEntries, anchorDat
     }
     const metrics = metricsByCategoryId.get(categoryId);
     metrics.totalCount += 1;
-    if (entry.occurrence?.status !== "done") metrics.openCount += 1;
+    if (isTimelineNextFocusCandidate(entry.status)) metrics.openCount += 1;
     metrics.nearestDistance = Math.min(metrics.nearestDistance, toDateDistance(entry.dateKey, anchorDateKey));
   }
 
@@ -236,6 +221,10 @@ export default function Timeline({ data, setData, setTab, onEditItem, onOpenSess
     typeof openRuntimeSession?.occurrenceId === "string" && openRuntimeSession.occurrenceId.trim()
       ? openRuntimeSession.occurrenceId
       : null;
+  const sessionHistory = useMemo(
+    () => (Array.isArray(safeData.sessionHistory) ? safeData.sessionHistory : []),
+    [safeData.sessionHistory]
+  );
 
   const occurrenceEntries = useMemo(() => {
     const rawOccurrences = Array.isArray(safeData.occurrences) ? safeData.occurrences : [];
@@ -255,15 +244,23 @@ export default function Timeline({ data, setData, setTab, onEditItem, onOpenSess
           goalId: goal.id,
           dateKey: normalizeLocalDateKey(occurrence.date) || "",
           startTime: String(occurrence.start || occurrence.slotKey || "").trim(),
+          status: resolveTimelineExecutionStatus({
+            occurrence,
+            activeSession: openRuntimeSession,
+            activeOccurrenceId,
+            sessionHistory,
+            dateKey: occurrence.date,
+          }),
           occurrence,
           goal,
           category,
           outcome,
         };
       })
-      .filter(Boolean);
+      .filter(Boolean)
+      .filter((entry) => entry.status !== "canceled" && entry.status !== "skipped");
     return buildWindowEntries(mapped, selectedDateKey);
-  }, [categoriesById, goalsById, processGoalsById, safeData.occurrences, selectedDateKey]);
+  }, [activeOccurrenceId, categoriesById, goalsById, openRuntimeSession, processGoalsById, safeData.occurrences, selectedDateKey, sessionHistory]);
 
   const filteredOccurrenceEntries = useMemo(() => {
     if (categoryFilterId === "all") return occurrenceEntries;
@@ -291,7 +288,7 @@ export default function Timeline({ data, setData, setTab, onEditItem, onOpenSess
         seenGoalIds.add(entry.goalId);
         const sortedGrouped = [...groupedOccurrences].sort(sortOccurrences);
         const representative =
-          sortedGrouped.find((item) => item.dateKey >= selectedDateKey && item.occurrence?.status !== "done") ||
+          sortedGrouped.find((item) => item.dateKey >= selectedDateKey && isTimelineNextFocusCandidate(item.status)) ||
           sortedGrouped.find((item) => item.dateKey >= selectedDateKey) ||
           sortedGrouped[sortedGrouped.length - 1];
         const summary = buildRecurringSummary(sortedGrouped, selectedDateKey);
@@ -303,11 +300,10 @@ export default function Timeline({ data, setData, setTab, onEditItem, onOpenSess
           outcome: entry.outcome,
           dateKey: representative?.dateKey || entry.dateKey,
           startTime: representative?.startTime || "",
-          status: resolveCurrentStatus({
-            occurrence: representative?.occurrence || null,
-            groupedOccurrences: sortedGrouped,
-            activeOccurrenceId,
-          }),
+          status:
+            sortedGrouped.some((item) => item.status === "active")
+              ? "active"
+              : representative?.status || entry.status,
           durationMinutes:
             representative?.occurrence?.durationMinutes || entry.goal?.sessionMinutes || null,
           notes:
@@ -331,10 +327,7 @@ export default function Timeline({ data, setData, setTab, onEditItem, onOpenSess
         outcome: entry.outcome,
         dateKey: entry.dateKey,
         startTime: entry.startTime,
-        status: resolveCurrentStatus({
-          occurrence: entry.occurrence,
-          activeOccurrenceId,
-        }),
+        status: entry.status,
         durationMinutes: entry.occurrence?.durationMinutes || entry.goal?.sessionMinutes || null,
         notes:
           String(entry.goal?.habitNotes || "").trim() ||
@@ -343,16 +336,18 @@ export default function Timeline({ data, setData, setTab, onEditItem, onOpenSess
         groupedOccurrences: [entry],
         categoryLabel: entry.category?.name || "",
         title: entry.goal?.title || entry.occurrence?.title || TIMELINE_SCREEN_COPY.entryFallbackTitle,
-        subtitle: statusLabel(resolveCurrentStatus({ occurrence: entry.occurrence, activeOccurrenceId })),
+        subtitle: getTimelineStatusLabel(entry.status),
         targetOccurrence: entry.occurrence,
       });
     }
 
     return nextEntries;
-  }, [activeOccurrenceId, filteredOccurrenceEntries, selectedDateKey]);
+  }, [filteredOccurrenceEntries, selectedDateKey]);
 
   const currentEntryId = useMemo(() => {
-    const upcoming = displayEntries.find((entry) => String(entry?.dateKey || "") >= selectedDateKey && entry?.status !== "done");
+    const upcoming = displayEntries.find(
+      (entry) => String(entry?.dateKey || "") >= selectedDateKey && isTimelineNextFocusCandidate(entry?.status)
+    );
     return upcoming?.id || displayEntries[displayEntries.length - 1]?.id || "";
   }, [displayEntries, selectedDateKey]);
 
@@ -375,8 +370,9 @@ export default function Timeline({ data, setData, setTab, onEditItem, onOpenSess
   );
   const nextCommandEntry = useMemo(
     () =>
-      displayEntries.find((entry) => String(entry?.dateKey || "") >= selectedDateKey && entry?.status !== "done") ||
-      displayEntries[0] ||
+      displayEntries.find(
+        (entry) => String(entry?.dateKey || "") >= selectedDateKey && isTimelineNextFocusCandidate(entry?.status)
+      ) ||
       null,
     [displayEntries, selectedDateKey]
   );
@@ -581,7 +577,7 @@ export default function Timeline({ data, setData, setTab, onEditItem, onOpenSess
                       >
                         <div className="timelineCardTopline">
                           <CommandBadge tone={tone} className="timelineStatusBadge">
-                            {statusLabel(entry.status)}
+                            {getTimelineStatusLabel(entry.status)}
                           </CommandBadge>
                         </div>
                         <div className="timelineCardMain">
@@ -608,7 +604,7 @@ export default function Timeline({ data, setData, setTab, onEditItem, onOpenSess
                           </div>
                           <div className="lovableTimelineExpandItem">
                             <span>{TIMELINE_SCREEN_COPY.inlineStatus}</span>
-                            <strong>{statusLabel(entry.status)}</strong>
+                            <strong>{getTimelineStatusLabel(entry.status)}</strong>
                           </div>
                           <div className="lovableTimelineExpandItem">
                             <span>{TIMELINE_SCREEN_COPY.inlineCategory}</span>
@@ -678,8 +674,12 @@ export default function Timeline({ data, setData, setTab, onEditItem, onOpenSess
                           <CommandCTA
                             type="button"
                             className="lovableTimelineAction lovableTimelineAction--primary"
-                            disabled={!targetOccurrence?.id}
-                            onClick={() => openSessionForOccurrence(targetOccurrence, entry.category?.id || null)}
+                            disabled={!targetOccurrence?.id || !isTimelineNextFocusCandidate(entry.status)}
+                            onClick={() =>
+                              targetOccurrence?.id && isTimelineNextFocusCandidate(entry.status)
+                                ? openSessionForOccurrence(targetOccurrence, entry.category?.id || null)
+                                : undefined
+                            }
                           >
                             {activeOccurrenceId && targetOccurrence?.id === activeOccurrenceId
                               ? TIMELINE_SCREEN_COPY.inlineResumeSession

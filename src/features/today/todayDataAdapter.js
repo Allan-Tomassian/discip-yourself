@@ -2,6 +2,12 @@ import { normalizeActiveSessionForUI } from "../../logic/compat";
 import { computeWindowStats } from "../../logic/progressionModel";
 import { isRuntimeSessionOpen } from "../../logic/sessionRuntime";
 import {
+  EXECUTION_SURFACE_STATUS,
+  deriveExecutionStatus,
+  isExecutableExecutionStatus,
+} from "../../logic/executionStatus";
+import { buildSystemSignals, getPrimarySystemSignal } from "../../logic/systemSignals";
+import {
   OCCURRENCE_STATUS,
   normalizeOccurrenceStatus,
 } from "../../logic/occurrenceStatus";
@@ -13,14 +19,14 @@ const SCORE_WINDOW_DAYS = 14;
 const EMPTY_SCORE_LABEL = "--%";
 const DEFAULT_DELTA_LABEL = "Point de départ";
 const DEFAULT_FALLBACK_NAME = "Discip Yourself";
-const TOTAL_EXCLUDED_STATUSES = new Set([
-  OCCURRENCE_STATUS.CANCELED,
-  OCCURRENCE_STATUS.SKIPPED,
-  OCCURRENCE_STATUS.RESCHEDULED,
+const COUNT_EXCLUDED_EXECUTION_STATUSES = new Set([
+  EXECUTION_SURFACE_STATUS.CANCELED,
+  EXECUTION_SURFACE_STATUS.SKIPPED,
+  EXECUTION_SURFACE_STATUS.POSTPONED,
 ]);
-const TIMELINE_HIDDEN_STATUSES = new Set([
-  OCCURRENCE_STATUS.CANCELED,
-  OCCURRENCE_STATUS.SKIPPED,
+const TIMELINE_HIDDEN_EXECUTION_STATUSES = new Set([
+  EXECUTION_SURFACE_STATUS.CANCELED,
+  EXECUTION_SURFACE_STATUS.SKIPPED,
 ]);
 const TODAY_STATE_ORDER = Object.freeze([
   "loading_without_cache",
@@ -447,20 +453,34 @@ function isOccurrenceAtRisk(occurrence, now, selectedDateKey, activeOccurrenceId
   return nowMin >= startMin && nowMin <= endMin;
 }
 
-function mapTimelineStatus({ occurrence, activeOccurrenceId, goal, now, selectedDateKey }) {
-  const status = normalizeOccurrenceStatus(occurrence?.status);
-  if (status === OCCURRENCE_STATUS.DONE) return "done";
-  if (safeString(occurrence?.id) && safeString(occurrence.id) === activeOccurrenceId) return "in_progress";
-  if (status === OCCURRENCE_STATUS.IN_PROGRESS) return "in_progress";
-  if (status === OCCURRENCE_STATUS.RESCHEDULED) return "postponed";
-  if (isOccurrenceLate(occurrence, now, selectedDateKey)) return "late";
-  void goal;
+function deriveTodayExecution(occurrence, { activeSession, sessionHistory, selectedDateKey }) {
+  return deriveExecutionStatus({
+    occurrence,
+    activeSession,
+    sessionHistory,
+    dateKey: selectedDateKey || occurrence?.date,
+  });
+}
+
+function getExecutionStatus(occurrence) {
+  return safeString(occurrence?.executionStatusInfo?.status) || EXECUTION_SURFACE_STATUS.PLANNED;
+}
+
+function mapTimelineStatus({ occurrence, now, selectedDateKey }) {
+  const executionStatus = getExecutionStatus(occurrence);
+  if (executionStatus === EXECUTION_SURFACE_STATUS.DONE) return "done";
+  if (executionStatus === EXECUTION_SURFACE_STATUS.ACTIVE) return "in_progress";
+  if (executionStatus === EXECUTION_SURFACE_STATUS.POSTPONED) return "postponed";
+  if (executionStatus === EXECUTION_SURFACE_STATUS.MISSED) return "missed";
+  if (executionStatus === EXECUTION_SURFACE_STATUS.BLOCKED) return "blocked";
+  if (executionStatus === EXECUTION_SURFACE_STATUS.REPORTED) return "reported";
+  if (executionStatus === EXECUTION_SURFACE_STATUS.PLANNED && isOccurrenceLate(occurrence, now, selectedDateKey)) return "late";
   return "upcoming";
 }
 
-function buildTimelineItems({ occurrencesForDay, goalsById, activeOccurrenceId, now, selectedDateKey }) {
+function buildTimelineItems({ occurrencesForDay, goalsById, now, selectedDateKey }) {
   return occurrencesForDay
-    .filter((occurrence) => !TIMELINE_HIDDEN_STATUSES.has(normalizeOccurrenceStatus(occurrence?.status)))
+    .filter((occurrence) => !TIMELINE_HIDDEN_EXECUTION_STATUSES.has(getExecutionStatus(occurrence)))
     .sort(compareOccurrences)
     .map((occurrence) => {
       const goal = resolveOccurrenceGoal(occurrence, goalsById);
@@ -470,7 +490,7 @@ function buildTimelineItems({ occurrencesForDay, goalsById, activeOccurrenceId, 
         actionId: safeString(occurrence?.goalId),
         timeLabel: resolveOccurrenceTimeLabel(occurrence),
         title: safeString(goal?.title) || safeString(occurrence?.title) || "Bloc",
-        status: mapTimelineStatus({ occurrence, activeOccurrenceId, goal, now, selectedDateKey }),
+        status: mapTimelineStatus({ occurrence, now, selectedDateKey }),
       };
     })
     .filter((item) => item.id);
@@ -478,10 +498,10 @@ function buildTimelineItems({ occurrencesForDay, goalsById, activeOccurrenceId, 
 
 function buildBlockCounts(occurrencesForDay) {
   const countable = occurrencesForDay.filter(
-    (occurrence) => !TOTAL_EXCLUDED_STATUSES.has(normalizeOccurrenceStatus(occurrence?.status))
+    (occurrence) => !COUNT_EXCLUDED_EXECUTION_STATUSES.has(getExecutionStatus(occurrence))
   );
   const completedBlocks = countable.reduce(
-    (sum, occurrence) => sum + (normalizeOccurrenceStatus(occurrence?.status) === OCCURRENCE_STATUS.DONE ? 1 : 0),
+    (sum, occurrence) => sum + (getExecutionStatus(occurrence) === EXECUTION_SURFACE_STATUS.DONE ? 1 : 0),
     0
   );
   const totalBlocks = countable.length;
@@ -509,33 +529,39 @@ function resolvePrimaryActionCandidate({ occurrencesForDay, goalsById, activeSes
 
   const actionable = occurrencesForDay
     .filter((occurrence) => {
-      const status = normalizeOccurrenceStatus(occurrence?.status);
-      return status !== OCCURRENCE_STATUS.DONE && !TOTAL_EXCLUDED_STATUSES.has(status);
+      const status = getExecutionStatus(occurrence);
+      return isExecutableExecutionStatus(status);
     })
     .sort(compareOccurrences);
 
   const lateCritical = actionable.find((occurrence) => {
     const goal = resolveOccurrenceGoal(occurrence, goalsById);
-    return isOccurrenceLate(occurrence, now, selectedDateKey) && isHighPriority(occurrence, goal);
+    return getExecutionStatus(occurrence) === EXECUTION_SURFACE_STATUS.PLANNED &&
+      isOccurrenceLate(occurrence, now, selectedDateKey) &&
+      isHighPriority(occurrence, goal);
   });
   if (lateCritical) return { occurrence: lateCritical, status: "late" };
-
-  const postponed = occurrencesForDay
-    .filter((occurrence) => normalizeOccurrenceStatus(occurrence?.status) === OCCURRENCE_STATUS.RESCHEDULED)
-    .sort(compareOccurrences)[0];
-  if (postponed) return { occurrence: postponed, status: "postponed" };
 
   const highPriority = actionable.find((occurrence) => {
     const goal = resolveOccurrenceGoal(occurrence, goalsById);
     return isHighPriority(occurrence, goal) || isPrimaryGoal(goal);
   });
-  if (highPriority) return { occurrence: highPriority, status: "upcoming" };
+  if (highPriority) {
+    const status = getExecutionStatus(highPriority);
+    return { occurrence: highPriority, status: status === EXECUTION_SURFACE_STATUS.PLANNED ? "upcoming" : status };
+  }
 
   const firstPending = actionable[0] || null;
   if (firstPending) {
+    const status = getExecutionStatus(firstPending);
     return {
       occurrence: firstPending,
-      status: isOccurrenceLate(firstPending, now, selectedDateKey) ? "late" : "upcoming",
+      status:
+        status === EXECUTION_SURFACE_STATUS.PLANNED && isOccurrenceLate(firstPending, now, selectedDateKey)
+          ? "late"
+          : status === EXECUTION_SURFACE_STATUS.PLANNED
+            ? "upcoming"
+            : status,
     };
   }
 
@@ -575,29 +601,44 @@ function buildPrimaryAction({ occurrencesForDay, goalsById, categoriesById, acti
       ? "Reprendre"
       : status === "late"
         ? "Rattraper maintenant"
-        : status === "postponed"
-          ? "Lancer quand même"
+        : status === "blocked"
+          ? "Reprendre simple"
+          : status === "reported"
+            ? "Lancer une version simple"
           : durationLabel
             ? `Verrouiller ${durationLabel}`
             : "Verrouiller le bloc";
+  const label =
+    status === "in_progress" ? "BLOC EN COURS"
+      : status === "late" ? "BLOC EN RETARD"
+        : status === "blocked" ? "BLOC BLOQUÉ"
+          : status === "reported" ? "BLOC SIGNALÉ"
+            : "ACTION CRITIQUE";
+  const description =
+    status === "in_progress"
+      ? "Termine le bloc en cours avant d’ajuster la suite."
+      : resolveActionDescription(goal, category);
+  const reason =
+    status === "blocked"
+      ? "Ce bloc a rencontré une friction. Repars court, ou ajuste-le."
+      : status === "reported"
+        ? "Tu as signalé une friction. Choisis une version faisable."
+        : resolveActionReason(goal);
 
   return {
     status,
-    label: status === "in_progress" ? "BLOC EN COURS" : status === "late" ? "BLOC EN RETARD" : status === "postponed" ? "BLOC REPORTÉ" : "ACTION CRITIQUE",
+    label,
     occurrenceId: safeString(occurrence?.id) || null,
     actionId: safeString(occurrence?.goalId) || null,
     title: safeString(goal?.title) || safeString(occurrence?.title) || (status === "in_progress" ? "Session en cours" : "Bloc prioritaire"),
-    description:
-      status === "in_progress"
-        ? "Termine le bloc en cours avant d’ajuster la suite."
-        : resolveActionDescription(goal, category),
+    description,
     durationLabel,
     timingLabel: resolveOccurrenceTimeLabel(occurrence) === "--:--" ? "À planifier" : resolveOccurrenceTimeLabel(occurrence),
     categoryLabel: safeString(category?.name),
     priorityLabel: resolvePriorityLabel(occurrence, goal),
-    reason: resolveActionReason(goal),
+    reason,
     primaryLabel,
-    secondaryLabel: "Reporter",
+    secondaryLabel: status === "blocked" ? "Ajuster" : status === "reported" ? "Changer l’heure" : "Reporter",
     detailLabel: "Voir détail",
     canPrimary: true,
     canSecondary: true,
@@ -692,24 +733,24 @@ function resolveTodayState({
   if (dataLoadError && !hasCachedData) return "error_without_cache";
   if (offline && !hasCachedData) return "offline_without_cache";
 
-  const hasPostponed = primaryAction?.status === "postponed" || timelineItems.some((item) => item?.status === "postponed");
   const hasLate = primaryAction?.status === "late" || timelineItems.some((item) => item?.status === "late");
   const hasRisk = hasLate || occurrencesForDay.some((occurrence) => isOccurrenceAtRisk(occurrence, now, selectedDateKey, activeOccurrenceId));
+  const hasRecoveryAction = primaryAction?.status === "blocked" || primaryAction?.status === "reported";
   const hasAnyPastSignal = hasPastExpectedSignal(occurrences, selectedDateKey);
   const hasRecentSignal = hasRecentExpectedSignal(occurrences, selectedDateKey, 3);
   const hasOlderSignal = hasOlderExpectedSignal(occurrences, selectedDateKey, 3);
   const hasOpenAction = primaryAction?.status && primaryAction.status !== "empty";
   const allBlocksDone = counts.totalBlocks > 0 && counts.completedBlocks >= counts.totalBlocks;
 
-  if (counts.totalBlocks <= 0 && !hasPostponed) return "empty_day";
+  if (counts.totalBlocks <= 0) return "empty_day";
+  if (allBlocksDone) return "locked";
+  if (activeSession) return "in_progress";
+  if (primaryAction?.status === "late") return "late";
+  if (hasRecoveryAction) return "risk";
   if (!activeSession && hasOpenAction && counts.completedBlocks === 0 && !hasAnyPastSignal) return "first_day";
   if (!activeSession && hasOpenAction && counts.completedBlocks === 0 && !hasRecentSignal && hasOlderSignal) {
     return "returning_after_absence";
   }
-  if (allBlocksDone) return "locked";
-  if (activeSession) return "in_progress";
-  if (primaryAction?.status === "late") return "late";
-  if (hasPostponed) return "postponed";
   if (hasRisk) return "risk";
   if (counts.totalBlocks > 0 && counts.completedBlocks > 0) return "control";
   return "neutral";
@@ -808,6 +849,28 @@ function applyPrimaryState(primaryAction, state) {
       secondaryLabel: "Planning",
       detailLabel: "Coach IA",
       canPrimary: true,
+    };
+  }
+
+  if (next.status === "blocked") {
+    return {
+      ...next,
+      label: "BLOC BLOQUÉ",
+      primaryLabel: "Reprendre simple",
+      secondaryLabel: "Ajuster",
+      detailLabel: "Voir détail",
+      reason: "Ce bloc a rencontré une friction. Repars court, ou ajuste-le.",
+    };
+  }
+
+  if (next.status === "reported") {
+    return {
+      ...next,
+      label: "BLOC SIGNALÉ",
+      primaryLabel: "Lancer une version simple",
+      secondaryLabel: "Changer l’heure",
+      detailLabel: "Voir détail",
+      reason: "Tu as signalé une friction. Choisis une version faisable.",
     };
   }
 
@@ -1277,6 +1340,7 @@ export function buildTodayData({
   const goals = safeArray(safeData.goals);
   const categories = safeArray(safeData.categories);
   const occurrences = safeArray(safeData.occurrences);
+  const sessionHistory = safeArray(safeData.sessionHistory);
   const goalsById = new Map(goals.filter((goal) => goal?.id).map((goal) => [goal.id, goal]));
   const categoriesById = new Map(categories.filter((category) => category?.id).map((category) => [category.id, category]));
   const rawActiveSession = isPlainObject(safeData?.ui?.activeSession) ? safeData.ui.activeSession : null;
@@ -1285,7 +1349,17 @@ export function buildTodayData({
   const activeOccurrenceId = safeString(activeSession?.occurrenceId);
   const occurrencesForDay = occurrences
     .filter((occurrence) => normalizeLocalDateKey(occurrence?.date) === safeSelectedDateKey)
-    .map((occurrence) => ({ ...occurrence, date: safeSelectedDateKey }));
+    .map((occurrence) => {
+      const normalizedOccurrence = { ...occurrence, date: safeSelectedDateKey };
+      return {
+        ...normalizedOccurrence,
+        executionStatusInfo: deriveTodayExecution(normalizedOccurrence, {
+          activeSession,
+          sessionHistory,
+          selectedDateKey: safeSelectedDateKey,
+        }),
+      };
+    });
 
   const user = buildUserDisplay({ data: safeData, auth, profile });
   const score = buildScoreDisplay(safeData, safeSelectedDateKey);
@@ -1306,7 +1380,6 @@ export function buildTodayData({
   const timelineItems = buildTimelineItems({
     occurrencesForDay,
     goalsById,
-    activeOccurrenceId,
     now: nowDate,
     selectedDateKey: safeSelectedDateKey,
   });
@@ -1348,7 +1421,7 @@ export function buildTodayData({
     activeOccurrenceId,
   });
 
-  const result = {
+  const baseResult = {
     date: {
       key: safeSelectedDateKey,
       label: formatDateLabel(selectedDate, safeSelectedDateKey),
@@ -1389,6 +1462,18 @@ export function buildTodayData({
       progressLabel: counts.timelineProgressLabel,
       progressPercent: counts.timelineProgressPercent,
     },
+  };
+  const systemSignals = buildSystemSignals({
+    occurrences,
+    sessionHistory,
+    activeSession,
+    todayData: baseResult,
+    dateKey: safeSelectedDateKey,
+  });
+  const result = {
+    ...baseResult,
+    systemSignals,
+    primarySystemSignal: getPrimarySystemSignal(systemSignals),
   };
 
   return applyVisualSmokeModel(applyStatePresentation(result, state), visualSmokeModel);

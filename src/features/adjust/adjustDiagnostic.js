@@ -1,6 +1,11 @@
 import { resolveGoalType } from "../../domain/goalType";
 import { buildPilotageDisciplineTrend } from "../pilotage/disciplineTrendModel";
 import {
+  EXECUTION_SURFACE_STATUS,
+  getSessionFrictionSignalsForDate,
+} from "../../logic/executionStatus";
+import { buildSystemSignals } from "../../logic/systemSignals";
+import {
   OCCURRENCE_STATUS,
   isCompletedOccurrenceStatus,
   isExcludedFromExpectedOccurrenceStatus,
@@ -62,7 +67,7 @@ function isPostponedStatus(rawStatus) {
 }
 
 function isExpectedStatus(status) {
-  return !isExcludedFromExpectedOccurrenceStatus(status);
+  return normalizeOccurrenceStatus(status) !== OCCURRENCE_STATUS.RESCHEDULED && !isExcludedFromExpectedOccurrenceStatus(status);
 }
 
 function getOccurrenceMinutes(occurrence, goalsById) {
@@ -178,6 +183,22 @@ function buildFrictionSignals({ summary, trend, categorySignals, nextBlock }) {
       description: "La journée contient déjà une friction d’exécution réelle.",
     });
   }
+  if (summary.blockedCount > 0) {
+    signals.push({
+      id: "blocked_blocks",
+      tone: "attention",
+      title: `${summary.blockedCount} bloc${summary.blockedCount > 1 ? "s" : ""} bloqué${summary.blockedCount > 1 ? "s" : ""}`,
+      description: "Un bloc a rencontré une friction concrète. Corrige le système sans ajouter de dette.",
+    });
+  }
+  if (summary.reportedCount > 0) {
+    signals.push({
+      id: "reported_blocks",
+      tone: "attention",
+      title: `${summary.reportedCount} bloc${summary.reportedCount > 1 ? "s" : ""} signalé${summary.reportedCount > 1 ? "s" : ""}`,
+      description: "Un report signalé mérite une heure plus claire ou une version allégée.",
+    });
+  }
   if (summary.remainingMinutes >= 120 || summary.remainingCount >= 4) {
     signals.push({
       id: "high_load",
@@ -224,7 +245,39 @@ function resolveRecommendation({ summary, frictionSignals, nextBlock }) {
   const hasHighLoad = frictionSignals.some((signal) => signal.id === "high_load");
   const hasNoNextBlock = frictionSignals.some((signal) => signal.id === "no_next_block");
   const hasWeakConsistency = frictionSignals.some((signal) => signal.id === "weak_consistency");
+  const hasBlocked = frictionSignals.some((signal) => signal.id === "blocked_blocks");
+  const hasReported = frictionSignals.some((signal) => signal.id === "reported_blocks");
 
+  if (hasBlocked) {
+    return {
+      id: "recommend_simplify_blocked",
+      actionId: ADJUST_ACTION_IDS.SIMPLIFY_DAY,
+      tone: "execution",
+      title: "Simplifie le bloc bloqué",
+      description: "Passe par le Coach pour garder une version plus courte et faisable du prochain bloc.",
+      expectedImpact: ["Friction nommée", "Version plus courte", "Reprise sans dette"],
+    };
+  }
+  if (hasReported && (summary.reportedCount >= 2 || hasHighLoad)) {
+    return {
+      id: "recommend_reduce_reported",
+      actionId: ADJUST_ACTION_IDS.REDUCE_LOAD,
+      tone: "attention",
+      title: "Réduis la charge",
+      description: "Les reports signalent une journée trop lourde ou mal placée.",
+      expectedImpact: ["Charge plus réaliste", "Moins de reports", "Prochain bloc plus clair"],
+    };
+  }
+  if (hasReported) {
+    return {
+      id: "recommend_reorganize_reported",
+      actionId: ADJUST_ACTION_IDS.REORGANIZE_SCHEDULE,
+      tone: "execution",
+      title: "Réorganise l’horaire",
+      description: "Replace le bloc signalé dans un créneau plus clair avant de forcer l’exécution.",
+      expectedImpact: ["Créneau clarifié", "Moins d’improvisation", "Bloc plus facile à protéger"],
+    };
+  }
   if (hasMissed || hasHighLoad) {
     return {
       id: "recommend_simplify",
@@ -271,6 +324,7 @@ export function buildAdjustDiagnostic(data, activeDateKey = todayLocalKey()) {
   const safeData = data && typeof data === "object" ? data : {};
   const dateKey = normalizeDateKey(activeDateKey) || todayLocalKey();
   const occurrences = safeArray(safeData.occurrences);
+  const sessionHistory = safeArray(safeData.sessionHistory);
   const goals = safeArray(safeData.goals);
   const categories = safeArray(safeData.categories);
   const goalsById = new Map(goals.map((goal) => [goal?.id, goal]).filter(([id]) => typeof id === "string" && id));
@@ -281,6 +335,19 @@ export function buildAdjustDiagnostic(data, activeDateKey = todayLocalKey()) {
   const doneToday = expectedToday.filter((occurrence) => isCompletedOccurrenceStatus(occurrence?.status));
   const missedToday = expectedToday.filter((occurrence) => isMissedOccurrenceStatus(occurrence?.status));
   const postponedToday = todayOccurrences.filter((occurrence) => isPostponedStatus(occurrence?.status));
+  const sessionFrictionSignals = getSessionFrictionSignalsForDate({ sessionHistory, dateKey });
+  const blockedSessionSignals = sessionFrictionSignals.filter(
+    (signal) => signal.status === EXECUTION_SURFACE_STATUS.BLOCKED
+  );
+  const reportedSessionSignals = sessionFrictionSignals.filter(
+    (signal) => signal.status === EXECUTION_SURFACE_STATUS.REPORTED
+  );
+  const postponedOccurrenceKeys = new Set(
+    postponedToday.map((occurrence) => occurrence?.id).filter((id) => typeof id === "string" && id)
+  );
+  const reportedSessionOnlySignals = reportedSessionSignals.filter(
+    (signal) => !postponedOccurrenceKeys.has(signal.occurrenceId)
+  );
   const remainingToday = expectedToday.filter((occurrence) => {
     const status = normalizeOccurrenceStatus(occurrence?.status);
     return !isCompletedOccurrenceStatus(status) && !isMissedOccurrenceStatus(status);
@@ -295,22 +362,26 @@ export function buildAdjustDiagnostic(data, activeDateKey = todayLocalKey()) {
   const fromKey = addDaysLocal(dateKey, -6);
   const categorySignals = buildCategorySignals({ categories, goals, occurrences, fromKey, toKey: dateKey });
 
-  const summary = {
+  let summary = {
     activeDateKey: dateKey,
     hasAnyData: occurrences.length > 0 || goals.length > 0 || categories.length > 0,
-    hasPlannedData: expectedToday.length > 0,
+    hasPlannedData: expectedToday.length > 0 || sessionFrictionSignals.length > 0,
     completionScore,
     plannedCount: expectedToday.length,
     doneCount: doneToday.length,
     missedCount: missedToday.length,
-    postponedCount: postponedToday.length,
+    postponedCount: postponedToday.length + reportedSessionOnlySignals.length,
     rescheduledCount: postponedToday.length,
+    blockedCount: blockedSessionSignals.length,
+    reportedCount: reportedSessionSignals.length,
+    sessionFrictionCount: sessionFrictionSignals.length,
+    systemSignalCount: 0,
     remainingCount: remainingToday.length,
     remainingMinutes,
     state:
-      expectedToday.length <= 0
+      expectedToday.length <= 0 && sessionFrictionSignals.length <= 0
         ? "low_information"
-        : missedToday.length > 0 || remainingMinutes >= 120
+        : missedToday.length > 0 || remainingMinutes >= 120 || sessionFrictionSignals.length > 0
           ? "friction"
           : completionScore >= 70
             ? "control"
@@ -318,11 +389,27 @@ export function buildAdjustDiagnostic(data, activeDateKey = todayLocalKey()) {
   };
   const frictionSignals = buildFrictionSignals({ summary, trend: trendSnapshot, categorySignals, nextBlock });
   const recommendation = resolveRecommendation({ summary, frictionSignals, nextBlock });
+  const systemSignals = buildSystemSignals({
+    occurrences,
+    sessionHistory,
+    adjustDiagnostic: {
+      summary,
+      nextBlock,
+      frictionSignals,
+      categorySignals,
+    },
+    dateKey,
+  });
+  summary = {
+    ...summary,
+    systemSignalCount: systemSignals.length,
+  };
 
   return {
     summary,
     nextBlock,
     frictionSignals,
+    systemSignals,
     recommendation,
     quickActions: QUICK_ACTIONS,
     trendSnapshot,

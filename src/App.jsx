@@ -901,6 +901,7 @@ export default function App() {
             if (!route) return;
             setTab(route);
           }}
+          onOpenAdjust={() => setTab("adjust")}
           onOpenPlanning={() => setTab("timeline")}
           onOpenPilotage={homeNavigationHandlers.onOpenPilotage}
           onOpenManageCategory={(categoryId) => {

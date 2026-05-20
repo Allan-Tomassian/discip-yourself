@@ -280,7 +280,7 @@ describe("buildTodayData", () => {
     expect(result.primaryAction.primaryLabel).toBe("Reprendre");
   });
 
-  it("maps postponed before risk/control", () => {
+  it("keeps postponed visible without making the old slot launchable primary work", () => {
     const result = build({
       data: {
         occurrences: [
@@ -290,11 +290,9 @@ describe("buildTodayData", () => {
       },
     });
 
-    expect(result.state).toBe("postponed");
-    expect(result.primaryAction.status).toBe("postponed");
-    expect(result.primaryAction.label).toBe("BLOC REPORTÉ");
-    expect(result.primaryAction.primaryLabel).toBe("Lancer quand même");
-    expect(result.primaryAction.secondaryLabel).toBe("Changer l’heure");
+    expect(result.primaryAction.occurrenceId).not.toBe("postponed");
+    expect(result.primaryAction.status).toBe("empty");
+    expect(result.primaryAction.primaryLabel).toContain("Coach IA");
     expect(result.timelineItems[0].status).toBe("postponed");
   });
 
@@ -345,18 +343,109 @@ describe("buildTodayData", () => {
     expect(result.primaryAction.canPrimary).toBe(false);
   });
 
-  it("never ties the primary action to done, canceled, or skipped occurrences", () => {
+  it("never ties the primary action to terminal or moved occurrences", () => {
     const data = {
       occurrences: [
         { id: "done-1", goalId: "goal-deep", date: SELECTED_DATE_KEY, start: "07:00", status: "done" },
+        { id: "missed-1", goalId: "goal-deep", date: SELECTED_DATE_KEY, start: "08:00", status: "missed" },
         { id: "canceled-1", goalId: "goal-deep", date: SELECTED_DATE_KEY, start: "09:00", status: "canceled" },
         { id: "skipped-1", goalId: "goal-deep", date: SELECTED_DATE_KEY, start: "11:00", status: "skipped" },
+        { id: "postponed-1", goalId: "goal-deep", date: SELECTED_DATE_KEY, start: "13:00", status: "rescheduled" },
       ],
     };
     const result = build({ data });
 
-    expect(["done-1", "canceled-1", "skipped-1"]).not.toContain(result.primaryAction.occurrenceId);
+    expect(["done-1", "missed-1", "canceled-1", "skipped-1", "postponed-1"]).not.toContain(result.primaryAction.occurrenceId);
     expect(validateTodayAdapterInvariants({ state: baseData(data), todayData: result, selectedDateKey: SELECTED_DATE_KEY }).ok).toBe(true);
+  });
+
+  it("surfaces a blocked occurrence as restartable recovery work", () => {
+    const result = build({
+      data: {
+        occurrences: [
+          { id: "blocked", goalId: "goal-deep", date: SELECTED_DATE_KEY, start: "09:00", status: "planned", durationMinutes: 30 },
+        ],
+        sessionHistory: [
+          {
+            id: "session-blocked",
+            occurrenceId: "blocked",
+            dateKey: SELECTED_DATE_KEY,
+            state: "ended",
+            endedReason: "blocked",
+          },
+        ],
+      },
+    });
+
+    expect(result.primaryAction).toMatchObject({
+      status: "blocked",
+      label: "BLOC BLOQUÉ",
+      primaryLabel: "Reprendre simple",
+      secondaryLabel: "Ajuster",
+      reason: "Ce bloc a rencontré une friction. Repars court, ou ajuste-le.",
+    });
+    expect(result.timelineItems[0].status).toBe("blocked");
+    expect(result.systemSignals.map((signal) => signal.type)).toContain("blocked_block");
+    expect(result.primarySystemSignal?.type).toBe("blocked_block");
+  });
+
+  it("surfaces a reported occurrence as restartable recovery work", () => {
+    const result = build({
+      data: {
+        occurrences: [
+          { id: "reported", goalId: "goal-deep", date: SELECTED_DATE_KEY, start: "09:00", status: "planned", durationMinutes: 30 },
+        ],
+        sessionHistory: [
+          {
+            id: "session-reported",
+            occurrenceId: "reported",
+            dateKey: SELECTED_DATE_KEY,
+            state: "ended",
+            endedReason: "reported",
+          },
+        ],
+      },
+    });
+
+    expect(result.primaryAction).toMatchObject({
+      status: "reported",
+      label: "BLOC SIGNALÉ",
+      primaryLabel: "Lancer une version simple",
+      secondaryLabel: "Changer l’heure",
+      reason: "Tu as signalé une friction. Choisis une version faisable.",
+    });
+    expect(result.timelineItems[0].status).toBe("reported");
+  });
+
+  it("keeps active session ahead of old blocked or reported history", () => {
+    const result = build({
+      data: {
+        ui: {
+          activeSession: {
+            occurrenceId: "active-friction",
+            dateKey: SELECTED_DATE_KEY,
+            habitIds: ["goal-deep"],
+            runtimePhase: "in_progress",
+          },
+        },
+        occurrences: [
+          { id: "active-friction", goalId: "goal-deep", date: SELECTED_DATE_KEY, start: "09:00", status: "planned" },
+        ],
+        sessionHistory: [
+          {
+            id: "session-blocked",
+            occurrenceId: "active-friction",
+            dateKey: SELECTED_DATE_KEY,
+            state: "ended",
+            endedReason: "blocked",
+          },
+        ],
+      },
+    });
+
+    expect(result.primaryAction.status).toBe("in_progress");
+    expect(result.primaryAction.primaryLabel).toBe("Reprendre");
+    expect(result.timelineItems[0].status).toBe("in_progress");
   });
 
   it("maps risk for a currently exposed planned block without flashing late", () => {

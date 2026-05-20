@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { buildTimelineDateStrip, getTimelineDisplayTime } from "./timelineDisplayModel";
+import { EXECUTION_SURFACE_STATUS } from "../logic/executionStatus";
+import {
+  buildTimelineDateStrip,
+  getTimelineDisplayTime,
+  getTimelineStatusLabel,
+  isTimelineNextFocusCandidate,
+  resolveTimelineExecutionStatus,
+  resolveTimelineTone,
+} from "./timelineDisplayModel";
 
 describe("timeline display model", () => {
   it("labels missing and anytime occurrences as unscheduled", () => {
@@ -52,5 +60,60 @@ describe("timeline display model", () => {
     expect(days.filter((day) => day.isSelected)).toHaveLength(1);
     expect(days.find((day) => day.isSelected)?.dayNumber).toBe("18");
     expect(days.filter((day) => day.isToday)).toHaveLength(1);
+  });
+
+  it("labels and tones execution statuses honestly", () => {
+    expect(getTimelineStatusLabel(EXECUTION_SURFACE_STATUS.ACTIVE)).toBe("En cours");
+    expect(getTimelineStatusLabel(EXECUTION_SURFACE_STATUS.MISSED)).toBe("Manquée");
+    expect(getTimelineStatusLabel(EXECUTION_SURFACE_STATUS.POSTPONED)).toBe("Reportée");
+    expect(getTimelineStatusLabel(EXECUTION_SURFACE_STATUS.BLOCKED)).toBe("Bloquée");
+    expect(getTimelineStatusLabel(EXECUTION_SURFACE_STATUS.REPORTED)).toBe("Signalée");
+
+    expect(resolveTimelineTone(EXECUTION_SURFACE_STATUS.DONE)).toBe("execution");
+    expect(resolveTimelineTone(EXECUTION_SURFACE_STATUS.ACTIVE)).toBe("execution");
+    expect(resolveTimelineTone(EXECUTION_SURFACE_STATUS.BLOCKED)).toBe("attention");
+    expect(resolveTimelineTone(EXECUTION_SURFACE_STATUS.REPORTED)).toBe("attention");
+    expect(resolveTimelineTone(EXECUTION_SURFACE_STATUS.POSTPONED)).toBe("attention");
+    expect(resolveTimelineTone(EXECUTION_SURFACE_STATUS.MISSED)).toBe("attention");
+    expect(resolveTimelineTone(EXECUTION_SURFACE_STATUS.PLANNED)).toBe("neutral");
+  });
+
+  it("derives blocked and reported planning status from session history", () => {
+    const blocked = resolveTimelineExecutionStatus({
+      occurrence: { id: "occ_blocked", date: "2026-05-20", status: "planned" },
+      sessionHistory: [
+        {
+          id: "history_blocked",
+          occurrenceId: "occ_blocked",
+          dateKey: "2026-05-20",
+          state: "ended",
+          endedReason: "blocked",
+        },
+      ],
+    });
+    const reported = resolveTimelineExecutionStatus({
+      occurrence: { id: "occ_reported", date: "2026-05-20", status: "planned" },
+      sessionHistory: [
+        {
+          id: "history_reported",
+          occurrenceId: "occ_reported",
+          dateKey: "2026-05-20",
+          state: "ended",
+          endedReason: "reported",
+        },
+      ],
+    });
+
+    expect(blocked).toBe(EXECUTION_SURFACE_STATUS.BLOCKED);
+    expect(reported).toBe(EXECUTION_SURFACE_STATUS.REPORTED);
+  });
+
+  it("keeps next focus on executable or recovery statuses only", () => {
+    expect(isTimelineNextFocusCandidate(EXECUTION_SURFACE_STATUS.PLANNED)).toBe(true);
+    expect(isTimelineNextFocusCandidate(EXECUTION_SURFACE_STATUS.BLOCKED)).toBe(true);
+    expect(isTimelineNextFocusCandidate(EXECUTION_SURFACE_STATUS.REPORTED)).toBe(true);
+    expect(isTimelineNextFocusCandidate(EXECUTION_SURFACE_STATUS.DONE)).toBe(false);
+    expect(isTimelineNextFocusCandidate(EXECUTION_SURFACE_STATUS.MISSED)).toBe(false);
+    expect(isTimelineNextFocusCandidate(EXECUTION_SURFACE_STATUS.POSTPONED)).toBe(false);
   });
 });

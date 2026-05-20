@@ -111,4 +111,90 @@ describe("buildAdjustDiagnostic", () => {
     });
     expect(diagnostic.recommendation.actionId).toBe(ADJUST_ACTION_IDS.ASK_COACH);
   });
+
+  it("counts blocked session history as friction and routes to simplification", () => {
+    const diagnostic = buildAdjustDiagnostic(
+      baseState({
+        occurrences: [
+          { id: "occ_blocked", goalId: "goal_focus", date: ACTIVE_DATE, start: "09:00", status: "planned", durationMinutes: 45 },
+        ],
+        sessionHistory: [
+          {
+            id: "session_blocked",
+            occurrenceId: "occ_blocked",
+            dateKey: ACTIVE_DATE,
+            state: "ended",
+            endedReason: "blocked",
+          },
+        ],
+      }),
+      ACTIVE_DATE
+    );
+
+    expect(diagnostic.summary.blockedCount).toBe(1);
+    expect(diagnostic.summary.reportedCount).toBe(0);
+    expect(diagnostic.summary.sessionFrictionCount).toBe(1);
+    expect(diagnostic.frictionSignals.map((signal) => signal.id)).toContain("blocked_blocks");
+    expect(diagnostic.recommendation.actionId).toBe(ADJUST_ACTION_IDS.SIMPLIFY_DAY);
+    expect(diagnostic.systemSignals.map((signal) => signal.type)).toContain("blocked_block");
+  });
+
+  it("counts reported source-day history after an occurrence moved", () => {
+    const diagnostic = buildAdjustDiagnostic(
+      baseState({
+        occurrences: [
+          { id: "occ_reported", goalId: "goal_focus", date: "2026-05-20", start: "09:00", status: "planned", durationMinutes: 45 },
+        ],
+        sessionHistory: [
+          {
+            id: "session_reported",
+            occurrenceId: "occ_reported",
+            dateKey: ACTIVE_DATE,
+            state: "ended",
+            endedReason: "reported",
+          },
+        ],
+      }),
+      ACTIVE_DATE
+    );
+
+    expect(diagnostic.summary.reportedCount).toBe(1);
+    expect(diagnostic.summary.postponedCount).toBe(1);
+    expect(diagnostic.summary.state).toBe("friction");
+    expect(diagnostic.frictionSignals.map((signal) => signal.id)).toContain("reported_blocks");
+    expect(diagnostic.recommendation.actionId).toBe(ADJUST_ACTION_IDS.REORGANIZE_SCHEDULE);
+    expect(diagnostic.systemSignals.map((signal) => signal.type)).toContain("reported_block");
+  });
+
+  it("routes repeated reported friction with high load to load reduction", () => {
+    const diagnostic = buildAdjustDiagnostic(
+      baseState({
+        occurrences: [
+          { id: "occ_1", goalId: "goal_focus", date: ACTIVE_DATE, start: "09:00", status: "planned", durationMinutes: 75 },
+          { id: "occ_2", goalId: "goal_sport", date: ACTIVE_DATE, start: "18:00", status: "planned", durationMinutes: 75 },
+        ],
+        sessionHistory: [
+          {
+            id: "session_reported_1",
+            occurrenceId: "occ_1",
+            dateKey: ACTIVE_DATE,
+            state: "ended",
+            endedReason: "reported",
+          },
+          {
+            id: "session_reported_2",
+            occurrenceId: "occ_2",
+            dateKey: ACTIVE_DATE,
+            state: "ended",
+            endedReason: "reported",
+          },
+        ],
+      }),
+      ACTIVE_DATE
+    );
+
+    expect(diagnostic.summary.reportedCount).toBe(2);
+    expect(diagnostic.summary.remainingMinutes).toBe(150);
+    expect(diagnostic.recommendation.actionId).toBe(ADJUST_ACTION_IDS.REDUCE_LOAD);
+  });
 });

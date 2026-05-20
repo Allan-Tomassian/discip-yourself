@@ -49,6 +49,7 @@ export default function Home({
   onOpenLibrary,
   onOpenCoachGuided,
   onOpenSecondaryRoute,
+  onOpenAdjust,
   onOpenPlanning,
   onOpenSession,
 }) {
@@ -409,12 +410,16 @@ export default function Home({
 
   const handlePrimarySecondary = useCallback(() => {
     const label = String(todayData.primaryAction?.secondaryLabel || "").toLowerCase();
+    if (label.includes("ajuster")) {
+      onOpenAdjust?.();
+      return;
+    }
     if (label.includes("réduire") || label.includes("coach")) {
       openCoachPlan("Aide-moi à réduire ou ajuster le prochain bloc sans ajouter de bruit.");
       return;
     }
     openPlanningForToday();
-  }, [openCoachPlan, openPlanningForToday, todayData.primaryAction?.secondaryLabel]);
+  }, [onOpenAdjust, openCoachPlan, openPlanningForToday, todayData.primaryAction?.secondaryLabel]);
 
   const handlePrimaryDetail = useCallback(() => {
     const label = String(todayData.primaryAction?.detailLabel || "").toLowerCase();
