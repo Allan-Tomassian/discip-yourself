@@ -165,6 +165,53 @@ describe("category_profiles_v1", () => {
   });
 });
 
+describe("system_analysis_v1", () => {
+  it("initialData seeds an empty compatible system analysis history", () => {
+    const state = initialData();
+
+    expect(state.system_analysis_v1).toEqual({
+      version: 1,
+      latestAnalysisId: null,
+      analyses: [],
+    });
+  });
+
+  it("migrate normalizes malformed history and preserves valid analysis records", () => {
+    const base = buildBaseState();
+    base.system_analysis_v1 = {
+      latestAnalysisId: "missing",
+      analyses: [
+        null,
+        { id: "", snapshotHash: "bad" },
+        {
+          id: "analysis_valid",
+          snapshotHash: "hash_valid",
+          period: { startDateKey: "2026-05-14", endDateKey: "2026-05-20", days: 7 },
+          generatedAt: "2026-05-20T12:00:00.000Z",
+          savedAt: "2026-05-20T12:01:00.000Z",
+          result: {
+            period: { startDateKey: "2026-05-14", endDateKey: "2026-05-20", days: 7 },
+            generatedAt: "2026-05-20T12:00:00.000Z",
+          },
+        },
+      ],
+    };
+
+    const migrated = migrate(base);
+
+    expect(migrated.system_analysis_v1).toMatchObject({
+      version: 1,
+      latestAnalysisId: "analysis_valid",
+    });
+    expect(migrated.system_analysis_v1.analyses).toHaveLength(1);
+    expect(migrated.system_analysis_v1.analyses[0]).toMatchObject({
+      id: "analysis_valid",
+      snapshotHash: "hash_valid",
+      source: "premium_system_analysis",
+    });
+  });
+});
+
 describe("locked theme normalization", () => {
   it("does not reintroduce legacy page theme values during migrate", () => {
     const base = buildBaseState();

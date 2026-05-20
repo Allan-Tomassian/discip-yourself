@@ -22,6 +22,7 @@ export const SYSTEM_ANALYSIS_CORRECTION_REVIEW_STATUS = Object.freeze({
   VALID: "valid",
   NEEDS_REVIEW: "needs_review",
   UNSUPPORTED: "unsupported",
+  APPLIED: "applied",
 });
 
 const GROUP_LABELS = Object.freeze({
@@ -97,11 +98,13 @@ function buildItem({
   confidence = null,
   status,
   selectedIds,
+  appliedIds = new Set(),
   validationIssues = [],
   repairPreview = null,
 }) {
+  const applied = appliedIds.has(id);
   const selectable = status === SYSTEM_ANALYSIS_CORRECTION_REVIEW_STATUS.VALID && Boolean(repairPreview) && !hasError(validationIssues);
-  const selected = selectable && selectedIds.has(id);
+  const selected = !applied && selectable && selectedIds.has(id);
   return {
     id,
     group,
@@ -110,11 +113,12 @@ function buildItem({
     reason: safeString(reason),
     expectedImpact: safeString(expectedImpact),
     confidence: normalizeConfidence(confidence),
-    status,
+    status: applied ? SYSTEM_ANALYSIS_CORRECTION_REVIEW_STATUS.APPLIED : status,
     selected,
-    selectable,
+    selectable: !applied && selectable,
+    applied,
     validationIssues: safeArray(validationIssues),
-    repairPreview,
+    repairPreview: applied ? null : repairPreview,
   };
 }
 
@@ -282,7 +286,7 @@ function overrideStatusForIssues(mapped, validationIssues) {
   return mapped;
 }
 
-function buildOccurrenceItems({ draft, state, selectedIds, contractIssues }) {
+function buildOccurrenceItems({ draft, state, selectedIds, appliedIds, contractIssues }) {
   const validationRequirements = safeArray(draft?.validationRequirements);
   return safeArray(draft?.occurrenceAdjustments).map((adjustment, index) => {
     const occurrenceId = safeString(adjustment?.occurrenceId);
@@ -305,13 +309,14 @@ function buildOccurrenceItems({ draft, state, selectedIds, contractIssues }) {
       confidence: adjustment?.confidence,
       status: mapped.status,
       selectedIds,
+      appliedIds,
       validationIssues,
       repairPreview: mapped.repairPreview,
     });
   });
 }
 
-function buildLoadItem({ draft, selectedIds, contractIssues }) {
+function buildLoadItem({ draft, selectedIds, appliedIds, contractIssues }) {
   const load = draft?.correctedLoad;
   if (!isPlainObject(load)) return [];
   const parts = [];
@@ -326,13 +331,14 @@ function buildLoadItem({ draft, selectedIds, contractIssues }) {
       reason: load.reason,
       status: SYSTEM_ANALYSIS_CORRECTION_REVIEW_STATUS.NEEDS_REVIEW,
       selectedIds,
+      appliedIds,
       validationIssues: issuesForPath(contractIssues, "correctedLoad"),
       repairPreview: null,
     }),
   ];
 }
 
-function buildGoalItems({ entries, group, idKey, selectedIds, contractIssues }) {
+function buildGoalItems({ entries, group, idKey, selectedIds, appliedIds, contractIssues }) {
   return safeArray(entries).map((adjustment, index) => {
     const path = `${group === SYSTEM_ANALYSIS_CORRECTION_GROUP.OBJECTIVES ? "objectiveAdjustments" : "actionAdjustments"}[${index}]`;
     const action = safeString(adjustment?.action);
@@ -345,13 +351,14 @@ function buildGoalItems({ entries, group, idKey, selectedIds, contractIssues }) 
       confidence: adjustment?.confidence,
       status: SYSTEM_ANALYSIS_CORRECTION_REVIEW_STATUS.NEEDS_REVIEW,
       selectedIds,
+      appliedIds,
       validationIssues: issuesForPath(contractIssues, path),
       repairPreview: null,
     });
   });
 }
 
-function buildNext7DaysItems({ draft, selectedIds, contractIssues }) {
+function buildNext7DaysItems({ draft, selectedIds, appliedIds, contractIssues }) {
   const days = safeArray(draft?.next7DaysPlan);
   if (!days.length) return [];
   const totalMinutes = days.reduce((sum, day) => sum + Math.max(0, Number(day?.totalMinutes) || 0), 0);
@@ -364,6 +371,7 @@ function buildNext7DaysItems({ draft, selectedIds, contractIssues }) {
       reason: safeString(days[0]?.focus) || "Résumé de direction seulement.",
       status: SYSTEM_ANALYSIS_CORRECTION_REVIEW_STATUS.NEEDS_REVIEW,
       selectedIds,
+      appliedIds,
       validationIssues: issuesForPath(contractIssues, "next7DaysPlan"),
       repairPreview: null,
     }),
@@ -398,20 +406,23 @@ export function buildSystemAnalysisCorrectionReview({
   state,
   snapshot,
   selectedIds = [],
+  appliedCorrectionIds = [],
 } = {}) {
   const rawDraft = isPlainObject(result?.correctionDraft) ? result.correctionDraft : null;
   const validation = validateCorrectionDraft(rawDraft, { state, snapshot });
   const draft = validation.normalized || rawDraft || {};
   const selectedSet = new Set(safeArray(selectedIds).map(safeString).filter(Boolean));
+  const appliedSet = new Set(safeArray(appliedCorrectionIds).map(safeString).filter(Boolean));
   const contractIssues = safeArray(validation.issues);
   const items = [
-    ...buildOccurrenceItems({ draft, state, selectedIds: selectedSet, contractIssues }),
-    ...buildLoadItem({ draft, selectedIds: selectedSet, contractIssues }),
+    ...buildOccurrenceItems({ draft, state, selectedIds: selectedSet, appliedIds: appliedSet, contractIssues }),
+    ...buildLoadItem({ draft, selectedIds: selectedSet, appliedIds: appliedSet, contractIssues }),
     ...buildGoalItems({
       entries: draft.objectiveAdjustments,
       group: SYSTEM_ANALYSIS_CORRECTION_GROUP.OBJECTIVES,
       idKey: "goalId",
       selectedIds: selectedSet,
+      appliedIds: appliedSet,
       contractIssues,
     }),
     ...buildGoalItems({
@@ -419,9 +430,10 @@ export function buildSystemAnalysisCorrectionReview({
       group: SYSTEM_ANALYSIS_CORRECTION_GROUP.ACTIONS,
       idKey: "actionId",
       selectedIds: selectedSet,
+      appliedIds: appliedSet,
       contractIssues,
     }),
-    ...buildNext7DaysItems({ draft, selectedIds: selectedSet, contractIssues }),
+    ...buildNext7DaysItems({ draft, selectedIds: selectedSet, appliedIds: appliedSet, contractIssues }),
   ];
   const selectedValidItems = items.filter((item) => item.selected && item.selectable);
 

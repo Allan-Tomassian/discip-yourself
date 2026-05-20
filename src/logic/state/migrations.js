@@ -18,6 +18,7 @@ import {
 } from "../../domain/categoryVisibility";
 import { ensureManualAiAnalysisState } from "../../features/manualAi/manualAiAnalysis";
 import { ensureCoachConversationsState } from "../../features/coach/coachStorage";
+import { ensureSystemAnalysisHistoryState } from "../../features/system-analysis/systemAnalysisHistory";
 import { normalizeFirstRunV1 } from "../../features/first-run/firstRunModel";
 import { autoReclassifySystemGoals } from "../../domain/systemInboxMigration";
 import {
@@ -913,6 +914,7 @@ export function migrate(prev) {
   const safeUi = sanitizeVisibleCategoryUi(normalized.ui, cats);
   const safeManualAiAnalysis = ensureManualAiAnalysisState(safeUi?.manualAiAnalysisV1);
   const safeCoachConversations = ensureCoachConversationsState(normalized.coach_conversations_v1);
+  const safeSystemAnalysisHistory = ensureSystemAnalysisHistoryState(normalized.system_analysis_v1);
   const rawOpenGoalEditId = safeUi?.openGoalEditId || null;
   const safeOpenGoalEditId = rawOpenGoalEditId && goalList.some((g) => g.id === rawOpenGoalEditId) ? rawOpenGoalEditId : null;
   const { pilotageRadarSelection: _legacyPilotageRadarSelection, ...safeUiWithoutRadar } = safeUi;
@@ -921,6 +923,7 @@ export function migrate(prev) {
   return {
     ...normalized,
     coach_conversations_v1: safeCoachConversations,
+    system_analysis_v1: safeSystemAnalysisHistory,
     category_profiles_v1: safeCategoryProfiles,
     ui: {
       ...safeUiWithoutRadar,

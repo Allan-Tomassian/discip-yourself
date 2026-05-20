@@ -89,6 +89,8 @@ export default function SystemAnalysisResultPreview({
   result = null,
   errorCode = "",
   message = "",
+  title = "",
+  staleNote = "",
   onRetry,
   onOpenCorrections,
 }) {
@@ -132,7 +134,7 @@ export default function SystemAnalysisResultPreview({
         <div className="systemAnalysisResultPreview__body">
           <CommandSectionHeader
             label="ANALYSE SYSTÈME"
-            title="Diagnostic profond terminé"
+            title={safeString(title) || "Diagnostic profond terminé"}
             subtitle={safeString(result.executiveSummary)}
             tone="ai"
           />
@@ -158,6 +160,9 @@ export default function SystemAnalysisResultPreview({
           </div>
           {dataLimitations.length ? (
             <p className="systemAnalysisResultPreview__limitation">{dataLimitations[0]}</p>
+          ) : null}
+          {safeString(staleNote) ? (
+            <p className="systemAnalysisResultPreview__staleNote">{safeString(staleNote)}</p>
           ) : null}
           <p className="systemAnalysisResultPreview__honestNote">
             Aucune modification n’a été appliquée.

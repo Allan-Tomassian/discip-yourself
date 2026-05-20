@@ -105,6 +105,44 @@ describe("SystemAnalysisCorrectionReview", () => {
     expect(html).toContain("Revue manuelle requise");
   });
 
+  it("renders already-applied corrections as visible but non-selectable", () => {
+    const appliedItem = {
+      id: VALID_ITEM_ID,
+      group: "occurrences",
+      label: "Réduire la durée",
+      description: "Réduire à 30 min.",
+      reason: "Version plus faisable.",
+      expectedImpact: "",
+      confidence: 0.8,
+      status: "applied",
+      selected: false,
+      selectable: false,
+      applied: true,
+      validationIssues: [],
+      repairPreview: null,
+    };
+    const review = {
+      ...reviewFixture({ unsupported: false }),
+      items: [appliedItem],
+      groups: [{
+        id: "occurrences",
+        label: "Blocs",
+        items: [appliedItem],
+        itemCount: 1,
+        selectableCount: 0,
+        validCount: 0,
+      }],
+      selectableCount: 0,
+      selectedCount: 0,
+      validSelectedCount: 0,
+      hasValidSelection: false,
+    };
+    const html = renderToStaticMarkup(<SystemAnalysisCorrectionReview review={review} />);
+
+    expect(html).toContain("Déjà appliquée");
+    expect(html).not.toContain("Sélectionner");
+  });
+
   it("renders a local confirmation placeholder without applying corrections", () => {
     const html = renderToStaticMarkup(
       <SystemAnalysisCorrectionReview

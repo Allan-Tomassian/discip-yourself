@@ -3,6 +3,7 @@ import { normalizeLocalDateKey, toLocalDateKey } from "../../utils/dateKey";
 import { resolveGoalType } from "../../domain/goalType";
 import { ensureManualAiAnalysisState } from "../../features/manualAi/manualAiAnalysis";
 import { ensureCoachConversationsState } from "../../features/coach/coachStorage";
+import { ensureSystemAnalysisHistoryState } from "../../features/system-analysis/systemAnalysisHistory";
 import { createInitialFirstRunState } from "../../features/first-run/firstRunModel";
 import { normalizeTimeFields } from "../timeFields";
 import { BLOCKS_SCHEMA_VERSION, getDefaultBlocksByPage } from "../blocks/registry";
@@ -604,6 +605,7 @@ export function initialData() {
     checks: {},
     microChecks: {},
     coach_conversations_v1: ensureCoachConversationsState(null),
+    system_analysis_v1: ensureSystemAnalysisHistoryState(null),
     category_profiles_v1: createEmptyCategoryProfilesState(),
     user_ai_profile: createDefaultUserAiProfile(),
   };
@@ -755,6 +757,7 @@ export function demoData() {
     checks: {},
     microChecks: {},
     coach_conversations_v1: ensureCoachConversationsState(null),
+    system_analysis_v1: ensureSystemAnalysisHistoryState(null),
     category_profiles_v1: createEmptyCategoryProfilesState(),
     user_ai_profile: createDefaultUserAiProfile(),
   };

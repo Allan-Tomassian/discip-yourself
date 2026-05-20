@@ -18,6 +18,9 @@ function formatConfidence(confidence) {
 }
 
 function statusCopy(status, selected) {
+  if (status === SYSTEM_ANALYSIS_CORRECTION_REVIEW_STATUS.APPLIED) {
+    return { label: "Déjà appliquée", tone: "execution", Icon: CheckCircle2 };
+  }
   if (status === SYSTEM_ANALYSIS_CORRECTION_REVIEW_STATUS.VALID) {
     return { label: selected ? "Sélectionnée" : "Applicable", tone: "execution", Icon: CheckCircle2 };
   }
@@ -93,7 +96,7 @@ function CorrectionItem({ item, onSelectChange }) {
         </div>
       ) : (
         <span className="systemAnalysisCorrectionItem__disabledNote">
-          Revue manuelle requise
+          {item.applied ? "Déjà appliquée" : "Revue manuelle requise"}
         </span>
       )}
     </article>

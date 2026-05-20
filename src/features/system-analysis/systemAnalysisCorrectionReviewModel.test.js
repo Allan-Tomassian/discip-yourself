@@ -243,4 +243,43 @@ describe("buildSystemAnalysisCorrectionReview", () => {
     expect(selected.confirmationSummary.items).toHaveLength(1);
     expect(selected.confirmationSummary.items[0].repairPreview.type).toBe(PLANNING_REPAIR_TYPE.REDUCE_DURATION);
   });
+
+  it("marks persisted applied corrections as non-selectable and ignores selectedIds for them", () => {
+    const initial = buildSystemAnalysisCorrectionReview({
+      result: resultFixture(correctionDraft({
+        occurrenceAdjustments: [{
+          occurrenceId: "occ_focus",
+          action: "reduce_duration",
+          proposedDurationMinutes: 30,
+          reason: "Version plus courte.",
+        }],
+      })),
+      state: stateFixture(),
+      snapshot: SNAPSHOT,
+    });
+    const applied = buildSystemAnalysisCorrectionReview({
+      result: resultFixture(correctionDraft({
+        occurrenceAdjustments: [{
+          occurrenceId: "occ_focus",
+          action: "reduce_duration",
+          proposedDurationMinutes: 30,
+          reason: "Version plus courte.",
+        }],
+      })),
+      state: stateFixture(),
+      snapshot: SNAPSHOT,
+      selectedIds: [initial.items[0].id],
+      appliedCorrectionIds: [initial.items[0].id],
+    });
+
+    expect(applied.items[0]).toMatchObject({
+      status: SYSTEM_ANALYSIS_CORRECTION_REVIEW_STATUS.APPLIED,
+      applied: true,
+      selectable: false,
+      selected: false,
+      repairPreview: null,
+    });
+    expect(applied.selectedIds).toEqual([]);
+    expect(applied.hasValidSelection).toBe(false);
+  });
 });

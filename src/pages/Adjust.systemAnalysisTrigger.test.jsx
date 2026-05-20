@@ -61,6 +61,10 @@ describe("Adjust system analysis trigger contract", () => {
     expect(source).toContain("buildSystemAnalysisCorrectionReview");
     expect(source).toContain("buildSystemAnalysisApplicationPreview");
     expect(source).toContain("applySystemAnalysisSelectedCorrections");
+    expect(source).toContain("createSystemAnalysisRecord");
+    expect(source).toContain("upsertSystemAnalysisRecord");
+    expect(source).toContain("findReusableSystemAnalysisRecord");
+    expect(source).toContain("markSystemAnalysisRecordApplied");
     expect(source).toContain("useAuth");
     expect(source).toContain("systemAnalysisEligibility?.eligible");
     expect(source).toContain('status: "loading"');
@@ -92,7 +96,7 @@ describe("Adjust system analysis trigger contract", () => {
     const reviewIndex = source.indexOf("<SystemAnalysisCorrectionReview");
     const prepareIndex = source.indexOf("handleConfirmSystemAnalysisCorrections");
     const applyIndex = source.indexOf("handleApplySystemAnalysisCorrections");
-    const setDataIndex = source.indexOf("setData(result.nextState)");
+    const setDataIndex = source.indexOf("setData((current) =>", applyIndex);
     const applyHandlerSource = source.slice(applyIndex, source.indexOf("const systemAnalysisHeaderAction"));
 
     expect(source).toContain("handleOpenSystemAnalysisCorrections");
@@ -101,7 +105,8 @@ describe("Adjust system analysis trigger contract", () => {
     expect(source).toContain("handleApplySystemAnalysisCorrections");
     expect(source).toContain("setPreparedSystemAnalysisApplicationPreview");
     expect(source).toContain("setSystemAnalysisConfirmationOpen(true)");
-    expect(source).toContain("setData(result.nextState)");
+    expect(source).toContain("setData((current) =>");
+    expect(source).toContain("markSystemAnalysisRecordApplied");
     expect(source).toContain("onApplySelectedCorrections={handleApplySystemAnalysisCorrections}");
     expect(previewIndex).toBeGreaterThan(-1);
     expect(reviewIndex).toBeGreaterThan(-1);
@@ -110,6 +115,35 @@ describe("Adjust system analysis trigger contract", () => {
     expect(applyIndex).toBeGreaterThan(prepareIndex);
     expect(setDataIndex).toBeGreaterThan(applyIndex);
     expect(applyHandlerSource).not.toContain("requestAiSystemAnalysis");
+  });
+
+  it("persists validated results and reuses an exact local history match before calling the backend", () => {
+    const source = readSrc("pages/Adjust.jsx");
+    const reuseIndex = source.indexOf("findReusableSystemAnalysisRecord(systemAnalysisHistory");
+    const requestIndex = source.indexOf("requestAiSystemAnalysis({");
+    const createIndex = source.indexOf("createSystemAnalysisRecord({");
+    const upsertIndex = source.indexOf("upsertSystemAnalysisRecord(", createIndex);
+
+    expect(reuseIndex).toBeGreaterThan(-1);
+    expect(requestIndex).toBeGreaterThan(-1);
+    expect(reuseIndex).toBeLessThan(requestIndex);
+    expect(createIndex).toBeGreaterThan(requestIndex);
+    expect(upsertIndex).toBeGreaterThan(createIndex);
+    expect(source).toContain("validateSystemAnalysisResult(result.result");
+  });
+
+  it("shows latest persisted analysis through the compact preview model", () => {
+    const source = readSrc("pages/Adjust.jsx");
+    const recommendationIndex = source.indexOf("adjustRecommendationCard adjustRecommendationCard--primary");
+    const previewIndex = source.indexOf("<SystemAnalysisResultPreview");
+
+    expect(source).toContain("buildSystemAnalysisHistoryDisplayModel");
+    expect(source).toContain("displayedSystemAnalysisPreviewState");
+    expect(source).toContain("title={displayedSystemAnalysisPreviewState.title}");
+    expect(source).toContain("staleNote={displayedSystemAnalysisPreviewState.staleNote}");
+    expect(recommendationIndex).toBeGreaterThan(-1);
+    expect(previewIndex).toBeGreaterThan(-1);
+    expect(recommendationIndex).toBeLessThan(previewIndex);
   });
 
   it("renders the running header state while a request is in progress", () => {

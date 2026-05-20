@@ -30,9 +30,18 @@ import {
   applySystemAnalysisSelectedCorrections,
   buildSystemAnalysisApplicationPreview,
 } from "../features/system-analysis/systemAnalysisApplyModel";
+import { validateSystemAnalysisResult } from "../features/system-analysis/systemAnalysisContract";
 import { buildSystemAnalysisEligibility } from "../features/system-analysis/systemAnalysisEligibility";
 import { buildSystemAnalysisEntryModel } from "../features/system-analysis/systemAnalysisEntryModel";
 import { buildSystemAnalysisCorrectionReview } from "../features/system-analysis/systemAnalysisCorrectionReviewModel";
+import {
+  buildSystemAnalysisHistoryDisplayModel,
+  createSystemAnalysisRecord,
+  ensureSystemAnalysisHistoryState,
+  findReusableSystemAnalysisRecord,
+  markSystemAnalysisRecordApplied,
+  upsertSystemAnalysisRecord,
+} from "../features/system-analysis/systemAnalysisHistory";
 import { buildSystemAnalysisSnapshot } from "../features/system-analysis/systemAnalysisSnapshot";
 import { requestAiSystemAnalysis } from "../infra/aiSystemAnalysisClient";
 import { getPrimarySystemSignal } from "../logic/systemSignals";
@@ -127,6 +136,7 @@ function createInitialSystemAnalysisState() {
   return {
     status: "idle",
     result: null,
+    analysisId: null,
     errorCode: "",
     message: "",
     missingRequirements: [],
@@ -316,6 +326,18 @@ export default function Adjust({
     }),
     [activeDateKey, safeData, systemAnalysisSnapshot]
   );
+  const systemAnalysisHistory = useMemo(
+    () => ensureSystemAnalysisHistoryState(safeData.system_analysis_v1),
+    [safeData.system_analysis_v1]
+  );
+  const systemAnalysisHistoryDisplay = useMemo(
+    () => buildSystemAnalysisHistoryDisplayModel({
+      history: systemAnalysisHistory,
+      currentSnapshot: systemAnalysisSnapshot,
+      activeDateKey,
+    }),
+    [activeDateKey, systemAnalysisHistory, systemAnalysisSnapshot]
+  );
   const resolvedSystemAnalysisAvailabilityState = resolveSystemAnalysisAvailabilityState({
     requestState: systemAnalysisRequestState,
     fallbackState: systemAnalysisAvailabilityState,
@@ -327,21 +349,64 @@ export default function Adjust({
     }),
     [resolvedSystemAnalysisAvailabilityState, systemAnalysisEligibility]
   );
+  const displayedSystemAnalysisRecordId = systemAnalysisRequestState.status === "success"
+    ? systemAnalysisRequestState.analysisId
+    : (systemAnalysisRequestState.status === "idle" && systemAnalysisHistoryDisplay.visible
+      ? systemAnalysisHistoryDisplay.record?.id || null
+      : null);
+  const displayedSystemAnalysisRecord = useMemo(
+    () => {
+      if (!displayedSystemAnalysisRecordId) return null;
+      return systemAnalysisHistory.analyses.find((record) => record.id === displayedSystemAnalysisRecordId) || null;
+    },
+    [displayedSystemAnalysisRecordId, systemAnalysisHistory]
+  );
+  const displayedSystemAnalysisPreviewState = useMemo(
+    () => {
+      if (systemAnalysisRequestState.status === "idle" && systemAnalysisHistoryDisplay.visible) {
+        return {
+          status: "success",
+          result: systemAnalysisHistoryDisplay.result,
+          errorCode: "",
+          message: "",
+          missingRequirements: [],
+          title: systemAnalysisHistoryDisplay.title,
+          staleNote: systemAnalysisHistoryDisplay.staleNote,
+        };
+      }
+      return {
+        ...systemAnalysisRequestState,
+        title: "",
+        staleNote: "",
+      };
+    },
+    [systemAnalysisHistoryDisplay, systemAnalysisRequestState]
+  );
+  const displayedSystemAnalysisResult = displayedSystemAnalysisPreviewState.status === "success"
+    ? displayedSystemAnalysisPreviewState.result
+    : null;
+  const displayedAppliedCorrectionIds = useMemo(
+    () => (Array.isArray(displayedSystemAnalysisRecord?.appliedCorrectionIds)
+      ? displayedSystemAnalysisRecord.appliedCorrectionIds
+      : []),
+    [displayedSystemAnalysisRecord]
+  );
   const systemAnalysisCorrectionReview = useMemo(
     () => {
-      if (systemAnalysisRequestState.status !== "success" || !systemAnalysisRequestState.result) return null;
+      if (!displayedSystemAnalysisResult) return null;
       return buildSystemAnalysisCorrectionReview({
-        result: systemAnalysisRequestState.result,
+        result: displayedSystemAnalysisResult,
         state: safeData,
         snapshot: systemAnalysisSnapshot,
         selectedIds: selectedSystemAnalysisCorrectionIds,
+        appliedCorrectionIds: displayedAppliedCorrectionIds,
       });
     },
     [
+      displayedAppliedCorrectionIds,
+      displayedSystemAnalysisResult,
       safeData,
       selectedSystemAnalysisCorrectionIds,
-      systemAnalysisRequestState.result,
-      systemAnalysisRequestState.status,
       systemAnalysisSnapshot,
     ]
   );
@@ -377,6 +442,7 @@ export default function Adjust({
       setSystemAnalysisRequestState({
         status: "error",
         result: null,
+        analysisId: null,
         errorCode: "QUOTA_EXCEEDED",
         message: "Quota mensuel utilisé.",
         missingRequirements: [],
@@ -394,12 +460,35 @@ export default function Adjust({
       setSystemAnalysisRequestState({
         status: "ineligible",
         result: null,
+        analysisId: null,
         errorCode: "SYSTEM_ANALYSIS_INELIGIBLE",
         message: SYSTEM_ANALYSIS_INELIGIBLE_MESSAGE,
         missingRequirements: Array.isArray(systemAnalysisEligibility?.missingRequirements)
           ? systemAnalysisEligibility.missingRequirements
           : [],
         requestId: null,
+      });
+      return;
+    }
+
+    const reusableRecord = findReusableSystemAnalysisRecord(systemAnalysisHistory, {
+      snapshotHash: systemAnalysisSnapshot?.snapshotHash,
+      period: systemAnalysisSnapshot?.period,
+    });
+    if (reusableRecord) {
+      setShowSystemAnalysisReview(false);
+      setSelectedSystemAnalysisCorrectionIds([]);
+      setSystemAnalysisConfirmationOpen(false);
+      setPreparedSystemAnalysisApplicationPreview(null);
+      setSystemAnalysisApplicationState(createInitialSystemAnalysisApplicationState());
+      setSystemAnalysisRequestState({
+        status: "success",
+        result: reusableRecord.result,
+        analysisId: reusableRecord.id,
+        errorCode: "",
+        message: "",
+        missingRequirements: [],
+        requestId: reusableRecord.modelMeta?.requestId || null,
       });
       return;
     }
@@ -415,6 +504,7 @@ export default function Adjust({
     setSystemAnalysisRequestState({
       status: "loading",
       result: null,
+      analysisId: null,
       errorCode: "",
       message: "",
       missingRequirements: [],
@@ -435,6 +525,60 @@ export default function Adjust({
     systemAnalysisAbortRef.current = null;
 
     if (result.ok) {
+      const validation = validateSystemAnalysisResult(result.result, {
+        snapshot: systemAnalysisSnapshot,
+        state: safeData,
+      });
+      if (!validation.ok) {
+        setShowSystemAnalysisReview(false);
+        setSelectedSystemAnalysisCorrectionIds([]);
+        setSystemAnalysisConfirmationOpen(false);
+        setPreparedSystemAnalysisApplicationPreview(null);
+        setSystemAnalysisApplicationState(createInitialSystemAnalysisApplicationState());
+        setSystemAnalysisRequestState({
+          status: "error",
+          result: null,
+          analysisId: null,
+          errorCode: "INVALID_SYSTEM_ANALYSIS_RESPONSE",
+          message: "L’analyse n’a pas pu être validée.",
+          missingRequirements: [],
+          requestId: result.requestId || null,
+        });
+        return;
+      }
+      const recordResult = createSystemAnalysisRecord({
+        result: validation.normalized,
+        snapshot: systemAnalysisSnapshot,
+        eligibility: systemAnalysisEligibility,
+        state: safeData,
+        now: buildSystemAnalysisReferenceNow(activeDateKey),
+      });
+      if (!recordResult.ok) {
+        setShowSystemAnalysisReview(false);
+        setSelectedSystemAnalysisCorrectionIds([]);
+        setSystemAnalysisConfirmationOpen(false);
+        setPreparedSystemAnalysisApplicationPreview(null);
+        setSystemAnalysisApplicationState(createInitialSystemAnalysisApplicationState());
+        setSystemAnalysisRequestState({
+          status: "error",
+          result: null,
+          analysisId: null,
+          errorCode: "INVALID_SYSTEM_ANALYSIS_RESPONSE",
+          message: "L’analyse n’a pas pu être enregistrée proprement.",
+          missingRequirements: [],
+          requestId: result.requestId || null,
+        });
+        return;
+      }
+      if (typeof setData === "function") {
+        setData((current) => ({
+          ...(current && typeof current === "object" ? current : safeData),
+          system_analysis_v1: upsertSystemAnalysisRecord(
+            current?.system_analysis_v1 || safeData.system_analysis_v1,
+            recordResult.record
+          ),
+        }));
+      }
       setShowSystemAnalysisReview(false);
       setSelectedSystemAnalysisCorrectionIds([]);
       setSystemAnalysisConfirmationOpen(false);
@@ -442,7 +586,8 @@ export default function Adjust({
       setSystemAnalysisApplicationState(createInitialSystemAnalysisApplicationState());
       setSystemAnalysisRequestState({
         status: "success",
-        result: result.result,
+        result: validation.normalized,
+        analysisId: recordResult.record.id,
         errorCode: "",
         message: "",
         missingRequirements: [],
@@ -459,6 +604,7 @@ export default function Adjust({
     setSystemAnalysisRequestState({
       status: resolveSystemAnalysisStatus(result),
       result: null,
+      analysisId: null,
       errorCode: result.errorCode || "UNKNOWN",
       message: result.errorMessage || "",
       missingRequirements: Array.isArray(result.errorDetails?.missingRequirements)
@@ -471,19 +617,21 @@ export default function Adjust({
     onSystemAnalysisEntry,
     safeData,
     session?.access_token,
+    setData,
     systemAnalysisEligibility,
     systemAnalysisEntryModel.state,
+    systemAnalysisHistory,
     systemAnalysisRequestState.status,
     systemAnalysisSnapshot,
   ]);
 
   const handleOpenSystemAnalysisCorrections = useCallback(() => {
-    if (systemAnalysisRequestState.status !== "success" || !systemAnalysisRequestState.result) return;
+    if (!displayedSystemAnalysisResult) return;
     setShowSystemAnalysisReview(true);
     setSystemAnalysisConfirmationOpen(false);
     setPreparedSystemAnalysisApplicationPreview(null);
     setSystemAnalysisApplicationState(createInitialSystemAnalysisApplicationState());
-  }, [systemAnalysisRequestState.result, systemAnalysisRequestState.status]);
+  }, [displayedSystemAnalysisResult]);
 
   const handleToggleSystemAnalysisCorrection = useCallback((id, selected) => {
     const safeId = typeof id === "string" ? id.trim() : "";
@@ -543,14 +691,41 @@ export default function Adjust({
       return;
     }
 
-    setData(result.nextState);
+    const appliedAt = new Date().toISOString();
+    const totalApplicableIds = (Array.isArray(displayedSystemAnalysisRecord?.appliedCorrectionIds)
+      ? displayedSystemAnalysisRecord.appliedCorrectionIds.length
+      : 0) + Math.max(0, Number(systemAnalysisCorrectionReview.selectableCount) || 0);
+    setData((current) => {
+      const baseNextState = result.nextState;
+      const currentHistory = current?.system_analysis_v1 || baseNextState.system_analysis_v1 || safeData.system_analysis_v1;
+      const nextHistory = displayedSystemAnalysisRecordId
+        ? markSystemAnalysisRecordApplied(currentHistory, {
+          analysisId: displayedSystemAnalysisRecordId,
+          appliedItems: result.appliedItems,
+          changedOccurrenceIds: result.changedOccurrenceIds,
+          appliedAt,
+          totalApplicableIds,
+        })
+        : ensureSystemAnalysisHistoryState(currentHistory);
+      return {
+        ...baseNextState,
+        system_analysis_v1: nextHistory,
+      };
+    });
     setSystemAnalysisApplicationState({
       status: "success",
       result,
       errorCode: "",
       message: "",
     });
-  }, [activeDateKey, safeData, setData, systemAnalysisCorrectionReview]);
+  }, [
+    activeDateKey,
+    displayedSystemAnalysisRecord,
+    displayedSystemAnalysisRecordId,
+    safeData,
+    setData,
+    systemAnalysisCorrectionReview,
+  ]);
 
   const systemAnalysisHeaderAction = (
     <SystemAnalysisEntryButton
@@ -646,11 +821,13 @@ export default function Adjust({
         </CommandCard>
 
         <SystemAnalysisResultPreview
-          status={systemAnalysisRequestState.status}
-          result={systemAnalysisRequestState.result}
-          errorCode={systemAnalysisRequestState.errorCode}
-          message={systemAnalysisRequestState.message}
-          missingRequirements={systemAnalysisRequestState.missingRequirements}
+          status={displayedSystemAnalysisPreviewState.status}
+          result={displayedSystemAnalysisPreviewState.result}
+          errorCode={displayedSystemAnalysisPreviewState.errorCode}
+          message={displayedSystemAnalysisPreviewState.message}
+          missingRequirements={displayedSystemAnalysisPreviewState.missingRequirements}
+          title={displayedSystemAnalysisPreviewState.title}
+          staleNote={displayedSystemAnalysisPreviewState.staleNote}
           onRetry={handleSystemAnalysisEntry}
           onOpenCorrections={handleOpenSystemAnalysisCorrections}
         />

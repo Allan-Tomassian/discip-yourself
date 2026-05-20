@@ -55,6 +55,21 @@ describe("SystemAnalysisResultPreview", () => {
     expect(html).not.toContain("Corrections à valider bientôt");
   });
 
+  it("renders persisted latest-analysis title and stale note when provided", () => {
+    const html = renderToStaticMarkup(
+      <SystemAnalysisResultPreview
+        status="success"
+        result={RESULT}
+        title="Dernière analyse"
+        staleNote="Ton système a changé depuis cette analyse."
+      />
+    );
+
+    expect(html).toContain("Dernière analyse");
+    expect(html).toContain("Ton système a changé depuis cette analyse.");
+    expect(html).toContain("Aucune modification n’a été appliquée.");
+  });
+
   it("renders calm premium, ineligible, timeout, and invalid states", () => {
     const premium = renderToStaticMarkup(<SystemAnalysisResultPreview status="premium_required" />);
     const ineligible = renderToStaticMarkup(
