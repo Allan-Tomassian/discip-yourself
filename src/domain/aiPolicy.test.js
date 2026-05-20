@@ -40,6 +40,21 @@ describe("aiPolicy", () => {
     });
   });
 
+  it("exposes system analysis as premium structured proposal authority without mutation", () => {
+    expect(AI_REGIMES.SYSTEM_ANALYSIS).toBe("system_analysis");
+    expect(AI_REGIME_POLICY[AI_REGIMES.SYSTEM_ANALYSIS]).toMatchObject({
+      authorityLevel: AI_AUTHORITY_LEVELS.STRUCTURED_PROPOSAL,
+      canRead: true,
+      canRecommend: true,
+      canPropose: true,
+      canCreate: false,
+      canMutate: false,
+      outputContract: "system_analysis_result",
+      costClass: "expensive",
+      access: "premium",
+    });
+  });
+
   it("normalizes coach modes without widening card into conversation", () => {
     expect(normalizeCoachChatMode("free")).toBe(COACH_CHAT_MODES.FREE);
     expect(normalizeCoachChatMode("plan")).toBe(COACH_CHAT_MODES.PLAN);

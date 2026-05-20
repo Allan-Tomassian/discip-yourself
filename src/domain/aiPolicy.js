@@ -4,6 +4,7 @@ export const AI_REGIMES = Object.freeze({
   LOCAL_ANALYSIS: "local_analysis",
   SESSION_GUIDANCE: "session_guidance",
   MUTATION_REVIEW: "mutation_review",
+  SYSTEM_ANALYSIS: "system_analysis",
 });
 
 export const COACH_CHAT_MODES = Object.freeze({
@@ -95,6 +96,23 @@ export const AI_REGIME_POLICY = Object.freeze({
     canMutate: true,
     canOpenSurface: true,
     label: "Review de modification IA",
+  }),
+  [AI_REGIMES.SYSTEM_ANALYSIS]: Object.freeze({
+    authorityLevel: AI_AUTHORITY_LEVELS.STRUCTURED_PROPOSAL,
+    conversation: false,
+    canRead: true,
+    canClarify: false,
+    canRecommend: true,
+    canPropose: true,
+    canPrepareCreate: false,
+    canCreate: false,
+    canMutate: false,
+    canOpenSurface: true,
+    outputContract: "system_analysis_result",
+    costClass: "expensive",
+    access: "premium",
+    frequency: "monthly",
+    label: "Analyse système",
   }),
 });
 

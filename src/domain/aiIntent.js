@@ -14,6 +14,7 @@ export const AI_INTENTS = Object.freeze({
   SESSION_ADAPT: "session_adapt",
   REVIEW: "review",
   RECOVERY: "recovery",
+  SYSTEM_ANALYSIS: "system_analysis",
 });
 
 const AI_INTENT_VALUES = new Set(Object.values(AI_INTENTS));
@@ -50,6 +51,10 @@ export const AI_INTENT_POLICY = Object.freeze({
   [AI_INTENTS.RECOVERY]: Object.freeze({
     engine: "recovery_engine",
     outputContract: "recovery",
+  }),
+  [AI_INTENTS.SYSTEM_ANALYSIS]: Object.freeze({
+    engine: "system_analysis_engine",
+    outputContract: "system_analysis_result",
   }),
 });
 

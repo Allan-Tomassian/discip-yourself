@@ -22,10 +22,15 @@ describe("aiIntent", () => {
       "session_adapt",
       "review",
       "recovery",
+      "system_analysis",
     ]);
     expect(AI_INTENT_POLICY[AI_INTENTS.EXECUTE_NOW]).toMatchObject({
       engine: "execution_engine",
       outputContract: "now",
+    });
+    expect(AI_INTENT_POLICY[AI_INTENTS.SYSTEM_ANALYSIS]).toMatchObject({
+      engine: "system_analysis_engine",
+      outputContract: "system_analysis_result",
     });
   });
 
