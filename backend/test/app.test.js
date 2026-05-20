@@ -1091,10 +1091,12 @@ test("POST /ai/now with an invalid bearer returns AUTH_INVALID", async () => {
 });
 
 test("POST /ai/chat rejects an empty message with 400", async () => {
+  const insertedLogs = [];
   const app = await buildApp({
     config: TEST_CONFIG,
     verifyAccessToken: async () => ({ id: "user-chat-invalid" }),
   });
+  app.supabase = createFakeSupabase({ insertedLogs });
 
   const response = await app.inject({
     method: "POST",
@@ -1110,6 +1112,8 @@ test("POST /ai/chat rejects an empty message with 400", async () => {
 
   assert.equal(response.statusCode, 400);
   assert.equal(response.json().error, "INVALID_BODY");
+  assert.equal(insertedLogs[0]?.feature_id, "coach_chat_free");
+  assert.equal(insertedLogs[0]?.counts_for_quota, false);
   await app.close();
 });
 
@@ -1183,6 +1187,7 @@ test("POST /ai/chat returns a free conversation fallback when mode is free", asy
 });
 
 test("POST /ai/chat returns a plan conversation fallback when mode is plan", async () => {
+  const insertedLogs = [];
   const app = await buildApp({
     config: TEST_CONFIG,
     verifyAccessToken: async () => ({ id: "user-chat-plan" }),
@@ -1192,6 +1197,7 @@ test("POST /ai/chat returns a plan conversation fallback when mode is plan", asy
     entitlement: null,
     dailyCount: 0,
     monthlyCount: 0,
+    insertedLogs,
   });
 
   const response = await app.inject({
@@ -1213,6 +1219,7 @@ test("POST /ai/chat returns a plan conversation fallback when mode is plan", asy
   assert.equal(payload.mode, "plan");
   assert.equal(payload.decisionSource, "rules");
   assert.equal(payload.meta.selectedDateKey, TODAY_KEY);
+  assert.equal(insertedLogs[0]?.feature_id, "coach_plan");
   await app.close();
 });
 
@@ -1252,6 +1259,40 @@ test("POST /ai/chat accepts locale, useCase, and aiIntent without returning INVA
   assert.equal(payload.mode, "free");
   assert.equal(insertedLogs[0]?.coach_kind, "chat");
   assert.equal(insertedLogs[0]?.route, "/ai/chat");
+  assert.equal(insertedLogs[0]?.feature_id, "coach_chat_free");
+  assert.equal(insertedLogs[0]?.counts_for_quota, true);
+  await app.close();
+});
+
+test("POST /ai/chat logs premium free-mode chat as premium coach usage", async () => {
+  const insertedLogs = [];
+  const app = await buildApp({
+    config: TEST_CONFIG,
+    verifyAccessToken: async () => ({ id: "user-chat-premium" }),
+  });
+  app.supabase = createFakeSupabase({
+    userData: createCoachContextUserData(),
+    entitlement: { plan_tier: "premium" },
+    dailyCount: 0,
+    monthlyCount: 0,
+    insertedLogs,
+  });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/chat",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.127" },
+    payload: {
+      selectedDateKey: TODAY_KEY,
+      activeCategoryId: "cat-1",
+      mode: "free",
+      message: "Aide-moi à choisir le prochain bloc.",
+      recentMessages: [],
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(insertedLogs[0]?.feature_id, "coach_chat_premium");
   await app.close();
 });
 
@@ -1438,6 +1479,7 @@ test("POST /ai/local-analysis accepts an AI response that includes direction", a
   assert.equal(payload.direction, "recalibrer");
   assert.equal(insertedLogs[0]?.coach_kind, "local-analysis");
   assert.equal(insertedLogs[0]?.route, "/ai/local-analysis");
+  assert.equal(insertedLogs[0]?.feature_id, "today_ai_insight");
   await app.close();
 });
 
@@ -1531,6 +1573,8 @@ test("POST /ai/first-run-starter-hints returns compact hints without commitDraft
   assert.match(requestedUserPrompt, /First Access et auth/);
   assert.equal(insertedLogs[0]?.coach_kind, "first-run-starter-hints");
   assert.equal(insertedLogs[0]?.route, "/ai/first-run-starter-hints");
+  assert.equal(insertedLogs[0]?.feature_id, "first_run_starter_hints");
+  assert.equal(insertedLogs[0]?.counts_for_quota, true);
   await app.close();
 });
 
@@ -1573,6 +1617,8 @@ test("POST /ai/first-run-starter-hints returns a structured timeout error", asyn
   assert.equal(body.details.timeoutMs, 12000);
   assert.equal(insertedLogs[0]?.coach_kind, "first-run-starter-hints");
   assert.equal(insertedLogs[0]?.provider_status, "timeout");
+  assert.equal(insertedLogs[0]?.feature_id, "first_run_starter_hints");
+  assert.equal(insertedLogs[0]?.counts_for_quota, false);
   await app.close();
 });
 
@@ -1643,6 +1689,8 @@ test("POST /ai/first-run-why-clarification returns compact clarification without
   assert.match(requestedUserPrompt, /Do not include fields named commitDraft, occurrences, weekSchedule/);
   assert.equal(insertedLogs[0]?.coach_kind, "first-run-why-clarification");
   assert.equal(insertedLogs[0]?.route, "/ai/first-run-why-clarification");
+  assert.equal(insertedLogs[0]?.feature_id, "why_clarification");
+  assert.equal(insertedLogs[0]?.counts_for_quota, true);
   await app.close();
 });
 
@@ -1831,6 +1879,8 @@ test("POST /ai/first-run-plan returns an explicit provider timeout error", async
   assert.equal(response.json().error, "FIRST_RUN_PLAN_PROVIDER_TIMEOUT");
   assert.equal(insertedLogs[0]?.coach_kind, "first-run-plan");
   assert.equal(insertedLogs[0]?.route, "/ai/first-run-plan");
+  assert.equal(insertedLogs[0]?.feature_id, "first_run_full_plan_legacy");
+  assert.equal(insertedLogs[0]?.counts_for_quota, false);
   assert.equal(Number.isInteger(insertedLogs[0]?.provider_ms), true);
   await app.close();
 });
@@ -3591,6 +3641,8 @@ test("POST /ai/session-guidance returns an AI premium runbook with quality metad
   assert.equal(payload.payload.quality.rejectionReason, null);
   assert.equal(insertedLogs[0]?.coach_kind, "session-guidance");
   assert.equal(insertedLogs[0]?.route, "/ai/session-guidance");
+  assert.equal(insertedLogs[0]?.feature_id, "session_guidance");
+  assert.equal(insertedLogs[0]?.counts_for_quota, true);
   assert.equal(insertedLogs[0]?.mode, "prepare");
   assert.equal(insertedLogs[0]?.protocol_type, "sport");
   assert.equal(insertedLogs[0]?.provider_status, "ok");
@@ -4069,6 +4121,8 @@ test("POST /ai/now returns 429 from server-trusted free quota even if profile.pl
   assert.equal(response.statusCode, 429);
   assert.equal(response.json().error, "QUOTA_EXCEEDED");
   assert.equal(insertedLogs[0]?.plan_tier, "free");
+  assert.equal(insertedLogs[0]?.feature_id, "today_ai_insight");
+  assert.equal(insertedLogs[0]?.counts_for_quota, false);
   await app.close();
 });
 

@@ -1,6 +1,20 @@
 import { createHash } from "node:crypto";
+import { AI_FEATURE_POLICY } from "../../../src/domain/aiPolicy.js";
 
 const AI_REQUEST_LOG_DIAGNOSTIC_COLUMNS = Object.freeze([
+  "feature_id",
+  "cost_class",
+  "model_class",
+  "model",
+  "prompt_version",
+  "counts_for_quota",
+  "usage_units",
+  "cache_hit",
+  "input_bytes",
+  "output_bytes",
+  "provider_input_tokens",
+  "provider_output_tokens",
+  "route_name",
   "mode",
   "protocol_type",
   "provider_status",
@@ -29,7 +43,75 @@ export function hashValue(value) {
   return sha256(raw);
 }
 
+function toNonNegativeInteger(value, fallback = null) {
+  if (!Number.isFinite(value)) return fallback;
+  return Math.max(0, Math.round(value));
+}
+
+function normalizeOptionalString(value) {
+  const raw = String(value || "").trim();
+  return raw || null;
+}
+
+function resolveFeaturePolicy(featureId) {
+  const normalizedFeatureId = normalizeOptionalString(featureId);
+  if (!normalizedFeatureId) return null;
+  return AI_FEATURE_POLICY[normalizedFeatureId] || null;
+}
+
+export function resolveAiRequestCountsForQuota({
+  statusCode = 200,
+  cacheHit = false,
+  validationOk = undefined,
+  providerStatus = null,
+  errorCode = null,
+} = {}) {
+  const status = Number.isFinite(statusCode) ? Math.round(statusCode) : 200;
+  if (cacheHit === true) return false;
+  if (status < 200 || status >= 300) return false;
+  if (validationOk === false) return false;
+
+  const normalizedProviderStatus = String(providerStatus || "").trim().toLowerCase();
+  if (["blocked", "timeout", "error", "invalid_response"].includes(normalizedProviderStatus)) return false;
+
+  const normalizedErrorCode = String(errorCode || "").trim().toUpperCase();
+  if (
+    [
+      "PREMIUM_REQUIRED",
+      "SYSTEM_ANALYSIS_INELIGIBLE",
+      "QUOTA_EXCEEDED",
+      "RATE_LIMITED",
+      "INVALID_BODY",
+      "INVALID_RESPONSE",
+    ].includes(normalizedErrorCode)
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
 function buildAiRequestLogPayload(entry = {}, { includeDiagnostics = true } = {}) {
+  const featureId = normalizeOptionalString(entry.featureId);
+  const featurePolicy = resolveFeaturePolicy(featureId);
+  const statusCode = Number.isFinite(entry.statusCode) ? Math.round(entry.statusCode) : 200;
+  const cacheHit = entry.cacheHit === true;
+  const validationOk =
+    typeof entry.validationOk === "boolean"
+      ? entry.validationOk
+      : typeof entry.validationPassed === "boolean"
+        ? entry.validationPassed
+        : undefined;
+  const countsForQuota =
+    typeof entry.countsForQuota === "boolean"
+      ? entry.countsForQuota
+      : resolveAiRequestCountsForQuota({
+          statusCode,
+          cacheHit,
+          validationOk,
+          providerStatus: entry.providerStatus,
+          errorCode: entry.errorCode,
+        });
   const payload = {
     request_id: entry.requestId,
     user_id: entry.userId,
@@ -37,7 +119,7 @@ function buildAiRequestLogPayload(entry = {}, { includeDiagnostics = true } = {}
     route: entry.route,
     plan_tier: entry.planTier || "free",
     decision_source: entry.decisionSource || null,
-    status_code: Number.isFinite(entry.statusCode) ? entry.statusCode : 200,
+    status_code: statusCode,
     request_hash: entry.requestHash || null,
     ip_hash: entry.ipHash || null,
     user_agent: entry.userAgent || null,
@@ -47,6 +129,19 @@ function buildAiRequestLogPayload(entry = {}, { includeDiagnostics = true } = {}
   if (!includeDiagnostics) return payload;
   return {
     ...payload,
+    feature_id: featureId,
+    cost_class: normalizeOptionalString(entry.costClass) || featurePolicy?.costClass || null,
+    model_class: normalizeOptionalString(entry.modelClass) || featurePolicy?.modelClass || null,
+    model: normalizeOptionalString(entry.model),
+    prompt_version: normalizeOptionalString(entry.promptVersion),
+    counts_for_quota: countsForQuota,
+    usage_units: toNonNegativeInteger(entry.usageUnits, countsForQuota ? 1 : 0),
+    cache_hit: cacheHit,
+    input_bytes: toNonNegativeInteger(entry.inputBytes),
+    output_bytes: toNonNegativeInteger(entry.outputBytes),
+    provider_input_tokens: toNonNegativeInteger(entry.providerInputTokens),
+    provider_output_tokens: toNonNegativeInteger(entry.providerOutputTokens),
+    route_name: normalizeOptionalString(entry.routeName),
     mode: entry.mode || null,
     protocol_type: entry.protocolType || null,
     provider_status: entry.providerStatus || null,

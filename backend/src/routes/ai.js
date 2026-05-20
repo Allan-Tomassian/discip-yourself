@@ -41,6 +41,7 @@ import {
   resolveSystemAnalysisPromptVersion,
   runSystemAnalysisService,
 } from "../services/systemAnalysis/systemAnalysisService.js";
+import { AI_FEATURE_IDS, COACH_CHAT_MODES } from "../../../src/domain/aiPolicy.js";
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -75,6 +76,76 @@ function resolveSessionGuidanceDecisionSource(user) {
 function getClientIp(request) {
   const forwarded = String(request.headers["x-forwarded-for"] || "").split(",")[0]?.trim();
   return forwarded || request.ip || "";
+}
+
+function routeNameFromPath(route) {
+  return String(route || "").replace(/^\/ai\//, "") || null;
+}
+
+function safeJsonByteLength(value) {
+  try {
+    return Buffer.byteLength(JSON.stringify(value ?? null), "utf8");
+  } catch {
+    return null;
+  }
+}
+
+const COACH_ROUTE_FEATURE_IDS = Object.freeze({
+  now: AI_FEATURE_IDS.TODAY_AI_INSIGHT,
+  recovery: AI_FEATURE_IDS.TODAY_AI_INSIGHT,
+  "local-analysis": AI_FEATURE_IDS.TODAY_AI_INSIGHT,
+});
+
+function resolveCoachRouteFeatureId({ coachKind, body = null, planTier = "free" } = {}) {
+  if (coachKind === "chat") {
+    if (body?.mode === COACH_CHAT_MODES.PLAN) return AI_FEATURE_IDS.COACH_PLAN;
+    return planTier === "premium" ? AI_FEATURE_IDS.COACH_CHAT_PREMIUM : AI_FEATURE_IDS.COACH_CHAT_FREE;
+  }
+  return COACH_ROUTE_FEATURE_IDS[coachKind] || AI_FEATURE_IDS.TODAY_AI_INSIGHT;
+}
+
+async function logBlockedAiRequest({
+  app,
+  request,
+  startedAt,
+  route,
+  coachKind,
+  featureId,
+  planTier = "free",
+  decisionSource = "rules",
+  statusCode,
+  errorCode,
+  requestHash = null,
+  mode = null,
+  protocolType = null,
+  promptVersion = null,
+  providerStatus = "blocked",
+  validationPassed = null,
+  zodIssuePaths = null,
+} = {}) {
+  await insertAiRequestLog(app.supabase, {
+    requestId: request.requestId,
+    userId: request.user.id,
+    coachKind,
+    route,
+    routeName: routeNameFromPath(route),
+    featureId,
+    planTier,
+    decisionSource,
+    statusCode,
+    mode,
+    protocolType,
+    promptVersion,
+    providerStatus,
+    validationPassed,
+    zodIssuePaths,
+    countsForQuota: false,
+    requestHash,
+    ipHash: hashValue(getClientIp(request)),
+    userAgent: request.headers["user-agent"] || "",
+    latencyMs: Date.now() - startedAt,
+    errorCode,
+  });
 }
 
 function describeActiveSessionPayload(data) {
@@ -393,6 +464,18 @@ async function handleCoachRoute({
   const route = `/ai/${coachKind}`;
   const parsedBody = bodySchema.safeParse(request.body);
   if (!parsedBody.success) {
+    await logBlockedAiRequest({
+      app,
+      request,
+      startedAt,
+      route,
+      coachKind,
+      featureId: resolveCoachRouteFeatureId({ coachKind }),
+      statusCode: 400,
+      errorCode: "INVALID_BODY",
+      validationPassed: false,
+      zodIssuePaths: parsedBody.error.issues.map((issue) => issue.path.join(".")).filter(Boolean).slice(0, 16),
+    });
     return reply.code(400).send({
       error: "INVALID_BODY",
       message: "Request body is invalid.",
@@ -413,6 +496,16 @@ async function handleCoachRoute({
       windowMs: 15 * 60 * 1000,
     });
   if (rateLimited) {
+    await logBlockedAiRequest({
+      app,
+      request,
+      startedAt,
+      route,
+      coachKind,
+      featureId: resolveCoachRouteFeatureId({ coachKind, body: parsedBody.data }),
+      statusCode: 429,
+      errorCode: "RATE_LIMITED",
+    });
     return reply.code(429).send({
       error: "RATE_LIMITED",
       message: "Rate limit exceeded.",
@@ -484,9 +577,12 @@ async function handleCoachRoute({
       userId: request.user.id,
       coachKind,
       route: `/ai/${coachKind}`,
+      routeName: routeNameFromPath(route),
+      featureId: resolveCoachRouteFeatureId({ coachKind, body: parsedBody.data, planTier: quotaState.planTier }),
       planTier: quotaState.planTier,
       decisionSource: "rules",
       statusCode: 429,
+      countsForQuota: false,
       requestHash,
       ipHash: hashValue(getClientIp(request)),
       userAgent: request.headers["user-agent"] || "",
@@ -565,9 +661,14 @@ async function handleCoachRoute({
       userId: request.user.id,
       coachKind,
       route,
+      routeName: routeNameFromPath(route),
+      featureId: resolveCoachRouteFeatureId({ coachKind, body: parsedBody.data, planTier: quotaState.planTier }),
       planTier: quotaState.planTier,
       decisionSource: response.decisionSource,
       statusCode: 200,
+      countsForQuota: true,
+      inputBytes: safeJsonByteLength(parsedBody.data),
+      outputBytes: safeJsonByteLength(response),
       requestHash,
       ipHash: hashValue(getClientIp(request)),
       userAgent: request.headers["user-agent"] || "",
@@ -599,6 +700,19 @@ async function handleSystemAnalysisRoute({ app, request, reply }) {
   const route = "/ai/system-analysis";
   const parsedBody = systemAnalysisRequestSchema.safeParse(request.body);
   if (!parsedBody.success) {
+    await logBlockedAiRequest({
+      app,
+      request,
+      startedAt,
+      route,
+      coachKind: "system-analysis",
+      featureId: AI_FEATURE_IDS.SYSTEM_ANALYSIS,
+      statusCode: 400,
+      errorCode: "INVALID_SYSTEM_ANALYSIS_SNAPSHOT",
+      mode: "system_analysis",
+      validationPassed: false,
+      zodIssuePaths: parsedBody.error.issues.map((issue) => issue.path.join(".")).filter(Boolean).slice(0, 24),
+    });
     return reply.code(400).send({
       error: "INVALID_SYSTEM_ANALYSIS_SNAPSHOT",
       message: "System analysis request body is invalid.",
@@ -626,6 +740,19 @@ async function handleSystemAnalysisRoute({ app, request, reply }) {
       windowMs: 15 * 60 * 1000,
     });
   if (rateLimited) {
+    await logBlockedAiRequest({
+      app,
+      request,
+      startedAt,
+      route,
+      coachKind: "system-analysis",
+      featureId: AI_FEATURE_IDS.SYSTEM_ANALYSIS,
+      statusCode: 429,
+      errorCode: "RATE_LIMITED",
+      mode: "system_analysis",
+      protocolType: promptVersion,
+      promptVersion,
+    });
     return reply.code(429).send({
       error: "RATE_LIMITED",
       message: "Rate limit exceeded.",
@@ -689,12 +816,16 @@ async function handleSystemAnalysisRoute({ app, request, reply }) {
       userId: request.user.id,
       coachKind: "system-analysis",
       route,
+      routeName: routeNameFromPath(route),
+      featureId: AI_FEATURE_IDS.SYSTEM_ANALYSIS,
       planTier: quotaState.planTier,
       decisionSource: "rules",
       statusCode: 403,
       mode: "system_analysis",
       protocolType: promptVersion,
+      promptVersion,
       providerStatus: "blocked",
+      countsForQuota: false,
       requestHash,
       ipHash: hashValue(getClientIp(request)),
       userAgent: request.headers["user-agent"] || "",
@@ -714,12 +845,16 @@ async function handleSystemAnalysisRoute({ app, request, reply }) {
       userId: request.user.id,
       coachKind: "system-analysis",
       route,
+      routeName: routeNameFromPath(route),
+      featureId: AI_FEATURE_IDS.SYSTEM_ANALYSIS,
       planTier: quotaState.planTier,
       decisionSource: "rules",
       statusCode: 429,
       mode: "system_analysis",
       protocolType: promptVersion,
+      promptVersion,
       providerStatus: "blocked",
+      countsForQuota: false,
       requestHash,
       ipHash: hashValue(getClientIp(request)),
       userAgent: request.headers["user-agent"] || "",
@@ -742,13 +877,17 @@ async function handleSystemAnalysisRoute({ app, request, reply }) {
       userId: request.user.id,
       coachKind: "system-analysis",
       route,
+      routeName: routeNameFromPath(route),
+      featureId: AI_FEATURE_IDS.SYSTEM_ANALYSIS,
       planTier: quotaState.planTier,
       decisionSource: "rules",
       statusCode: 422,
       mode: "system_analysis",
       protocolType: promptVersion,
+      promptVersion,
       providerStatus: "blocked",
       validationPassed: false,
+      countsForQuota: false,
       zodIssuePaths: thinDataCheck.missingRequirements.map((requirement) => requirement.code),
       requestHash,
       ipHash: hashValue(getClientIp(request)),
@@ -806,19 +945,24 @@ async function handleSystemAnalysisRoute({ app, request, reply }) {
       userId: request.user.id,
       coachKind: "system-analysis",
       route,
+      routeName: routeNameFromPath(route),
+      featureId: AI_FEATURE_IDS.SYSTEM_ANALYSIS,
       planTier: quotaState.planTier,
       decisionSource: "ai",
       statusCode: status,
       mode: "system_analysis",
       protocolType: promptVersion,
+      promptVersion,
       providerStatus:
         errorDetails?.providerStatus ||
         (responseErrorCode === "INVALID_SYSTEM_ANALYSIS_RESPONSE" ? "invalid_response" : "error"),
+      model: errorDetails?.model || null,
       providerMs: Number.isFinite(errorDetails?.providerMs) ? Math.round(errorDetails.providerMs) : null,
       rejectionStage: errorDetails?.rejectionStage || null,
       rejectionReason: errorDetails?.rejectionReason || null,
       validationPassed:
         typeof errorDetails?.validationPassed === "boolean" ? errorDetails.validationPassed : false,
+      countsForQuota: false,
       zodIssuePaths:
         Array.isArray(errorDetails?.zodIssuePaths) && errorDetails.zodIssuePaths.length
           ? errorDetails.zodIssuePaths
@@ -851,15 +995,19 @@ async function handleSystemAnalysisRoute({ app, request, reply }) {
       userId: request.user.id,
       coachKind: "system-analysis",
       route,
+      routeName: routeNameFromPath(route),
+      featureId: AI_FEATURE_IDS.SYSTEM_ANALYSIS,
       planTier: quotaState.planTier,
       decisionSource: "ai",
       statusCode: 502,
       mode: "system_analysis",
       protocolType: promptVersion,
+      promptVersion,
       providerStatus: "invalid_response",
       rejectionStage: "response_schema",
       rejectionReason: "provider_parse_failed",
       validationPassed: false,
+      countsForQuota: false,
       zodIssuePaths: parsedResponse.error.issues.map((issue) => issue.path.join(".")).filter(Boolean).slice(0, 24),
       requestHash,
       ipHash: hashValue(getClientIp(request)),
@@ -892,11 +1040,15 @@ async function handleSystemAnalysisRoute({ app, request, reply }) {
     userId: request.user.id,
     coachKind: "system-analysis",
     route,
+    routeName: routeNameFromPath(route),
+    featureId: AI_FEATURE_IDS.SYSTEM_ANALYSIS,
     planTier: quotaState.planTier,
     decisionSource: "ai",
     statusCode: 200,
     mode: "system_analysis",
     protocolType: promptVersion,
+    promptVersion,
+    model: serviceResult.diagnostics?.model || parsedResponse.data.modelMeta?.model || null,
     providerStatus: "ok",
     providerMs: Number.isFinite(serviceResult.diagnostics?.providerMs)
       ? Math.round(serviceResult.diagnostics.providerMs)
@@ -905,6 +1057,7 @@ async function handleSystemAnalysisRoute({ app, request, reply }) {
     rejectionReason: null,
     validationPassed: true,
     richnessPassed: true,
+    countsForQuota: true,
     stepCount: parsedResponse.data.recommendedCorrections.length,
     itemCount:
       parsedResponse.data.invisibleFriction.length +
@@ -912,6 +1065,8 @@ async function handleSystemAnalysisRoute({ app, request, reply }) {
       parsedResponse.data.strongestPatterns.length +
       parsedResponse.data.recommendedCorrections.length,
     requestHash,
+    inputBytes: safeJsonByteLength(body.snapshot),
+    outputBytes: safeJsonByteLength(parsedResponse.data),
     ipHash: hashValue(getClientIp(request)),
     userAgent: request.headers["user-agent"] || "",
     latencyMs: Number.isFinite(serviceResult.diagnostics?.totalMs)
@@ -926,6 +1081,18 @@ async function handleSessionGuidanceRoute({ app, request, reply }) {
   const route = "/ai/session-guidance";
   const parsedBody = sessionGuidanceRequestSchema.safeParse(request.body);
   if (!parsedBody.success) {
+    await logBlockedAiRequest({
+      app,
+      request,
+      startedAt,
+      route,
+      coachKind: "session-guidance",
+      featureId: AI_FEATURE_IDS.SESSION_GUIDANCE,
+      statusCode: 400,
+      errorCode: "INVALID_BODY",
+      validationPassed: false,
+      zodIssuePaths: parsedBody.error.issues.map((issue) => issue.path.join(".")).filter(Boolean).slice(0, 16),
+    });
     return reply.code(400).send({
       error: "INVALID_BODY",
       message: "Request body is invalid.",
@@ -946,6 +1113,16 @@ async function handleSessionGuidanceRoute({ app, request, reply }) {
       windowMs: 15 * 60 * 1000,
     });
   if (rateLimited) {
+    await logBlockedAiRequest({
+      app,
+      request,
+      startedAt,
+      route,
+      coachKind: "session-guidance",
+      featureId: AI_FEATURE_IDS.SESSION_GUIDANCE,
+      statusCode: 429,
+      errorCode: "RATE_LIMITED",
+    });
     return reply.code(429).send({
       error: "RATE_LIMITED",
       message: "Rate limit exceeded.",
@@ -1017,9 +1194,12 @@ async function handleSessionGuidanceRoute({ app, request, reply }) {
       userId: request.user.id,
       coachKind: "session-guidance",
       route,
+      routeName: routeNameFromPath(route),
+      featureId: AI_FEATURE_IDS.SESSION_GUIDANCE,
       planTier: quotaState.planTier,
       decisionSource: sessionGuidanceDecisionSource,
       statusCode: 403,
+      countsForQuota: false,
       requestHash,
       ipHash: hashValue(getClientIp(request)),
       userAgent: request.headers["user-agent"] || "",
@@ -1034,6 +1214,19 @@ async function handleSessionGuidanceRoute({ app, request, reply }) {
   }
 
   if (quotaState.exceeded) {
+    await logBlockedAiRequest({
+      app,
+      request,
+      startedAt,
+      route,
+      coachKind: "session-guidance",
+      featureId: AI_FEATURE_IDS.SESSION_GUIDANCE,
+      planTier: quotaState.planTier,
+      decisionSource: sessionGuidanceDecisionSource || "rules",
+      statusCode: 429,
+      errorCode: "QUOTA_EXCEEDED",
+      requestHash,
+    });
     return reply.code(429).send({
       error: "QUOTA_EXCEEDED",
       message: "AI quota exceeded.",
@@ -1075,12 +1268,15 @@ async function handleSessionGuidanceRoute({ app, request, reply }) {
       userId: request.user.id,
       coachKind: "session-guidance",
       route,
+      routeName: routeNameFromPath(route),
+      featureId: AI_FEATURE_IDS.SESSION_GUIDANCE,
       planTier: quotaState.planTier,
       decisionSource: sessionGuidanceDecisionSource || "ai",
       statusCode: status,
       mode: parsedBody.data.mode,
       protocolType: parsedBody.data.protocolType,
       providerStatus: errorDetails?.providerStatus || (errorCode === "INVALID_SESSION_GUIDANCE_RESPONSE" ? "invalid_response" : "error"),
+      countsForQuota: false,
       rejectionStage: errorDetails?.rejectionStage || null,
       rejectionReason: errorDetails?.rejectionReason || null,
       validationPassed:
@@ -1115,12 +1311,15 @@ async function handleSessionGuidanceRoute({ app, request, reply }) {
       userId: request.user.id,
       coachKind: "session-guidance",
       route,
+      routeName: routeNameFromPath(route),
+      featureId: AI_FEATURE_IDS.SESSION_GUIDANCE,
       planTier: quotaState.planTier,
       decisionSource: sessionGuidanceDecisionSource || "ai",
       statusCode: 502,
       mode: parsedBody.data.mode,
       protocolType: parsedBody.data.protocolType,
       providerStatus: "invalid_response",
+      countsForQuota: false,
       rejectionStage: "response_schema",
       rejectionReason: "provider_parse_failed",
       validationPassed: false,
@@ -1147,12 +1346,17 @@ async function handleSessionGuidanceRoute({ app, request, reply }) {
     userId: request.user.id,
     coachKind: "session-guidance",
     route,
+    routeName: routeNameFromPath(route),
+    featureId: AI_FEATURE_IDS.SESSION_GUIDANCE,
     planTier: quotaState.planTier,
     decisionSource: sessionGuidanceDecisionSource || "ai",
     statusCode: 200,
     mode: parsedBody.data.mode,
     protocolType: parsedBody.data.protocolType,
     providerStatus: "ok",
+    model: parsedResponse.data.meta?.model || null,
+    promptVersion: parsedResponse.data.meta?.promptVersion || null,
+    countsForQuota: true,
     rejectionStage: prepareQuality?.rejectionStage || null,
     rejectionReason: prepareQuality?.rejectionReason || null,
     validationPassed:
@@ -1163,6 +1367,8 @@ async function handleSessionGuidanceRoute({ app, request, reply }) {
     itemCount: Number.isFinite(prepareQuality?.itemCount) ? prepareQuality.itemCount : null,
     zodIssuePaths: Array.isArray(prepareQuality?.issuePaths) ? prepareQuality.issuePaths : null,
     requestHash,
+    inputBytes: safeJsonByteLength(parsedBody.data),
+    outputBytes: safeJsonByteLength(parsedResponse.data),
     ipHash: hashValue(getClientIp(request)),
     userAgent: request.headers["user-agent"] || "",
     latencyMs: Date.now() - startedAt,
@@ -1175,6 +1381,18 @@ async function handleFirstRunWhyClarificationRoute({ app, request, reply }) {
   const route = "/ai/first-run-why-clarification";
   const parsedBody = firstRunWhyClarificationRequestSchema.safeParse(request.body);
   if (!parsedBody.success) {
+    await logBlockedAiRequest({
+      app,
+      request,
+      startedAt,
+      route,
+      coachKind: "first-run-why-clarification",
+      featureId: AI_FEATURE_IDS.WHY_CLARIFICATION,
+      statusCode: 400,
+      errorCode: "INVALID_BODY",
+      validationPassed: false,
+      zodIssuePaths: parsedBody.error.issues.map((issue) => issue.path.join(".")).filter(Boolean).slice(0, 16),
+    });
     return reply.code(400).send({
       error: "INVALID_BODY",
       message: "Request body is invalid.",
@@ -1195,6 +1413,16 @@ async function handleFirstRunWhyClarificationRoute({ app, request, reply }) {
       windowMs: 15 * 60 * 1000,
     });
   if (rateLimited) {
+    await logBlockedAiRequest({
+      app,
+      request,
+      startedAt,
+      route,
+      coachKind: "first-run-why-clarification",
+      featureId: AI_FEATURE_IDS.WHY_CLARIFICATION,
+      statusCode: 429,
+      errorCode: "RATE_LIMITED",
+    });
     return reply.code(429).send({
       error: "RATE_LIMITED",
       message: "Rate limit exceeded.",
@@ -1254,6 +1482,18 @@ async function handleFirstRunWhyClarificationRoute({ app, request, reply }) {
   }
 
   if (quotaState.exceeded) {
+    await logBlockedAiRequest({
+      app,
+      request,
+      startedAt,
+      route,
+      coachKind: "first-run-why-clarification",
+      featureId: AI_FEATURE_IDS.WHY_CLARIFICATION,
+      planTier: quotaState.planTier,
+      statusCode: 429,
+      errorCode: "QUOTA_EXCEEDED",
+      requestHash,
+    });
     return reply.code(429).send({
       error: "QUOTA_EXCEEDED",
       message: "AI quota exceeded.",
@@ -1297,13 +1537,18 @@ async function handleFirstRunWhyClarificationRoute({ app, request, reply }) {
       userId: request.user.id,
       coachKind: "first-run-why-clarification",
       route,
+      routeName: routeNameFromPath(route),
+      featureId: AI_FEATURE_IDS.WHY_CLARIFICATION,
       planTier: quotaState.planTier,
       decisionSource: "ai",
       statusCode: status,
       mode: "why_clarification",
+      promptVersion: errorDetails?.promptVersion || null,
+      model: errorDetails?.model || null,
       providerStatus:
         errorDetails?.providerStatus ||
         (errorCode === "INVALID_FIRST_RUN_WHY_CLARIFICATION_RESPONSE" ? "invalid_response" : "error"),
+      countsForQuota: false,
       providerMs: Number.isFinite(errorDetails?.providerMs) ? Math.round(errorDetails.providerMs) : null,
       rejectionStage: errorDetails?.rejectionStage || null,
       rejectionReason: errorDetails?.rejectionReason || null,
@@ -1337,11 +1582,16 @@ async function handleFirstRunWhyClarificationRoute({ app, request, reply }) {
       userId: request.user.id,
       coachKind: "first-run-why-clarification",
       route,
+      routeName: routeNameFromPath(route),
+      featureId: AI_FEATURE_IDS.WHY_CLARIFICATION,
       planTier: quotaState.planTier,
       decisionSource: "ai",
       statusCode: 502,
       mode: "why_clarification",
       providerStatus: "invalid_response",
+      promptVersion: serviceDiagnostics?.promptVersion || null,
+      model: serviceDiagnostics?.model || null,
+      countsForQuota: false,
       rejectionStage: "response_schema",
       rejectionReason: "provider_parse_failed",
       validationPassed: false,
@@ -1365,11 +1615,16 @@ async function handleFirstRunWhyClarificationRoute({ app, request, reply }) {
     userId: request.user.id,
     coachKind: "first-run-why-clarification",
     route,
+    routeName: routeNameFromPath(route),
+    featureId: AI_FEATURE_IDS.WHY_CLARIFICATION,
     planTier: quotaState.planTier,
     decisionSource: "ai",
     statusCode: 200,
     mode: "why_clarification",
     providerStatus: "ok",
+    promptVersion: serviceDiagnostics?.promptVersion || null,
+    model: serviceDiagnostics?.model || null,
+    countsForQuota: true,
     providerMs: Number.isFinite(serviceDiagnostics?.providerMs) ? Math.round(serviceDiagnostics.providerMs) : null,
     rejectionStage: null,
     rejectionReason: null,
@@ -1378,6 +1633,8 @@ async function handleFirstRunWhyClarificationRoute({ app, request, reply }) {
     stepCount: parsedResponse.data.drafts.length,
     itemCount: parsedResponse.data.inspirationAxes.length + parsedResponse.data.drafts.length,
     requestHash,
+    inputBytes: safeJsonByteLength(parsedBody.data),
+    outputBytes: safeJsonByteLength(parsedResponse.data),
     ipHash: hashValue(getClientIp(request)),
     userAgent: request.headers["user-agent"] || "",
     latencyMs: Number.isFinite(serviceDiagnostics?.totalMs) ? Math.round(serviceDiagnostics.totalMs) : Date.now() - startedAt,
@@ -1390,6 +1647,18 @@ async function handleFirstRunPlanRoute({ app, request, reply }) {
   const route = "/ai/first-run-plan";
   const parsedBody = firstRunPlanRequestSchema.safeParse(request.body);
   if (!parsedBody.success) {
+    await logBlockedAiRequest({
+      app,
+      request,
+      startedAt,
+      route,
+      coachKind: "first-run-plan",
+      featureId: AI_FEATURE_IDS.FIRST_RUN_FULL_PLAN_LEGACY,
+      statusCode: 400,
+      errorCode: "INVALID_BODY",
+      validationPassed: false,
+      zodIssuePaths: parsedBody.error.issues.map((issue) => issue.path.join(".")).filter(Boolean).slice(0, 16),
+    });
     return reply.code(400).send({
       error: "INVALID_BODY",
       message: "Request body is invalid.",
@@ -1410,6 +1679,16 @@ async function handleFirstRunPlanRoute({ app, request, reply }) {
       windowMs: 15 * 60 * 1000,
     });
   if (rateLimited) {
+    await logBlockedAiRequest({
+      app,
+      request,
+      startedAt,
+      route,
+      coachKind: "first-run-plan",
+      featureId: AI_FEATURE_IDS.FIRST_RUN_FULL_PLAN_LEGACY,
+      statusCode: 429,
+      errorCode: "RATE_LIMITED",
+    });
     return reply.code(429).send({
       error: "RATE_LIMITED",
       message: "Rate limit exceeded.",
@@ -1469,6 +1748,18 @@ async function handleFirstRunPlanRoute({ app, request, reply }) {
   }
 
   if (quotaState.exceeded) {
+    await logBlockedAiRequest({
+      app,
+      request,
+      startedAt,
+      route,
+      coachKind: "first-run-plan",
+      featureId: AI_FEATURE_IDS.FIRST_RUN_FULL_PLAN_LEGACY,
+      planTier: quotaState.planTier,
+      statusCode: 429,
+      errorCode: "QUOTA_EXCEEDED",
+      requestHash,
+    });
     return reply.code(429).send({
       error: "QUOTA_EXCEEDED",
       message: "AI quota exceeded.",
@@ -1513,12 +1804,17 @@ async function handleFirstRunPlanRoute({ app, request, reply }) {
       userId: request.user.id,
       coachKind: "first-run-plan",
       route,
+      routeName: routeNameFromPath(route),
+      featureId: AI_FEATURE_IDS.FIRST_RUN_FULL_PLAN_LEGACY,
       planTier: quotaState.planTier,
       decisionSource: "ai",
       statusCode: status,
       mode: "generate",
+      promptVersion: errorDetails?.promptVersion || null,
+      model: errorDetails?.model || null,
       providerStatus:
         errorDetails?.providerStatus || (errorCode === "INVALID_FIRST_RUN_PLAN_RESPONSE" ? "invalid_response" : "error"),
+      countsForQuota: false,
       providerMs: logMetrics.providerMs,
       rejectionStage: errorDetails?.rejectionStage || null,
       rejectionReason: errorDetails?.rejectionReason || null,
@@ -1557,11 +1853,16 @@ async function handleFirstRunPlanRoute({ app, request, reply }) {
       userId: request.user.id,
       coachKind: "first-run-plan",
       route,
+      routeName: routeNameFromPath(route),
+      featureId: AI_FEATURE_IDS.FIRST_RUN_FULL_PLAN_LEGACY,
       planTier: quotaState.planTier,
       decisionSource: "ai",
       statusCode: 502,
       mode: "generate",
+      promptVersion: serviceDiagnostics?.promptVersion || null,
+      model: serviceDiagnostics?.model || null,
       providerStatus: "invalid_response",
+      countsForQuota: false,
       rejectionStage: "response_schema",
       rejectionReason: "provider_parse_failed",
       validationPassed: false,
@@ -1590,11 +1891,16 @@ async function handleFirstRunPlanRoute({ app, request, reply }) {
     userId: request.user.id,
     coachKind: "first-run-plan",
     route,
+    routeName: routeNameFromPath(route),
+    featureId: AI_FEATURE_IDS.FIRST_RUN_FULL_PLAN_LEGACY,
     planTier: quotaState.planTier,
     decisionSource: "ai",
     statusCode: 200,
     mode: "generate",
+    promptVersion: serviceDiagnostics?.promptVersion || null,
+    model: serviceDiagnostics?.model || null,
     providerStatus: "ok",
+    countsForQuota: true,
     providerMs: successMetrics.providerMs,
     rejectionStage: null,
     rejectionReason: null,
@@ -1608,6 +1914,8 @@ async function handleFirstRunPlanRoute({ app, request, reply }) {
     stepCount: parsedResponse.data.plans.length,
     itemCount: totalBlocks,
     requestHash,
+    inputBytes: safeJsonByteLength(parsedBody.data),
+    outputBytes: safeJsonByteLength(parsedResponse.data),
     ipHash: hashValue(getClientIp(request)),
     userAgent: request.headers["user-agent"] || "",
     latencyMs: Number.isFinite(serviceDiagnostics?.totalMs) ? Math.round(serviceDiagnostics.totalMs) : Date.now() - startedAt,
@@ -1620,6 +1928,18 @@ async function handleFirstRunStarterHintsRoute({ app, request, reply }) {
   const route = "/ai/first-run-starter-hints";
   const parsedBody = firstRunStarterHintsRequestSchema.safeParse(request.body);
   if (!parsedBody.success) {
+    await logBlockedAiRequest({
+      app,
+      request,
+      startedAt,
+      route,
+      coachKind: "first-run-starter-hints",
+      featureId: AI_FEATURE_IDS.FIRST_RUN_STARTER_HINTS,
+      statusCode: 400,
+      errorCode: "INVALID_BODY",
+      validationPassed: false,
+      zodIssuePaths: parsedBody.error.issues.map((issue) => issue.path.join(".")).filter(Boolean).slice(0, 16),
+    });
     return reply.code(400).send({
       error: "INVALID_BODY",
       message: "Request body is invalid.",
@@ -1640,6 +1960,16 @@ async function handleFirstRunStarterHintsRoute({ app, request, reply }) {
       windowMs: 15 * 60 * 1000,
     });
   if (rateLimited) {
+    await logBlockedAiRequest({
+      app,
+      request,
+      startedAt,
+      route,
+      coachKind: "first-run-starter-hints",
+      featureId: AI_FEATURE_IDS.FIRST_RUN_STARTER_HINTS,
+      statusCode: 429,
+      errorCode: "RATE_LIMITED",
+    });
     return reply.code(429).send({
       error: "RATE_LIMITED",
       message: "Rate limit exceeded.",
@@ -1699,6 +2029,18 @@ async function handleFirstRunStarterHintsRoute({ app, request, reply }) {
   }
 
   if (quotaState.exceeded) {
+    await logBlockedAiRequest({
+      app,
+      request,
+      startedAt,
+      route,
+      coachKind: "first-run-starter-hints",
+      featureId: AI_FEATURE_IDS.FIRST_RUN_STARTER_HINTS,
+      planTier: quotaState.planTier,
+      statusCode: 429,
+      errorCode: "QUOTA_EXCEEDED",
+      requestHash,
+    });
     return reply.code(429).send({
       error: "QUOTA_EXCEEDED",
       message: "AI quota exceeded.",
@@ -1742,13 +2084,18 @@ async function handleFirstRunStarterHintsRoute({ app, request, reply }) {
       userId: request.user.id,
       coachKind: "first-run-starter-hints",
       route,
+      routeName: routeNameFromPath(route),
+      featureId: AI_FEATURE_IDS.FIRST_RUN_STARTER_HINTS,
       planTier: quotaState.planTier,
       decisionSource: "ai",
       statusCode: status,
       mode: "starter_hints",
+      promptVersion: errorDetails?.promptVersion || null,
+      model: errorDetails?.model || null,
       providerStatus:
         errorDetails?.providerStatus ||
         (errorCode === "INVALID_FIRST_RUN_STARTER_HINTS_RESPONSE" ? "invalid_response" : "error"),
+      countsForQuota: false,
       providerMs: Number.isFinite(errorDetails?.providerMs) ? Math.round(errorDetails.providerMs) : null,
       rejectionStage: errorDetails?.rejectionStage || null,
       rejectionReason: errorDetails?.rejectionReason || null,
@@ -1782,11 +2129,16 @@ async function handleFirstRunStarterHintsRoute({ app, request, reply }) {
       userId: request.user.id,
       coachKind: "first-run-starter-hints",
       route,
+      routeName: routeNameFromPath(route),
+      featureId: AI_FEATURE_IDS.FIRST_RUN_STARTER_HINTS,
       planTier: quotaState.planTier,
       decisionSource: "ai",
       statusCode: 502,
       mode: "starter_hints",
+      promptVersion: serviceDiagnostics?.promptVersion || null,
+      model: serviceDiagnostics?.model || null,
       providerStatus: "invalid_response",
+      countsForQuota: false,
       rejectionStage: "response_schema",
       rejectionReason: "provider_parse_failed",
       validationPassed: false,
@@ -1810,11 +2162,16 @@ async function handleFirstRunStarterHintsRoute({ app, request, reply }) {
     userId: request.user.id,
     coachKind: "first-run-starter-hints",
     route,
+    routeName: routeNameFromPath(route),
+    featureId: AI_FEATURE_IDS.FIRST_RUN_STARTER_HINTS,
     planTier: quotaState.planTier,
     decisionSource: "ai",
     statusCode: 200,
     mode: "starter_hints",
     providerStatus: "ok",
+    promptVersion: serviceDiagnostics?.promptVersion || null,
+    model: serviceDiagnostics?.model || null,
+    countsForQuota: true,
     providerMs: Number.isFinite(serviceDiagnostics?.providerMs) ? Math.round(serviceDiagnostics.providerMs) : null,
     rejectionStage: null,
     rejectionReason: null,
@@ -1823,6 +2180,8 @@ async function handleFirstRunStarterHintsRoute({ app, request, reply }) {
     stepCount: parsedResponse.data.actionHints.length,
     itemCount: parsedResponse.data.actionHints.length + parsedResponse.data.riskRituals.length,
     requestHash,
+    inputBytes: safeJsonByteLength(parsedBody.data),
+    outputBytes: safeJsonByteLength(parsedResponse.data),
     ipHash: hashValue(getClientIp(request)),
     userAgent: request.headers["user-agent"] || "",
     latencyMs: Number.isFinite(serviceDiagnostics?.totalMs) ? Math.round(serviceDiagnostics.totalMs) : Date.now() - startedAt,

@@ -307,7 +307,9 @@ test("POST /ai/system-analysis rejects oversized payloads", async () => {
 });
 
 test("POST /ai/system-analysis rejects thin data unless test bypass is enabled", async () => {
+  const insertedLogs = [];
   const app = await createSystemAnalysisApp({
+    insertedLogs,
     openAiParse: async () => {
       throw new Error("provider should not be called for thin data");
     },
@@ -328,6 +330,8 @@ test("POST /ai/system-analysis rejects thin data unless test bypass is enabled",
 
   assert.equal(response.statusCode, 422);
   assert.equal(response.json().error, "SYSTEM_ANALYSIS_INELIGIBLE");
+  assert.equal(insertedLogs[0]?.feature_id, "system_analysis");
+  assert.equal(insertedLogs[0]?.counts_for_quota, false);
   await app.close();
 });
 
@@ -349,6 +353,8 @@ test("POST /ai/system-analysis rejects free users with PREMIUM_REQUIRED", async 
   assert.equal(response.statusCode, 403);
   assert.equal(response.json().error, "PREMIUM_REQUIRED");
   assert.equal(insertedLogs[0]?.plan_tier, "free");
+  assert.equal(insertedLogs[0]?.feature_id, "system_analysis");
+  assert.equal(insertedLogs[0]?.counts_for_quota, false);
   await app.close();
 });
 
@@ -394,6 +400,12 @@ test("POST /ai/system-analysis returns structured result for mocked provider and
   assert.equal(mutations.length, 0);
   assert.equal(insertedLogs[0]?.coach_kind, "system-analysis");
   assert.equal(insertedLogs[0]?.route, "/ai/system-analysis");
+  assert.equal(insertedLogs[0]?.feature_id, "system_analysis");
+  assert.equal(insertedLogs[0]?.cost_class, "premium_deep");
+  assert.equal(insertedLogs[0]?.model_class, "premium_deep_analysis");
+  assert.equal(insertedLogs[0]?.model, "gpt-system-route");
+  assert.equal(insertedLogs[0]?.prompt_version, "system_analysis_route_v1");
+  assert.equal(insertedLogs[0]?.counts_for_quota, true);
   assert.equal(insertedLogs[0]?.provider_status, "ok");
   assert.equal(insertedLogs[0]?.protocol_type, "system_analysis_route_v1");
   assert.equal(JSON.stringify(insertedLogs[0]).includes("Construire un système"), false);
@@ -555,6 +567,8 @@ test("POST /ai/system-analysis maps provider timeout to 504", async () => {
   assert.equal(response.statusCode, 504);
   assert.equal(response.json().error, "SYSTEM_ANALYSIS_PROVIDER_TIMEOUT");
   assert.equal(insertedLogs[0]?.provider_status, "timeout");
+  assert.equal(insertedLogs[0]?.feature_id, "system_analysis");
+  assert.equal(insertedLogs[0]?.counts_for_quota, false);
   await app.close();
 });
 
