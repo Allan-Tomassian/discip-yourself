@@ -137,6 +137,7 @@
 .todayFloatingWelcomeLine,
 .todayDiagnosticHero,
 .todayPrimaryActionCard,
+.todaySystemSignalRow,
 .todayTimelineCard,
 .todayAiInsightCard {
   animation: todayCockpitEnter var(--today-motion-enter) var(--today-ease-out) both;
@@ -158,6 +159,10 @@
 
 .todayPrimaryActionCard {
   animation-delay: 155ms;
+}
+
+.todaySystemSignalRow {
+  animation-delay: 175ms;
 }
 
 .todayTimelineCard {
@@ -879,6 +884,110 @@
 .todayPrimarySecondaryRow button:disabled:hover,
 .todayPrimarySecondaryRow button:disabled:focus-visible {
   color: rgba(235, 239, 235, 0.62);
+}
+
+.todaySystemSignalRow {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 12px;
+  border-color: color-mix(in srgb, var(--command-attention, #ff8a3d) 28%, var(--today-border));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--command-attention, #ff8a3d) 8%, transparent), transparent),
+    rgba(8, 9, 10, 0.82);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.048),
+    0 14px 30px rgba(0, 0, 0, 0.32);
+}
+
+.todaySystemSignalRow.is-signal-critical {
+  border-color: color-mix(in srgb, var(--command-critical, #ff4d4d) 30%, var(--today-border));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--command-critical, #ff4d4d) 7%, transparent), transparent),
+    rgba(8, 9, 10, 0.82);
+}
+
+.todaySystemSignalIcon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--command-attention, #ff8a3d) 12%, transparent);
+  color: var(--command-attention, #ff8a3d);
+}
+
+.todaySystemSignalRow.is-signal-critical .todaySystemSignalIcon {
+  background: color-mix(in srgb, var(--command-critical, #ff4d4d) 11%, transparent);
+  color: var(--command-critical, #ff4d4d);
+}
+
+.todaySystemSignalContent {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.todaySystemSignalKicker {
+  color: color-mix(in srgb, var(--command-attention, #ff8a3d) 76%, #ffffff);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+  line-height: 1.1;
+}
+
+.todaySystemSignalRow.is-signal-critical .todaySystemSignalKicker {
+  color: color-mix(in srgb, var(--command-critical, #ff4d4d) 78%, #ffffff);
+}
+
+.todaySystemSignalContent strong {
+  color: rgba(246, 248, 244, 0.94);
+  font-size: 13px;
+  line-height: 1.15;
+}
+
+.todaySystemSignalContent > span:last-child {
+  color: rgba(235, 239, 235, 0.64);
+  font-size: 12px;
+  line-height: 1.32;
+}
+
+.todaySystemSignalAction {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 11px;
+  border: 1px solid color-mix(in srgb, var(--command-attention, #ff8a3d) 34%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--command-attention, #ff8a3d) 10%, transparent);
+  color: rgba(246, 248, 244, 0.86);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 760;
+  cursor: pointer;
+  transition:
+    border-color var(--today-motion-fast) var(--today-ease-press),
+    background var(--today-motion-fast) var(--today-ease-press),
+    transform var(--today-motion-fast) var(--today-ease-press);
+}
+
+.todaySystemSignalRow.is-signal-critical .todaySystemSignalAction {
+  border-color: color-mix(in srgb, var(--command-critical, #ff4d4d) 32%, transparent);
+  background: color-mix(in srgb, var(--command-critical, #ff4d4d) 9%, transparent);
+}
+
+.todaySystemSignalAction:hover,
+.todaySystemSignalAction:focus-visible {
+  border-color: color-mix(in srgb, var(--command-attention, #ff8a3d) 52%, transparent);
+  background: color-mix(in srgb, var(--command-attention, #ff8a3d) 14%, transparent);
+}
+
+.todaySystemSignalAction:active {
+  transform: translateY(1px);
 }
 
 .todayTimelineCard {
@@ -1673,6 +1782,7 @@
   .todayFloatingWelcomeLine,
   .todayDiagnosticHero,
   .todayPrimaryActionCard,
+  .todaySystemSignalRow,
   .todayTimelineCard,
   .todayAiInsightCard,
   .todayProfileSheetMotion,
@@ -1700,6 +1810,7 @@
   .todayCockpitAvatarButton:active,
   .todayCommitmentButton:active,
   .todayPrimarySecondaryRow button:active,
+  .todaySystemSignalAction:active,
   .todayAiActions button:active,
   .todayAiCoachButton:active,
   .todaySheetActionButton:active,

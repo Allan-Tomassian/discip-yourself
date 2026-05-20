@@ -1,7 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import BottomNavigation from "./BottomNavigation";
 
 const SRC_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -38,5 +41,46 @@ describe("bottom navigation command DA contract", () => {
     expect(css).toContain("var(--command-ai");
     expect(css).toContain("var(--command-neutral");
     expect(css).toContain("@media (prefers-reduced-motion: reduce)");
+  });
+
+  it("renders an unobtrusive Ajuster signal dot without changing labels or adding a number badge", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(BottomNavigation, {
+        activeTab: "today",
+        signalBadges: {
+          adjust: {
+            severity: "attention",
+            label: "Signal d’ajustement disponible",
+            signalType: "blocked_block",
+          },
+        },
+      })
+    );
+
+    expect(html).toContain("Objectifs");
+    expect(html).toContain("Planning");
+    expect(html).toContain("Home");
+    expect(html).toContain("Coach IA");
+    expect(html).toContain("Ajuster");
+    expect(html).toContain("Ajuster — Signal d’ajustement disponible");
+    expect(html).toContain("lovableTabSignalDot is-attention");
+    expect(html).not.toContain(">1<");
+  });
+
+  it("does not render a signal dot when no badge model is passed", () => {
+    const html = renderToStaticMarkup(React.createElement(BottomNavigation, { activeTab: "today" }));
+
+    expect(html).not.toContain("lovableTabSignalDot");
+  });
+
+  it("defines the badge with attention and critical tokens, not AI purple", () => {
+    const css = readSrc("styles/lovable.css");
+    const badgeStart = css.indexOf(".lovableTabSignalDot");
+    const badgeEnd = css.indexOf(".lovableTabButtonLabel", badgeStart);
+    const badgeCss = css.slice(badgeStart, badgeEnd);
+
+    expect(badgeCss).toContain("var(--command-attention");
+    expect(badgeCss).toContain("var(--command-critical");
+    expect(badgeCss).not.toContain("var(--command-ai");
   });
 });

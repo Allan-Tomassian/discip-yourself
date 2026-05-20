@@ -9,6 +9,7 @@ import TodayHeader from "../components/today/TodayHeader";
 import FloatingWelcomeLine from "../components/today/FloatingWelcomeLine";
 import TodayHero from "../components/today/TodayHero";
 import PrimaryActionCard from "../components/today/PrimaryActionCard";
+import TodaySystemSignalRow from "../components/today/TodaySystemSignalRow";
 import TodayTimeline from "../components/today/TodayTimeline";
 import AIInsightCard from "../components/today/AIInsightCard";
 import ProfileMenu from "../components/today/ProfileMenu";
@@ -20,6 +21,7 @@ import {
   buildTodayData,
   getTodayVisualSmokeModel as getTodayDataVisualSmokeModel,
 } from "../features/today/todayDataAdapter";
+import { buildTodaySystemSignalSurface } from "../features/today/todaySystemSignalModel";
 import { buildTodayManualAiContextKey } from "../features/manualAi/manualAiAnalysis";
 import { useManualAiAnalysis } from "../hooks/useManualAiAnalysis";
 import {
@@ -359,6 +361,16 @@ export default function Home({
     isOnline,
     visualSmokeModel,
   });
+  const todaySystemSignalSurface = useMemo(
+    () =>
+      buildTodaySystemSignalSurface({
+        primarySystemSignal: todayData.primarySystemSignal,
+        primaryAction: todayData.primaryAction,
+        dateKey: todayData.date?.key || selectedDateKey,
+        todayKey: localTodayKey,
+      }),
+    [localTodayKey, selectedDateKey, todayData.date?.key, todayData.primaryAction, todayData.primarySystemSignal]
+  );
   const todayCockpitClassName = [
     "todayCockpitScreen",
     todayData.state ? `today-state-${todayData.state}` : "",
@@ -494,6 +506,11 @@ export default function Home({
             canPrimary={todayData.primaryAction.canPrimary !== false}
             canSecondary={todayData.primaryAction.canSecondary !== false}
             canDetail={todayData.primaryAction.canDetail !== false}
+          />
+
+          <TodaySystemSignalRow
+            surface={todaySystemSignalSurface}
+            onOpenAdjust={onOpenAdjust}
           />
 
           <TodayTimeline

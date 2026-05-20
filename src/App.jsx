@@ -82,6 +82,7 @@ import { isFirstRunDone } from "./features/first-run/firstRunModel";
 import { resolveGoalType } from "./domain/goalType";
 import { BehaviorFeedbackHost, BehaviorFeedbackProvider } from "./feedback/BehaviorFeedbackContext";
 import { ADJUST_ACTION_IDS } from "./features/adjust/adjustDiagnostic";
+import { buildAdjustSignalBadgeModel } from "./features/adjust/adjustSignalBadgeModel";
 
 function runSelfTests(data) {
   const isProd = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.PROD;
@@ -279,6 +280,7 @@ export default function App() {
     tab === "session" ||
     tab === "onboarding";
   const showBottomRail = !hideNavigationChrome && new Set(["today", "objectives", "timeline", "adjust", "coach"]).has(tab);
+  const adjustSignalBadge = useMemo(() => buildAdjustSignalBadgeModel(data), [data]);
   const handleBottomNavigationSelect = useCallback(
     (nextTab) => {
       if (nextTab !== tab) pendingMainTabScrollResetRef.current = nextTab;
@@ -1244,7 +1246,12 @@ export default function App() {
         onOpenPrivacy={() => setTab("privacy")}
       />
       {showBottomRail ? (
-        <BottomNavigation ref={bottomRailRef} activeTab={tab} onSelect={handleBottomNavigationSelect} />
+        <BottomNavigation
+          ref={bottomRailRef}
+          activeTab={tab}
+          onSelect={handleBottomNavigationSelect}
+          signalBadges={adjustSignalBadge ? { adjust: adjustSignalBadge } : undefined}
+        />
       ) : null}
     </>
   );

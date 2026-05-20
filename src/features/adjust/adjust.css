@@ -166,6 +166,55 @@
   line-height: 1.1;
 }
 
+.adjustSystemSignalCard {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 12px 13px;
+  border-color: color-mix(in srgb, var(--command-attention) 34%, var(--command-border));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--command-attention) 8%, transparent), transparent),
+    var(--command-surface);
+}
+
+.adjustSystemSignalCard.is-signal-critical {
+  border-color: color-mix(in srgb, var(--command-critical) 34%, var(--command-border));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--command-critical) 7%, transparent), transparent),
+    var(--command-surface);
+}
+
+.adjustSystemSignalIcon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--command-tone, var(--command-attention)) 12%, transparent);
+  color: var(--command-tone, var(--command-attention));
+  box-shadow: 0 0 18px color-mix(in srgb, var(--command-tone, var(--command-attention)) 14%, transparent);
+}
+
+.adjustSystemSignalText {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.adjustSystemSignalText strong {
+  color: var(--command-text);
+  font-size: 15px;
+  line-height: 1.15;
+}
+
+.adjustSystemSignalText p {
+  margin: 0;
+  color: var(--command-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .adjustEmptyState {
   width: 100%;
   max-width: none;

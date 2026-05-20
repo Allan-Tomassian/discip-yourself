@@ -21,6 +21,8 @@ import {
   CommandSurface,
 } from "../shared/ui/command";
 import { ADJUST_ACTION_IDS, buildAdjustDiagnostic } from "../features/adjust/adjustDiagnostic";
+import { buildAdjustSystemSignalPreview } from "../features/adjust/adjustSystemSignalPreviewModel";
+import { getPrimarySystemSignal } from "../logic/systemSignals";
 import { fromLocalDateKey, normalizeLocalDateKey, todayLocalKey } from "../utils/datetime";
 import "../features/adjust/adjust.css";
 
@@ -201,8 +203,11 @@ export default function Adjust({ data, onAdjustAction }) {
     () => buildAdjustDiagnostic(safeData, activeDateKey),
     [activeDateKey, safeData]
   );
-  const { summary, nextBlock, frictionSignals, recommendation, quickActions, trendSnapshot, categorySignals } = diagnostic;
+  const { summary, nextBlock, frictionSignals, recommendation, quickActions, trendSnapshot, categorySignals, systemSignals } = diagnostic;
   const summaryTone = resolveSummaryTone(summary);
+  const systemSignalPreview = buildAdjustSystemSignalPreview(
+    getPrimarySystemSignal(Array.isArray(systemSignals) ? systemSignals : [])
+  );
   const hasSignals = Array.isArray(frictionSignals) && frictionSignals.length > 0;
   const visibleFrictionSignals = hasSignals ? frictionSignals.slice(0, 2) : [];
   const hiddenFrictionCount = hasSignals ? Math.max(0, frictionSignals.length - visibleFrictionSignals.length) : 0;
@@ -252,6 +257,24 @@ export default function Adjust({ data, onAdjustAction }) {
             </div>
           </div>
         </CommandCard>
+
+        {systemSignalPreview ? (
+          <CommandCard
+            tone={systemSignalPreview.tone}
+            className={`adjustSystemSignalCard is-signal-${systemSignalPreview.tone}`}
+            density="compact"
+            data-testid="adjust-system-signal-preview"
+          >
+            <div className="adjustSystemSignalIcon" aria-hidden="true">
+              <AlertTriangle size={17} strokeWidth={2} />
+            </div>
+            <div className="adjustSystemSignalText">
+              <span className="adjustSectionKicker">SIGNAL SYSTÈME</span>
+              <strong>{systemSignalPreview.title}</strong>
+              <p>{systemSignalPreview.message}</p>
+            </div>
+          </CommandCard>
+        ) : null}
 
         <CommandCard tone={recommendationTone} className="adjustRecommendationCard adjustRecommendationCard--primary" density="compact">
           <CommandSectionHeader

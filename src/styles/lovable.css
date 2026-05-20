@@ -279,6 +279,7 @@ html[data-active-tab="coach"][data-coach-composer-menu-open="true"] .lovableTabB
 }
 
 .lovableTabButton {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -311,6 +312,34 @@ html[data-active-tab="coach"][data-coach-composer-menu-open="true"] .lovableTabB
   width: 20px;
   height: 20px;
   stroke: currentColor;
+}
+
+.lovableTabIconWrap {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  line-height: 0;
+}
+
+.lovableTabSignalDot {
+  position: absolute;
+  top: -3px;
+  right: -5px;
+  width: 7px;
+  height: 7px;
+  border: 1px solid color-mix(in srgb, var(--command-surface, #07080b) 82%, #ffffff);
+  border-radius: 999px;
+  background: var(--command-attention, #ff8a3d);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--command-attention, #ff8a3d) 12%, transparent),
+    0 0 10px color-mix(in srgb, var(--command-attention, #ff8a3d) 24%, transparent);
+}
+
+.lovableTabSignalDot.is-critical {
+  background: var(--command-critical, #ff4d4d);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--command-critical, #ff4d4d) 10%, transparent),
+    0 0 10px color-mix(in srgb, var(--command-critical, #ff4d4d) 22%, transparent);
 }
 
 .lovableTabButtonLabel {
