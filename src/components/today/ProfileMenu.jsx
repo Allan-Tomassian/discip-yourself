@@ -1,5 +1,5 @@
 import React from "react";
-import { AppSheet, AppSheetContent } from "../../shared/ui/app";
+import { AppSheet, AppSheetContent, GhostButton } from "../../shared/ui/app";
 
 const PROFILE_ITEMS = [
   { id: "account", label: "Profil" },
@@ -16,7 +16,15 @@ export default function ProfileMenu({
 }) {
   return (
     <AppSheet open={open} onClose={onClose} maxWidth={420} className="todayProfileSheetMotion">
-      <AppSheetContent title="Profil" subtitle="Gérer ton compte et ton accès.">
+      <AppSheetContent
+        title="Profil"
+        subtitle="Gérer ton compte et ton accès."
+        actions={(
+          <GhostButton type="button" size="sm" className="btnBackCompact" onClick={() => onClose?.()}>
+            Fermer
+          </GhostButton>
+        )}
+      >
         <div className="todayProfileMenuActions">
           {PROFILE_ITEMS.map((item) => (
             <button

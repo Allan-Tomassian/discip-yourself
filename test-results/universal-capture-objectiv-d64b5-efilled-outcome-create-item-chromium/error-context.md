@@ -1,0 +1,46 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - generic [ref=e5]:
+    - generic [ref=e8]: Objectifs
+    - generic [ref=e10]:
+      - generic [ref=e13]:
+        - generic [ref=e14]: OBJECTIFS
+        - generic [ref=e15]: Structure. Direction. Impact.
+      - paragraph [ref=e16]: Tes objectifs donnent le cap. Chaque action exécutée renforce ton système.
+      - region "Vue d'ensemble des objectifs" [ref=e17]:
+        - generic "Vue d'ensemble des objectifs" [ref=e18]:
+          - generic [ref=e19]:
+            - generic [ref=e20]: "0"
+            - generic [ref=e21]: Objectifs actifs
+          - generic [ref=e22]:
+            - generic [ref=e23]: "--"
+            - generic [ref=e24]: Progression d’exécution
+          - generic [ref=e25]:
+            - generic [ref=e26]: "0"
+            - generic [ref=e27]: Actions liées
+      - button "Filtrer par catégorie" [ref=e30] [cursor=pointer]:
+        - generic [ref=e31]: Toutes
+        - img [ref=e32]
+      - generic [ref=e36]:
+        - generic [ref=e37]: OBJECTIFS
+        - generic [ref=e38]: Aucun objectif pour le moment
+        - generic [ref=e39]: Les objectifs donnent une direction claire et transforment tes efforts en résultats.
+  - navigation "Navigation principale" [ref=e40]:
+    - button "Objectifs" [active] [ref=e41] [cursor=pointer]:
+      - img [ref=e43]
+      - generic [ref=e47]: Objectifs
+    - button "Planning" [ref=e48] [cursor=pointer]:
+      - img [ref=e50]
+      - generic [ref=e52]: Planning
+    - button "Home" [ref=e53] [cursor=pointer]:
+      - img [ref=e55]
+      - generic [ref=e58]: Home
+    - button "Coach IA" [ref=e59] [cursor=pointer]:
+      - img [ref=e61]
+      - generic [ref=e73]: Coach IA
+    - button "Ajuster" [ref=e74] [cursor=pointer]:
+      - img [ref=e76]
+      - generic [ref=e77]: Ajuster
+```

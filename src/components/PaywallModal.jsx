@@ -14,6 +14,7 @@ import {
   SectionHeader,
   StatusBadge,
 } from "../shared/ui/app";
+import { openPaywallLegalLink } from "./paywallModalNavigation";
 import "../features/paywall/paywall.css";
 
 export default function PaywallModal({
@@ -120,10 +121,16 @@ export default function PaywallModal({
           />
           <div className="paywallFooter">
             <div className="paywallLinks">
-              <AppTextButton type="button" onClick={() => (onOpenTerms ? onOpenTerms() : null)}>
+              <AppTextButton
+                type="button"
+                onClick={() => openPaywallLegalLink({ onClose, onOpen: onOpenTerms })}
+              >
                 Conditions
               </AppTextButton>
-              <AppTextButton type="button" onClick={() => (onOpenPrivacy ? onOpenPrivacy() : null)}>
+              <AppTextButton
+                type="button"
+                onClick={() => openPaywallLegalLink({ onClose, onOpen: onOpenPrivacy })}
+              >
                 Confidentialité
               </AppTextButton>
             </div>

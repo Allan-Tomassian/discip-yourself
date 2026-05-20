@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { normalizeRouteOrigin } from "../app/routeOrigin";
 import { safeConfirm } from "../utils/dialogs";
 import { uid } from "../utils/helpers";
-import { AppScreen, StatusBadge } from "../shared/ui/app";
+import { AppBackButton, AppScreen, StatusBadge } from "../shared/ui/app";
 import {
   getVisibleCategories,
 } from "../domain/categoryVisibility";
@@ -789,6 +789,7 @@ export default function CreateItem({
 
   const headerRight = (
     <div className="createItemHeaderMeta">
+      <AppBackButton onClick={handleCancel} />
       <StatusBadge className="createItemHeaderBadge">
         {effectiveKind === "assistant"
           ? "Assistant"

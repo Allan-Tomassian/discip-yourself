@@ -1,5 +1,5 @@
 import React from "react";
-import { AppSheet, AppSheetContent } from "../../shared/ui/app";
+import { AppSheet, AppSheetContent, GhostButton } from "../../shared/ui/app";
 
 export default function TodayAdjustmentSheet({
   open = false,
@@ -11,7 +11,15 @@ export default function TodayAdjustmentSheet({
 }) {
   return (
     <AppSheet open={open} onClose={onClose} maxWidth={440} className="todayAdjustmentSheetMotion">
-      <AppSheetContent title="Ajuster" subtitle="Adapter la journée sans recréer un plan à la main.">
+      <AppSheetContent
+        title="Ajuster"
+        subtitle="Adapter la journée sans recréer un plan à la main."
+        actions={(
+          <GhostButton type="button" size="sm" className="btnBackCompact" onClick={() => onClose?.()}>
+            Fermer
+          </GhostButton>
+        )}
+      >
         <div className="todayAdjustmentSheetActions">
           <button type="button" className="todaySheetActionButton" onClick={() => onSimplify?.()}>
             Simplifier la journée

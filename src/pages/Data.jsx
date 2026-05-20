@@ -5,12 +5,14 @@ import {
   AppActionRow,
   AppBackButton,
   AppCard,
+  AppDialog,
   AppScreen,
   FeedbackMessage,
   GhostButton,
   PrimaryButton,
   SectionHeader,
 } from "../shared/ui/app";
+import { DATA_IMPORT_CONFIRM_COPY, prepareDataImportState } from "./dataImportModel";
 
 function downloadJsonFile(filename, payload) {
   try {
@@ -33,27 +35,45 @@ export default function Data({ data, setData, onOpenPaywall, onBack }) {
   const premium = isPremium(safeData);
   const importInputRef = useRef(null);
   const [importStatus, setImportStatus] = useState("");
+  const [pendingImport, setPendingImport] = useState(null);
 
   function handleImportFile(file) {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      try {
-        const parsed = JSON.parse(String(reader.result || "{}"));
-        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-          setImportStatus(STATUS_COPY.importInvalid);
-          return;
-        }
-        setData(() => parsed);
-        setImportStatus(STATUS_COPY.importDone);
-      } catch {
+      const prepared = prepareDataImportState(String(reader.result || ""));
+      if (!prepared.ok) {
+        setPendingImport(null);
         setImportStatus(STATUS_COPY.importInvalid);
+        return;
       }
+      setPendingImport({
+        fileName: file.name || "fichier JSON",
+        data: prepared.data,
+      });
+      setImportStatus("");
     };
     reader.onerror = () => {
+      setPendingImport(null);
       setImportStatus(STATUS_COPY.importReadError);
     };
     reader.readAsText(file);
+  }
+
+  function handleConfirmImport() {
+    if (!pendingImport?.data) return;
+    try {
+      setData(() => pendingImport.data);
+      setPendingImport(null);
+      setImportStatus(STATUS_COPY.importDone);
+    } catch {
+      setPendingImport(null);
+      setImportStatus(STATUS_COPY.importInvalid);
+    }
+  }
+
+  function handleCancelImport() {
+    setPendingImport(null);
   }
 
   return (
@@ -113,6 +133,25 @@ export default function Data({ data, setData, onOpenPaywall, onBack }) {
           </AppCard>
         </div>
       </section>
+      <AppDialog open={Boolean(pendingImport)} onClose={handleCancelImport} maxWidth={440}>
+        <div className="col gap16" data-testid="data-import-confirmation">
+          <div className="col gap6">
+            <div className="titleSm">{DATA_IMPORT_CONFIRM_COPY.title}</div>
+            <div className="small2 textMuted">{DATA_IMPORT_CONFIRM_COPY.text}</div>
+            {pendingImport?.fileName ? (
+              <div className="small2 textMuted">Fichier : {pendingImport.fileName}</div>
+            ) : null}
+          </div>
+          <AppActionRow>
+            <GhostButton type="button" onClick={handleCancelImport}>
+              {DATA_IMPORT_CONFIRM_COPY.secondary}
+            </GhostButton>
+            <PrimaryButton type="button" onClick={handleConfirmImport}>
+              {DATA_IMPORT_CONFIRM_COPY.cta}
+            </PrimaryButton>
+          </AppActionRow>
+        </div>
+      </AppDialog>
     </AppScreen>
   );
 }

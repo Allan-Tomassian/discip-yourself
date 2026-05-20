@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../auth/useAuth";
 import { useProfile } from "../profile/useProfile";
 import { normalizeUsername, validateOptionalUsername } from "../profile/username";
+import { safeConfirm } from "../utils/dialogs";
 import { PLACEHOLDER_COPY, STATUS_COPY, SURFACE_LABELS } from "../ui/labels";
 import {
   AppActionRow,
@@ -135,6 +136,14 @@ export default function Account({ data, onBack }) {
     && availability.state !== "taken"
     && availability.state !== "checking";
 
+  function handleBack() {
+    if (isDirty) {
+      const shouldDiscard = safeConfirm("Quitter sans enregistrer les modifications du profil ?");
+      if (!shouldDiscard) return;
+    }
+    onBack?.();
+  }
+
   async function handleSave(event) {
     event.preventDefault();
     setStatus({ type: "", message: "" });
@@ -169,7 +178,7 @@ export default function Account({ data, onBack }) {
       pageId="settings"
       headerTitle={<span>{SURFACE_LABELS.account}</span>}
       headerSubtitle="Identité, accès et profil visible."
-      headerRight={typeof onBack === "function" ? <AppBackButton onClick={onBack} /> : null}
+      headerRight={typeof onBack === "function" ? <AppBackButton onClick={handleBack} /> : null}
     >
       <section className="mainPageSection">
         <SectionHeader

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { DEFAULT_THEME } from "../theme/themeTokens";
 import { getPlanLimits, isPremium } from "../logic/entitlements";
 import { isClickSoundEnabled, setClickSoundEnabled } from "../shared/ui/sound/useClickSound";
+import { safeConfirm } from "../utils/dialogs";
 import { MARKETING_COPY, PLACEHOLDER_COPY, SURFACE_LABELS } from "../ui/labels";
 import {
   AppActionRow,
@@ -47,6 +48,14 @@ export default function Preferences({ data, setData, onBack, onNavigate }) {
     if (typeof onNavigate === "function") onNavigate(tab);
   }
 
+  function handleBack() {
+    if (whyChanged) {
+      const shouldDiscard = safeConfirm("Quitter sans enregistrer les modifications du pourquoi ?");
+      if (!shouldDiscard) return;
+    }
+    onBack?.();
+  }
+
   function toggleSound() {
     const next = !soundEnabled;
     setClickSoundEnabled(next);
@@ -59,7 +68,7 @@ export default function Preferences({ data, setData, onBack, onNavigate }) {
       pageId="settings"
       headerTitle={<span data-tour-id="settings-title">Réglages</span>}
       headerSubtitle="App, apparence et préférences"
-      headerRight={typeof onBack === "function" ? <AppBackButton onClick={onBack} /> : null}
+      headerRight={typeof onBack === "function" ? <AppBackButton onClick={handleBack} /> : null}
     >
       <section className="mainPageSection">
         <SectionHeader
