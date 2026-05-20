@@ -16,6 +16,7 @@ function renderProgressDots(total, currentIndex) {
 
 export default function FocusSessionView({
   title = "Session",
+  categoryName = "Catégorie",
   actionProtocol = null,
   guidedPlan = null,
   guidedMode = "",
@@ -56,14 +57,17 @@ export default function FocusSessionView({
   onFeedbackSubmit,
   reportMode = false,
   onChooseReport,
+  onReturnToday,
 }) {
   const isFinal = viewState === "completed" || viewState === "blocked" || viewState === "reported";
   const isRunning = viewState === "running";
   const isPaused = viewState === "paused";
-  const startLabel = isPaused ? "Reprendre" : "Démarrer";
   const isGuided = Boolean(guidedPlan && !isFinal);
   const isGuidedPreview = isGuided && guidedMode === "preview";
   const isGuidedActive = isGuided && guidedMode === "active";
+  const isCompleted = viewState === "completed";
+  const isBlocked = viewState === "blocked";
+  const isReported = viewState === "reported";
   const protocolItems = actionProtocol
     ? [
         { label: "Pourquoi", text: actionProtocol.why },
@@ -86,11 +90,133 @@ export default function FocusSessionView({
   const progressLabel = isGuidedPreview
     ? `Étape ${progressDotsIndex + 1}/${progressDotsTotal}`
     : `Étape ${Math.max(0, Number(guidedPlan?.activeStepIndex || 0)) + 1}/${progressDotsTotal}`;
+  const runtimeTone =
+    isGuided ? "guided" : reportMode || isPaused || isReported ? "attention" : isBlocked ? "critical" : "standard";
+  const runtimeStateClass = [
+    "sessionRuntimeStack",
+    `is-${runtimeTone}`,
+    isRunning ? "is-running" : "",
+    isPaused ? "is-paused" : "",
+    showFeedback ? "is-feedback" : "",
+    reportMode ? "is-reporting" : "",
+    isCompleted ? "is-completed" : "",
+    isBlocked ? "is-blocked" : "",
+    isReported ? "is-reported" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const heroEyebrow = isGuided
+    ? isGuidedPreview
+      ? "GUIDÉ IA"
+      : "COACH IA"
+    : reportMode
+      ? "REPORT"
+      : showFeedback
+        ? "VALIDATION"
+        : isPaused
+          ? "PAUSE COURTE"
+          : isRunning
+            ? "BLOC EN COURS"
+            : isCompleted
+              ? "SESSION"
+              : isBlocked
+                ? "BLOCAGE"
+                : isReported
+                  ? "REPORTÉ"
+                  : "SESSION";
+  const heroTitle = isGuided
+    ? isGuidedPreview
+      ? "Mode guidé disponible"
+      : "Guidage actif"
+    : reportMode
+      ? "Reporter sans abandonner"
+      : showFeedback
+        ? "Bloc terminé ?"
+        : isPaused
+          ? "Pause courte"
+          : isRunning
+            ? "Bloc en cours"
+            : isCompleted
+              ? "Preuve validée."
+              : isBlocked
+                ? "Bloc interrompu"
+                : isReported
+                  ? "Bloc reporté"
+                  : "Protège ce bloc.";
+  const heroSubtitle = isGuided
+    ? isGuidedPreview
+      ? "Le Coach IA t’accompagne pour exécuter ce bloc avec clarté."
+      : "Reste avec l’étape actuelle. Le reste peut attendre."
+    : reportMode
+      ? "Choisis une option saine. Reporter n’est pas abandonner."
+      : showFeedback
+        ? "Prends 30 secondes. Sois honnête."
+        : isPaused
+          ? "Reprends avant de renégocier."
+          : isRunning
+            ? "Reste sur la prochaine action utile."
+            : isCompleted
+              ? "Ton système a reçu une preuve d’exécution."
+              : isBlocked
+                ? "Le bloc est marqué comme bloqué."
+                : isReported
+                  ? "Ton système garde la trace du report."
+                  : "Une seule action compte maintenant.";
+  const primaryAction =
+    isGuidedPreview
+      ? {
+          label: "Lancer en mode guidé",
+          onClick: onStart,
+          disabled: !canStart,
+          className: "sessionDockPrimaryAction",
+        }
+      : isPaused
+        ? {
+            label: "Reprendre",
+            onClick: onStart,
+            disabled: !canStart,
+            className: "sessionDockPrimaryAction sessionDockPrimaryAction--attention",
+          }
+        : isRunning
+          ? {
+              label: "Terminer le bloc",
+              onClick: onComplete,
+              disabled: !canComplete,
+              className: "sessionDockPrimaryAction",
+            }
+          : !isFinal && !showFeedback && !reportMode
+            ? {
+                label: "Démarrer le bloc",
+                onClick: onStart,
+                disabled: !canStart,
+                className: "sessionDockPrimaryAction",
+              }
+            : null;
+  const showStandardDock = !isFinal && !showFeedback && !reportMode;
+  const showFullStandardBrief = !isGuided && !isRunning && !isPaused && !showFeedback && !reportMode && !isFinal;
+  const showCompactFocusBrief = !isGuided && (isRunning || isPaused);
+  const focusInstruction = isPaused
+    ? "Reprends avant de renégocier."
+    : actionProtocol?.firstStep || "Reste sur la prochaine action utile.";
+  const focusReason = actionProtocol?.why || "Ce bloc protège ton avancée du jour.";
 
   return (
-    <div className={`sessionRuntimeStack${isGuided ? " is-guided" : " is-standard"}`}>
+    <div className={runtimeStateClass}>
       <div className="sessionRuntimeHero">
-        <div className="sessionRuntimeTimer">{heroTimerLabel}</div>
+        <div className="sessionRuntimeHeroEyebrow">{heroEyebrow}</div>
+        {isRunning ? (
+          <div className="sessionRuntimeTimerShell" aria-label={`Temps restant ${heroTimerLabel}`}>
+            <div className="sessionRuntimeTimer">{heroTimerLabel}</div>
+            {plannedDurationLabel ? <div className="sessionRuntimeTimerTotal">/ {plannedDurationLabel}</div> : null}
+          </div>
+        ) : isPaused ? (
+          <div className="sessionRuntimePauseMark" aria-hidden="true">
+            <span />
+            <span />
+          </div>
+        ) : isCompleted ? (
+          <div className="sessionRuntimeSuccessMark" aria-hidden="true">✓</div>
+        ) : null}
         {isGuided ? (
           <div className="sessionRuntimeProgressRow">
             <div className="sessionRuntimeDots" aria-hidden="true">
@@ -99,7 +225,8 @@ export default function FocusSessionView({
             <div className="sessionRuntimeProgressLabel">{progressLabel}</div>
           </div>
         ) : null}
-        <div className="sessionRuntimeTitle">{title}</div>
+        <div className="sessionRuntimeTitle">{heroTitle}</div>
+        <div className="sessionRuntimeSubtitle">{heroSubtitle}</div>
       </div>
 
       {isGuided ? (
@@ -119,11 +246,11 @@ export default function FocusSessionView({
             onAdvanceStep={onAdvanceGuidedStep}
           />
         </div>
-      ) : protocolItems.length ? (
+      ) : showFullStandardBrief ? (
         <div className="sessionRuntimeBrief" data-testid="session-action-protocol">
           <div className="sessionRuntimeBriefHeader">
             <div className="sessionRuntimeBriefEyebrowRow">
-              <div className="sessionRuntimeBriefTitle">Bloc prêt</div>
+              <div className="sessionRuntimeBriefTitle">{title}</div>
               {inlineBehaviorCue ? <BehaviorCue cue={inlineBehaviorCue} className="sessionRuntimeBriefCue" /> : null}
             </div>
             {adjustmentSummary ? (
@@ -134,17 +261,48 @@ export default function FocusSessionView({
             ) : null}
           </div>
           <div className="sessionRuntimeBriefRows">
-            {protocolItems.map((item) => (
-              <div key={item.label} className="sessionRuntimeBriefRow">
-                <div className="sessionRuntimeBriefLabel">{item.label}</div>
-                <div className="sessionRuntimeBriefText">{item.text}</div>
+            <div className="sessionRuntimeBriefRow">
+              <div className="sessionRuntimeBriefLabel">Catégorie</div>
+              <div className="sessionRuntimeBriefText">{categoryName || "Catégorie"}</div>
+            </div>
+            {plannedDurationLabel ? (
+              <div className="sessionRuntimeBriefRow">
+                <div className="sessionRuntimeBriefLabel">Durée</div>
+                <div className="sessionRuntimeBriefText">{plannedDurationLabel}</div>
               </div>
-            ))}
+            ) : null}
+            {protocolItems.length ? (
+              protocolItems.map((item) => (
+                <div key={item.label} className="sessionRuntimeBriefRow">
+                  <div className="sessionRuntimeBriefLabel">{item.label}</div>
+                  <div className="sessionRuntimeBriefText">{item.text}</div>
+                </div>
+              ))
+            ) : (
+              <div className="sessionRuntimeBriefRow">
+                <div className="sessionRuntimeBriefLabel">Pourquoi ça compte</div>
+                <div className="sessionRuntimeBriefText">Ce bloc protège ton avancée du jour.</div>
+              </div>
+            )}
           </div>
+        </div>
+      ) : showCompactFocusBrief ? (
+        <div
+          className={`sessionRuntimeFocusCard${isPaused ? " is-attention" : ""}`}
+          data-testid="session-action-protocol"
+        >
+          <div className="sessionRuntimeFocusEyebrow">{isPaused ? "PAUSE" : "TÂCHE EN COURS"}</div>
+          <div className="sessionRuntimeFocusTitle">{title}</div>
+          <div className="sessionRuntimeFocusMeta">
+            <span>{categoryName || "Catégorie"}</span>
+            {plannedDurationLabel ? <span>{plannedDurationLabel}</span> : null}
+          </div>
+          <div className="sessionRuntimeFocusInstruction">{focusInstruction}</div>
+          <div className="sessionRuntimeFocusReason">{focusReason}</div>
         </div>
       ) : null}
 
-      {runtimeStats.length && !isGuided ? (
+      {runtimeStats.length && !isGuided && !showFeedback && !reportMode && !isFinal ? (
         <div className="sessionRuntimeMetaStrip">
           {runtimeStats.map((item) => (
             <div key={item.label} className="sessionRuntimeMetaItem">
@@ -157,7 +315,7 @@ export default function FocusSessionView({
 
       {isGuidedActive ? toolTray : null}
 
-      {!isFinal ? (
+      {showStandardDock ? (
         <div
           className={`sessionActionDock${isGuided ? " sessionActionDock--guided" : " sessionActionDock--standard"}`}
           data-testid="session-action-dock"
@@ -166,11 +324,11 @@ export default function FocusSessionView({
             <div className="sessionGuidedPreviewActions" data-testid="session-guided-preview-actions">
               <PrimaryButton
                 type="button"
-                className="sessionDockPrimaryAction"
-                onClick={() => onStart?.()}
-                disabled={!canStart}
+                className={primaryAction?.className || "sessionDockPrimaryAction"}
+                onClick={() => primaryAction?.onClick?.()}
+                disabled={primaryAction?.disabled}
               >
-                Démarrer
+                {primaryAction?.label || "Lancer en mode guidé"}
               </PrimaryButton>
               <GhostButton
                 type="button"
@@ -181,12 +339,12 @@ export default function FocusSessionView({
                 Régénérer
               </GhostButton>
               <button type="button" className="sessionLaunchTextAction sessionGuidedPreviewTextAction" onClick={() => onRevertToStandard?.()}>
-                Revenir au standard
+                Session standard
               </button>
             </div>
-          ) : showAdjust || showTools ? (
+          ) : showTools || (isGuided && showAdjust) ? (
             <div className={`sessionDockUtilityRow${showTools ? " has-tools" : ""}`}>
-              {showAdjust ? (
+              {isGuided && showAdjust ? (
                 <GhostButton
                   type="button"
                   className={`sessionDockAdjustButton${adjustMode === "guided" ? " sessionDockAdjustButton--guided" : ""}`}
@@ -208,98 +366,150 @@ export default function FocusSessionView({
           ) : null}
           {!isGuidedPreview ? (
             <>
-              <div className="sessionDockPrimaryRow">
-                <PrimaryButton
-                  type="button"
-                  className="sessionDockPrimaryAction"
-                  onClick={() => onStart?.()}
-                  disabled={!canStart}
-                >
-                  {startLabel}
-                </PrimaryButton>
-                <PrimaryButton
-                  type="button"
-                  className="sessionDockPrimaryAction"
-                  onClick={() => onComplete?.()}
-                  disabled={!canComplete}
-                >
-                  Terminer
-                </PrimaryButton>
-              </div>
+              {primaryAction ? (
+                <div className="sessionDockPrimaryRow">
+                  <PrimaryButton
+                    type="button"
+                    className={primaryAction.className}
+                    onClick={() => primaryAction.onClick?.()}
+                    disabled={primaryAction.disabled}
+                  >
+                    {primaryAction.label}
+                  </PrimaryButton>
+                </div>
+              ) : null}
               <div className="sessionDockSecondaryRow">
-                <GhostButton
+                {isRunning ? (
+                  <GhostButton
+                    type="button"
+                    className="sessionDockSecondaryAction sessionDockSecondaryAction--attention"
+                    onClick={() => onPause?.()}
+                    disabled={!canPause}
+                  >
+                    Pause
+                  </GhostButton>
+                ) : null}
+                {isPaused ? (
+                  <GhostButton
+                    type="button"
+                    className="sessionDockSecondaryAction sessionDockSecondaryAction--attention"
+                    onClick={() => onOpenReport?.()}
+                    disabled={!canComplete}
+                  >
+                    Reporter
+                  </GhostButton>
+                ) : null}
+                {!isRunning && !isPaused && showAdjust ? (
+                  <GhostButton
+                    type="button"
+                    className="sessionDockSecondaryAction"
+                    onClick={() => onOpenAdjust?.()}
+                  >
+                    Ajuster
+                  </GhostButton>
+                ) : null}
+                {isRunning ? (
+                  <GhostButton
+                    type="button"
+                    className="sessionDockSecondaryAction"
+                    onClick={() => onOpenAdjust?.()}
+                    disabled={!showAdjust}
+                  >
+                    Ajuster
+                  </GhostButton>
+                ) : null}
+                {!isRunning && !isPaused ? (
+                  <GhostButton
+                    type="button"
+                    className="sessionDockSecondaryAction sessionDockSecondaryAction--attention"
+                    onClick={() => onOpenReport?.()}
+                    disabled={!canComplete}
+                  >
+                    Reporter
+                  </GhostButton>
+                ) : null}
+                <PrimaryButton
                   type="button"
-                  className="sessionDockSecondaryAction"
-                  onClick={() => onPause?.()}
-                  disabled={!canPause}
-                >
-                  {isRunning ? "Mettre en pause" : "Pause"}
-                </GhostButton>
-                <GhostButton
-                  type="button"
-                  className="sessionDockSecondaryAction"
-                  onClick={() => onOpenReport?.()}
-                  disabled={!canComplete}
-                >
-                  Reporter
-                </GhostButton>
-                <GhostButton
-                  type="button"
-                  className="sessionDockSecondaryAction"
+                  className="sessionDockDangerAction"
                   onClick={() => onBlock?.()}
                   disabled={!canComplete}
                 >
                   Bloquer
-                </GhostButton>
+                </PrimaryButton>
               </div>
             </>
           ) : null}
         </div>
       ) : null}
 
+      {isFinal ? (
+        <div className="sessionCompletionSurface">
+          <div className="sessionCompletionEyebrow">
+            {isCompleted ? "VALIDÉ" : isReported ? "REPORTÉ" : "INTERRUPTION"}
+          </div>
+          <div className="sessionCompletionTitle">
+            {isCompleted ? "Preuve validée." : isReported ? "Bloc reporté proprement." : "Bloc marqué comme bloqué."}
+          </div>
+          <div className="sessionCompletionCopy">
+            {isCompleted
+              ? "Le progrès est revenu dans ton système."
+              : isReported
+                ? "Le report est enregistré. Tu peux revenir au cockpit."
+                : "Le bloc est conservé pour être repris ou ajusté."}
+          </div>
+          <PrimaryButton type="button" className="sessionDockPrimaryAction" onClick={() => onReturnToday?.()}>
+            Retour à Today
+          </PrimaryButton>
+        </div>
+      ) : null}
+
       {reportMode ? (
-        <div className="sessionSupplementCard">
-          <div className="sessionSupplementTitle">Reporter</div>
-          <div className="sessionSupplementHint">Choisis un report immédiat ou renvoie la session dans le planning.</div>
+        <div className="sessionSupplementCard sessionSupplementCard--report">
+          <div className="sessionSupplementEyebrow">REPORT</div>
+          <div className="sessionSupplementTitle">Reporter sans abandonner</div>
+          <div className="sessionSupplementHint">Choisis une option saine. Le bloc reste dans ton système.</div>
           <div className="sessionSupplementActions">
-            <PrimaryButton type="button" className="sessionDockPrimaryAction" onClick={() => onChooseReport?.("later_today")}>
-              Plus tard aujourd’hui
-            </PrimaryButton>
-            <PrimaryButton type="button" className="sessionDockPrimaryAction" onClick={() => onChooseReport?.("tomorrow")}>
-              Demain
-            </PrimaryButton>
-            <GhostButton type="button" className="sessionDockSecondaryAction" onClick={() => onChooseReport?.("planning")}>
-              Choisir dans le planning
-            </GhostButton>
+            <button type="button" className="sessionReportOption" onClick={() => onChooseReport?.("later_today")}>
+              <span>
+                <strong>Plus tard aujourd’hui</strong>
+                <small>Replanifier ce bloc.</small>
+              </span>
+              <span aria-hidden="true">›</span>
+            </button>
+            <button type="button" className="sessionReportOption" onClick={() => onChooseReport?.("tomorrow")}>
+              <span>
+                <strong>Demain</strong>
+                <small>Le replacer demain.</small>
+              </span>
+              <span aria-hidden="true">›</span>
+            </button>
+            <button type="button" className="sessionReportOption" onClick={() => onChooseReport?.("planning")}>
+              <span>
+                <strong>Choisir dans le planning</strong>
+                <small>Reprendre le contrôle de l’horaire.</small>
+              </span>
+              <span aria-hidden="true">›</span>
+            </button>
           </div>
         </div>
       ) : null}
 
       {showFeedback ? (
-        <div className="sessionSupplementCard">
-          <div className="sessionSupplementTitle">Feedback de fin</div>
+        <div className="sessionSupplementCard sessionSupplementCard--feedback">
+          <div className="sessionSupplementEyebrow">VALIDATION</div>
+          <div className="sessionSupplementTitle">Bloc terminé ?</div>
+          <div className="sessionSupplementHint">Quel niveau d’effort as-tu donné ?</div>
           <div className="sessionSupplementActions sessionSupplementActions--feedback">
-            {["facile", "normal", "difficile"].map((level) =>
-              feedbackLevel === level ? (
-                <PrimaryButton
-                  key={level}
-                  type="button"
-                  className="sessionDockPrimaryAction"
-                  onClick={() => onFeedbackLevelChange?.(level)}
-                >
-                  {level}
-                </PrimaryButton>
-              ) : (
-                <GhostButton
-                  key={level}
-                  type="button"
-                  className="sessionDockSecondaryAction"
-                  onClick={() => onFeedbackLevelChange?.(level)}
-                >
-                  {level}
-                </GhostButton>
-              )
-            )}
+            {["facile", "normal", "difficile"].map((level) => (
+              <button
+                key={level}
+                type="button"
+                className={`sessionFeedbackChoice${feedbackLevel === level ? " is-selected" : ""}`}
+                onClick={() => onFeedbackLevelChange?.(level)}
+              >
+                {level}
+              </button>
+            ))}
           </div>
           <AppTextarea
             className="sessionFeedbackInput"

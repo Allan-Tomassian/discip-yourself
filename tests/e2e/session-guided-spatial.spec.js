@@ -261,14 +261,14 @@ async function openGuidedPreview(page, state) {
   await page.getByRole("button", { name: "Planning" }).click();
   await page.locator(".lovableTimelineCardButton").first().click();
   await page.getByRole("button", { name: /Démarrer la session|Reprendre la session/i }).click();
-  await page.getByRole("button", { name: "Aller plus loin" }).click();
+  await page.getByRole("button", { name: "Mode guidé" }).click();
   await expect(page.getByTestId("session-launch-preparing")).toBeVisible();
   await expect(page.getByTestId("session-guided-preview-actions")).toBeVisible();
 }
 
 async function openGuidedActive(page, state) {
   await openGuidedPreview(page, state);
-  await page.getByRole("button", { name: "Démarrer" }).click();
+  await page.getByRole("button", { name: "Lancer en mode guidé" }).click();
   await expect(page.getByTestId("session-guided-plan")).toBeVisible();
   await expect(page.getByRole("button", { name: "Réajuster" })).toBeVisible();
   await expect(page.getByTestId("session-guided-preview-actions")).toHaveCount(0);
@@ -280,9 +280,9 @@ async function openGuidedActiveWithOneShotSeed(page, state) {
   await page.getByRole("button", { name: "Planning" }).click();
   await page.locator(".lovableTimelineCardButton").first().click();
   await page.getByRole("button", { name: /Démarrer la session|Reprendre la session/i }).click();
-  await page.getByRole("button", { name: "Aller plus loin" }).click();
+  await page.getByRole("button", { name: "Mode guidé" }).click();
   await expect(page.getByTestId("session-guided-preview-actions")).toBeVisible();
-  await page.getByRole("button", { name: "Démarrer" }).click();
+  await page.getByRole("button", { name: "Lancer en mode guidé" }).click();
   await expect(page.getByTestId("session-guided-plan")).toBeVisible();
   await expect(page.getByRole("button", { name: "Réajuster" })).toBeVisible();
 }
@@ -291,13 +291,13 @@ test("guided preview opens directly after preparing and can return to standard",
   await openGuidedPreview(page, buildState());
 
   await expect(page.getByTestId("session-guided-plan")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Démarrer" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Lancer en mode guidé" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Régénérer" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Réajuster" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Outils" })).toHaveCount(0);
   await attachScreenshot(page, testInfo, "session-guided-spatial-preview.png");
 
-  await page.getByRole("button", { name: "Revenir au standard" }).click();
+  await page.getByRole("button", { name: "Session standard" }).click();
   await expect(page.getByTestId("session-guided-preview-actions")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Régénérer" })).toHaveCount(0);
 });

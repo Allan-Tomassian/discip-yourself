@@ -163,9 +163,9 @@ export default function SessionLaunchView({
   return (
     <div className="sessionLaunchViewStack sessionLaunchViewStack--ready" data-testid="session-launch-ready">
       <div className="sessionLaunchHero sessionLaunchHero--ready">
-        <div className="sessionLaunchSectionEyebrow">Séance prête</div>
+        <div className="sessionLaunchSectionEyebrow">SESSION</div>
         <div className="sessionLaunchCategory">{categoryName || "Catégorie"}</div>
-        <div className="sessionLaunchTitle">{title}</div>
+        <div className="sessionLaunchTitle">Protège ce bloc.</div>
         <div className="sessionLaunchChips">
           <TimingChip>{timingLabel}</TimingChip>
           <TimingChip>{durationLabel}</TimingChip>
@@ -173,9 +173,13 @@ export default function SessionLaunchView({
       </div>
       <div className="sessionLaunchCard sessionLaunchCard--ready">
         <div className="sessionLaunchBrief">
+          <div className="sessionLaunchBriefRow">
+            <div className="sessionLaunchBriefLabel">Bloc</div>
+            <div className="sessionLaunchBriefText">{title}</div>
+          </div>
           {why ? (
             <div className="sessionLaunchBriefRow">
-              <div className="sessionLaunchBriefLabel">Cap</div>
+              <div className="sessionLaunchBriefLabel">Pourquoi ça compte</div>
               <div className="sessionLaunchBriefText">{why}</div>
             </div>
           ) : null}
@@ -188,14 +192,14 @@ export default function SessionLaunchView({
         </div>
         <div className="sessionLaunchActions">
           <PrimaryButton type="button" className="sessionLaunchPrimary" onClick={onStartStandard}>
-            Session standard
+            Démarrer le bloc
           </PrimaryButton>
           <GhostButton type="button" className="sessionLaunchSecondary" onClick={onPrepareGuided}>
             <span className="sessionLaunchSecondaryInner">
               <span className="sessionAssistBadge sessionAssistBadge--cta">
                 <CoachAssistIcon className="sessionLaunchSecondaryIcon" size={13} />
               </span>
-              <span>Aller plus loin</span>
+              <span>Mode guidé</span>
             </span>
           </GhostButton>
         </div>

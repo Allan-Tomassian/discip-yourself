@@ -176,13 +176,13 @@ async function openTimelineLaunch(page, state) {
   await page.getByRole("button", { name: /Démarrer la session|Reprendre la session/i }).click();
 }
 
-test("timeline opens a blueprint-backed block into Séance prête", async ({ page }, testInfo) => {
+test("timeline opens a blueprint-backed block into the protected execution chamber", async ({ page }, testInfo) => {
   await openTimelineLaunch(page, buildLaunchState());
 
   await expect(page.getByTestId("session-launch-ready")).toBeVisible();
-  await expect(page.getByText("Séance prête")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Session standard" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Aller plus loin" })).toBeVisible();
+  await expect(page.getByText("Protège ce bloc.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Démarrer le bloc" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Mode guidé" })).toBeVisible();
   await expect(page.locator(".lovableTabBarWrap")).toHaveCount(0);
   await expect(page.locator(".pageHeader")).toHaveCount(0);
   await expect(page.getByTestId("session-top-chrome")).toBeVisible();
@@ -195,15 +195,15 @@ test("standard launch keeps the existing runtime and does not auto-start", async
   await openTimelineLaunch(page, buildLaunchState());
 
   await expect(page.getByTestId("session-launch-ready")).toBeVisible();
-  await page.getByRole("button", { name: "Session standard" }).click();
+  await page.getByRole("button", { name: "Démarrer le bloc" }).click();
 
   await expect(page.getByTestId("session-launch-ready")).toHaveCount(0);
   await expect(page.getByTestId("session-action-protocol")).toBeVisible();
   await expect(page.getByTestId("session-guided-plan")).toHaveCount(0);
   await expect(page.getByTestId("session-action-dock")).toBeVisible();
   await expect(page.locator(".pageHeader")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Démarrer" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Réajuster" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Démarrer le bloc" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Ajuster" })).toBeVisible();
 
   const persisted = await getUserData(page, E2E_USER_ID);
   expect(persisted?.ui?.activeSession ?? null).toBeNull();
@@ -216,7 +216,7 @@ test("guided launch shows preparing, spatial preview, and a compact guided runti
   await openTimelineLaunch(page, buildLaunchState());
 
   await expect(page.getByTestId("session-launch-ready")).toBeVisible();
-  await page.getByRole("button", { name: "Aller plus loin" }).click();
+  await page.getByRole("button", { name: "Mode guidé" }).click();
 
   await expect(page.getByTestId("session-launch-preparing")).toBeVisible();
   await expect(page.getByText("Préparation en cours")).toBeVisible();
@@ -233,16 +233,16 @@ test("guided launch shows preparing, spatial preview, and a compact guided runti
   await expect(page.locator(".pageHeader")).toHaveCount(0);
   await attachScreenshot(page, testInfo, "session-guided-preview.png");
 
-  await page.getByRole("button", { name: "Revenir au standard" }).click();
+  await page.getByRole("button", { name: "Session standard" }).click();
   await expect(page.getByTestId("session-guided-preview-actions")).toHaveCount(0);
   await expect(page.getByTestId("session-guided-plan")).toHaveCount(0);
 
   await openTimelineLaunch(page, buildLaunchState());
   await expect(page.getByTestId("session-launch-ready")).toBeVisible();
-  await page.getByRole("button", { name: "Aller plus loin" }).click();
+  await page.getByRole("button", { name: "Mode guidé" }).click();
   await expect(page.getByTestId("session-guided-preview-actions")).toBeVisible();
 
-  await page.getByRole("button", { name: "Démarrer" }).click();
+  await page.getByRole("button", { name: "Lancer en mode guidé" }).click();
 
   await expect(page.getByTestId("session-guided-plan")).toBeVisible();
   await expect(page.getByTestId("session-action-protocol")).toHaveCount(0);
@@ -269,6 +269,13 @@ test("premium guided prepare shows an explicit degraded state and retry can reco
       ...(globalThis.process.env || {}),
       VITE_AI_BACKEND_URL: globalThis.location.origin,
     };
+  });
+  await page.route("**/health", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ ok: true }),
+    });
   });
   await page.route("**/ai/session-guidance", async (route) => {
     const body = JSON.parse(route.request().postData() || "{}");
@@ -413,8 +420,8 @@ test("premium guided prepare shows an explicit degraded state and retry can reco
 
   await openTimelineLaunch(page, buildLaunchState());
 
-  await page.getByRole("button", { name: "Aller plus loin" }).click();
-  await expect(page.getByTestId("session-launch-degraded")).toBeVisible();
+  await page.getByRole("button", { name: "Mode guidé" }).click();
+  await expect(page.getByTestId("session-launch-degraded")).toBeVisible({ timeout: 12000 });
   await expect(page.getByText("Réessaye ou passe en standard.")).toBeVisible();
   await expect(page.getByRole("button", { name: "Réessayer" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Passer en standard" })).toBeVisible();
@@ -439,7 +446,7 @@ test("free users see a bounded premium preview and only hit the paywall from the
 
   await openTimelineLaunch(page, buildFreeLaunchState());
 
-  await page.getByRole("button", { name: "Aller plus loin" }).click();
+  await page.getByRole("button", { name: "Mode guidé" }).click();
 
   await expect(page.getByTestId("session-launch-locked")).toBeVisible();
   await expect(page.getByText("Aperçu Premium")).toBeVisible();
@@ -472,7 +479,7 @@ test("founder override bypasses the paywall and enters the premium guided flow",
   await page.getByRole("button", { name: /Démarrer la session|Reprendre la session/i }).click();
 
   await expect(page.getByTestId("session-launch-ready")).toBeVisible();
-  await page.getByRole("button", { name: "Aller plus loin" }).click();
+  await page.getByRole("button", { name: "Mode guidé" }).click();
 
   await expect(page.getByTestId("session-guided-plan")).toBeVisible();
   await expect(page.getByTestId("session-launch-locked")).toHaveCount(0);

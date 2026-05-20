@@ -2561,6 +2561,7 @@ export default function Session({
             onFeedbackSubmit={endSession}
             reportMode={reportMode}
             onChooseReport={applyQuickReport}
+            onReturnToday={() => setTab?.("home")}
           />
         )}
       </div>

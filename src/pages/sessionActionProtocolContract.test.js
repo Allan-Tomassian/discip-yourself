@@ -31,4 +31,25 @@ describe("session action protocol contract", () => {
     expect(focusView).toContain("sessionDockToolsButton");
     expect(protocol).toContain('return bestScore > 0 ? bestType : "generic"');
   });
+
+  it("keeps the execution chamber to one dominant runtime action per state", () => {
+    const focusView = readSrc("components/session/FocusSessionView.jsx");
+    const launchView = readSrc("components/session/SessionLaunchView.jsx");
+    const styles = readSrc("features/session/session.css");
+
+    expect(launchView).toContain("Protège ce bloc.");
+    expect(launchView).toContain("Démarrer le bloc");
+    expect(focusView).toContain('label: "Terminer le bloc"');
+    expect(focusView).toContain('label: "Reprendre"');
+    expect(focusView).toContain("Valider la session");
+    expect(focusView).toContain("Retour à Today");
+    expect(focusView).toContain("Reporter sans abandonner");
+    expect(focusView).toContain("Lancer en mode guidé");
+    expect(focusView).toContain("sessionDockDangerAction");
+    expect(styles).toContain(".sessionRuntimeStack.is-guided");
+    expect(styles).toContain("--session-guided");
+    expect(styles).toContain("--session-attention");
+    expect(styles).toContain(".sessionDockDangerAction");
+    expect(styles).toContain(".sessionDockPrimaryAction--attention");
+  });
 });

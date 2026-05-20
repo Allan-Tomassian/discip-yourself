@@ -106,12 +106,12 @@ async function openTimelineLaunch(page, state) {
 test("standard adjust applies a lightweight local patch without opening guided mode", async ({ page }, testInfo) => {
   await openTimelineLaunch(page, buildLaunchState());
 
-  await page.getByRole("button", { name: "Session standard" }).click();
+  await page.getByRole("button", { name: "Démarrer le bloc" }).click();
   await expect(page.getByTestId("session-action-protocol")).toBeVisible();
   await expect(page.getByTestId("session-action-dock")).toBeVisible();
   await expect(page.locator(".pageHeader")).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Réajuster" }).click();
+  await page.getByRole("button", { name: "Ajuster" }).click();
   await expect(page.getByTestId("session-adjust-causes")).toBeVisible();
   await attachScreenshot(page, testInfo, "session-standard-adjust-sheet.png");
   await page.getByText("Moins de temps").click();
@@ -121,7 +121,7 @@ test("standard adjust applies a lightweight local patch without opening guided m
   await expect(page.getByTestId("session-adjustment-summary")).toBeVisible();
   await expect(page.getByText("Garde seulement le coeur utile de la séance.")).toBeVisible();
   await expect(page.getByTestId("session-guided-plan")).toHaveCount(0);
-  await expect(page.getByText("18 min")).toBeVisible();
+  await expect(page.getByText("12 min").first()).toBeVisible();
 
   await attachScreenshot(page, testInfo, "session-standard-adjusted-runtime.png");
 });
@@ -130,9 +130,9 @@ test("guided adjust patches the runbook locally and keeps the runtime guided", a
   await installSessionGuidanceMock(page);
   await openTimelineLaunch(page, buildLaunchState());
 
-  await page.getByRole("button", { name: "Aller plus loin" }).click();
+  await page.getByRole("button", { name: "Mode guidé" }).click();
   await expect(page.getByTestId("session-guided-preview-actions")).toBeVisible();
-  await page.getByRole("button", { name: "Démarrer" }).click();
+  await page.getByRole("button", { name: "Lancer en mode guidé" }).click();
 
   await expect(page.getByTestId("session-guided-plan")).toBeVisible();
   await expect(page.getByTestId("session-action-dock")).toBeVisible();
