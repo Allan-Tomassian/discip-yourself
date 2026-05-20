@@ -1,7 +1,5 @@
 import { getVisibleCategories } from "../../domain/categoryVisibility";
 import { resolveGoalType } from "../../domain/goalType";
-import { computeAggregateProgress, getGoalProgress } from "../../logic/goals";
-import { splitProcessByLink } from "../../logic/linking";
 import { endOfMonth, startOfMonth, startOfWeekKey } from "../../utils/dates";
 import {
   addDaysLocal,
@@ -10,6 +8,7 @@ import {
   todayLocalKey,
   toLocalDateKey,
 } from "../../utils/datetime";
+import { buildObjectiveProgressModel } from "./objectiveProgressModel";
 
 export const OBJECTIVES_LENSES = Object.freeze({
   OBJECTIVES: "objectives",
@@ -88,6 +87,13 @@ function isDoneOccurrenceStatus(status) {
 
 function isMissedOccurrenceStatus(status) {
   return safeString(status).toLowerCase() === "missed";
+}
+
+function countInclusiveDays(fromKey, toKey) {
+  const from = fromLocalDateKey(fromKey);
+  const to = fromLocalDateKey(toKey);
+  const diff = Math.round((to.getTime() - from.getTime()) / 86400000);
+  return Math.max(1, diff + 1);
 }
 
 function buildWindow(anchorDateKey, horizon) {
@@ -190,6 +196,7 @@ function classifyOutcomeStatus({
   expectedCount,
   doneCount,
   missedCount,
+  frictionCount = 0,
   totalMinutes,
 }) {
   if (!linkedActions.length) {
@@ -198,6 +205,14 @@ function classifyOutcomeStatus({
       label: "À structurer",
       tone: "warning",
       description: "Aucune action structurante ne nourrit encore cet objectif.",
+    };
+  }
+  if (frictionCount > 0) {
+    return {
+      key: "reframe",
+      label: "À recadrer",
+      tone: "warning",
+      description: "Des blocs liés signalent une friction d'exécution à corriger.",
     };
   }
   if (expectedCount >= 4 && doneCount === 0) {
@@ -244,6 +259,7 @@ function classifyActionStatus({
   linkedOutcome,
   expectedCount,
   doneCount,
+  frictionCount = 0,
   totalMinutes,
 }) {
   if (!linkedOutcome) {
@@ -252,6 +268,14 @@ function classifyActionStatus({
       label: "Orpheline",
       tone: "warning",
       description: "Cette action n'alimente pas clairement un objectif.",
+    };
+  }
+  if (frictionCount > 0) {
+    return {
+      key: "drift",
+      label: "En friction",
+      tone: "warning",
+      description: "Cette action a rencontré une friction d'exécution sur l'horizon.",
     };
   }
   if (expectedCount > 0 && doneCount === 0) {
@@ -432,13 +456,14 @@ export function buildObjectivesControlRoom({
   const outcomeById = new Map(outcomes.map((outcome) => [outcome.id, outcome]));
   const occurrences = asArray(safeData.occurrences).filter((occurrence) => processGoals.some((goal) => goal.id === occurrence?.goalId));
   const occurrencesByGoalId = buildOccurrenceMaps(occurrences);
-  const goalProgressById = new Map();
-
-  for (const outcome of outcomes) {
-    const aggregate = computeAggregateProgress({ goals }, outcome.id);
-    const progress = outcome?.progress == null ? aggregate.progress : getGoalProgress(outcome);
-    goalProgressById.set(outcome.id, progress);
-  }
+  const objectiveProgressModel = buildObjectiveProgressModel({
+    goals,
+    occurrences,
+    sessionHistory: safeData.sessionHistory,
+    categories,
+    dateKey: window.toKey,
+    windowDays: countInclusiveDays(window.fromKey, window.toKey),
+  });
 
   const actionCards = processGoals
     .filter((action) => !activeCategoryId || action.categoryId === activeCategoryId)
@@ -446,12 +471,17 @@ export function buildObjectivesControlRoom({
       const linkedOutcome =
         outcomeById.get(safeString(action?.parentId)) ||
         outcomeById.get(safeString(action?.outcomeId)) ||
+        outcomeById.get(safeString(action?.primaryGoalId)) ||
         null;
       const windowOccurrences = collectWindowOccurrences(occurrencesByGoalId, action.id, window.fromKey, window.toKey);
       const nextOccurrence = collectNextOccurrence(occurrencesByGoalId, action.id, window.anchorDateKey);
-      const expectedCount = windowOccurrences.length;
-      const doneCount = windowOccurrences.filter((occurrence) => isDoneOccurrenceStatus(occurrence.status)).length;
-      const missedCount = windowOccurrences.filter((occurrence) => isMissedOccurrenceStatus(occurrence.status)).length;
+      const progress = objectiveProgressModel.byActionId.get(action.id) || null;
+      const expectedCount = progress?.expectedCount ?? windowOccurrences.length;
+      const doneCount = progress?.completedCount ?? windowOccurrences.filter((occurrence) => isDoneOccurrenceStatus(occurrence.status)).length;
+      const missedCount = progress?.missedCount ?? windowOccurrences.filter((occurrence) => isMissedOccurrenceStatus(occurrence.status)).length;
+      const blockedCount = progress?.blockedCount || 0;
+      const reportedCount = progress?.reportedCount || 0;
+      const frictionCount = progress?.frictionCount || missedCount;
       const totalMinutes = windowOccurrences.reduce(
         (sum, occurrence) => sum + (Number.isFinite(occurrence?.durationMinutes) ? occurrence.durationMinutes : 0),
         0,
@@ -468,12 +498,18 @@ export function buildObjectivesControlRoom({
         expectedCount,
         doneCount,
         missedCount,
+        blockedCount,
+        reportedCount,
+        frictionCount,
+        progress: progress?.displayProgress || 0,
+        progressSource: progress?.source || "none",
         totalMinutes,
         planningDateKey: normalizeLocalDateKey(nextOccurrence?.date) || window.planningDateKey,
         status: classifyActionStatus({
           linkedOutcome,
           expectedCount,
           doneCount,
+          frictionCount,
           totalMinutes,
         }),
         summary: [formatCountLabel(expectedCount, "bloc"), formatMinutesLabel(totalMinutes)].join(" • "),
@@ -485,15 +521,17 @@ export function buildObjectivesControlRoom({
     .filter((outcome) => !activeCategoryId || outcome.categoryId === activeCategoryId)
     .map((outcome) => {
       const category = categoriesById.get(outcome.categoryId || "") || null;
-      const linkedActions = splitProcessByLink(processGoals, outcome.id).linked
-        .filter((action) => !activeCategoryId || action.categoryId === activeCategoryId)
-        .map((action) => actionCards.find((entry) => entry.actionId === action.id))
-        .filter(Boolean);
-      const expectedCount = linkedActions.reduce((sum, action) => sum + action.expectedCount, 0);
-      const doneCount = linkedActions.reduce((sum, action) => sum + action.doneCount, 0);
-      const missedCount = linkedActions.reduce((sum, action) => sum + action.missedCount, 0);
+      const objectiveProgress = objectiveProgressModel.byObjectiveId.get(outcome.id) || null;
+      const linkedActionIds = new Set((objectiveProgress?.linkedActions || []).map((action) => action.actionId));
+      const linkedActions = actionCards.filter((action) => linkedActionIds.has(action.actionId));
+      const expectedCount = objectiveProgress?.expectedCount ?? linkedActions.reduce((sum, action) => sum + action.expectedCount, 0);
+      const doneCount = objectiveProgress?.completedCount ?? linkedActions.reduce((sum, action) => sum + action.doneCount, 0);
+      const missedCount = objectiveProgress?.missedCount ?? linkedActions.reduce((sum, action) => sum + action.missedCount, 0);
+      const blockedCount = objectiveProgress?.blockedCount || 0;
+      const reportedCount = objectiveProgress?.reportedCount || 0;
+      const frictionCount = objectiveProgress?.frictionCount || missedCount;
       const totalMinutes = linkedActions.reduce((sum, action) => sum + action.totalMinutes, 0);
-      const progress = goalProgressById.get(outcome.id) || 0;
+      const progress = objectiveProgress?.displayProgress || 0;
       const nextAction = linkedActions.find((action) => action.nextOccurrence) || linkedActions[0] || null;
       const keyActions = linkedActions.slice(0, 3);
       return {
@@ -512,12 +550,16 @@ export function buildObjectivesControlRoom({
           expectedCount,
           doneCount,
           missedCount,
+          frictionCount,
           totalMinutes,
         }),
         metrics: {
           expectedCount,
           doneCount,
           missedCount,
+          blockedCount,
+          reportedCount,
+          frictionCount,
           totalMinutes,
         },
       };
@@ -589,6 +631,7 @@ export function buildObjectivesControlRoom({
     windowMinutes: actionCards.reduce((sum, action) => sum + action.totalMinutes, 0),
     windowExpected: actionCards.reduce((sum, action) => sum + action.expectedCount, 0),
     windowDone: actionCards.reduce((sum, action) => sum + action.doneCount, 0),
+    windowFriction: actionCards.reduce((sum, action) => sum + action.frictionCount, 0),
     orphanActionCount: actionCards.filter((action) => action.status.key === "orphan").length,
     stalledOutcomeCount: objectiveCards.filter((objective) => objective.status.key === "stalled" || objective.status.key === "structure").length,
     overflowOutcomeCount: objectiveCards.filter((objective) => objective.status.key === "overflow" || objective.status.key === "reframe").length,

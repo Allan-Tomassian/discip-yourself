@@ -195,6 +195,22 @@
   font-weight: 850;
 }
 
+.objectivesProgressSource,
+.objectivesEvidenceText,
+.objectivesFrictionText {
+  color: var(--command-muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.objectivesProgressSource {
+  font-weight: 800;
+}
+
+.objectivesFrictionText {
+  color: color-mix(in srgb, var(--command-attention) 76%, #ffffff);
+}
+
 .objectivesCardChevron {
   color: var(--command-muted);
   font-size: 13px;
@@ -307,6 +323,10 @@
   color: var(--command-execution);
   font-size: 11px;
   font-weight: 800;
+}
+
+.objectivesActionRow[data-command-tone="attention"] .objectivesActionDone {
+  color: color-mix(in srgb, var(--command-attention) 82%, #ffffff);
 }
 
 .objectivesCardFooter {

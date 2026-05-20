@@ -2,8 +2,14 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { normalizeLibraryFocusTarget } from "../app/coachCreatedViewTarget";
 import { resolveGoalType } from "../domain/goalType";
 import { getVisibleCategories } from "../domain/categoryVisibility";
-import { computeAggregateProgress, getGoalProgress } from "../logic/goals";
-import { splitProcessByLink } from "../logic/linking";
+import {
+  deriveExecutionStatusForOccurrence,
+  EXECUTION_SURFACE_STATUS,
+} from "../logic/executionStatus";
+import {
+  buildObjectiveProgressModel,
+  OBJECTIVE_PROGRESS_SOURCE,
+} from "../features/objectives/objectiveProgressModel";
 import { AppScreen, CompactCategoryFilter } from "../shared/ui/app";
 import {
   CommandBadge,
@@ -22,6 +28,12 @@ function clampPercent(value) {
   return Math.max(0, Math.min(100, Math.round((Number.isFinite(value) ? value : 0) * 100)));
 }
 
+const PROGRESS_SOURCE_LABELS = Object.freeze({
+  [OBJECTIVE_PROGRESS_SOURCE.EXECUTION]: "Progression d’exécution",
+  [OBJECTIVE_PROGRESS_SOURCE.MANUAL]: "Progression manuelle",
+  [OBJECTIVE_PROGRESS_SOURCE.NONE]: "Point de départ",
+});
+
 function formatSubtitle(goal) {
   const notes = typeof goal?.notes === "string" ? goal.notes.trim() : "";
   if (notes) return notes;
@@ -29,25 +41,74 @@ function formatSubtitle(goal) {
   return OBJECTIVES_SCREEN_COPY.fallbackSubtitle;
 }
 
-function groupStandaloneActions(actions, categoriesById) {
+function getStandaloneProgressSummary(items) {
+  const completedCount = items.reduce((sum, item) => sum + (item.completedCount || 0), 0);
+  const expectedCount = items.reduce((sum, item) => sum + (item.expectedCount || 0), 0);
+  const frictionCount = items.reduce((sum, item) => sum + (item.frictionCount || 0), 0);
+  const executionItems = items.filter((item) => item.source === OBJECTIVE_PROGRESS_SOURCE.EXECUTION);
+  if (executionItems.length) {
+    return {
+      progress: expectedCount ? completedCount / expectedCount : 0,
+      source: OBJECTIVE_PROGRESS_SOURCE.EXECUTION,
+      sourceLabel: frictionCount ? "Friction détectée" : PROGRESS_SOURCE_LABELS[OBJECTIVE_PROGRESS_SOURCE.EXECUTION],
+      progressLabel: PROGRESS_SOURCE_LABELS[OBJECTIVE_PROGRESS_SOURCE.EXECUTION],
+      evidenceLabel: expectedCount ? `${completedCount}/${expectedCount} blocs validés` : "Aucun bloc validé",
+      frictionCount,
+      status: frictionCount
+        ? { key: "execution_friction", label: "Friction détectée", tone: "attention" }
+        : { key: "active", label: "Actif", tone: "execution" },
+    };
+  }
+
+  const manualItems = items.filter((item) => item.source === OBJECTIVE_PROGRESS_SOURCE.MANUAL);
+  if (manualItems.length) {
+    const progress = manualItems.reduce((sum, item) => sum + (item.displayProgress || 0), 0) / manualItems.length;
+    return {
+      progress,
+      source: OBJECTIVE_PROGRESS_SOURCE.MANUAL,
+      sourceLabel: PROGRESS_SOURCE_LABELS[OBJECTIVE_PROGRESS_SOURCE.MANUAL],
+      progressLabel: PROGRESS_SOURCE_LABELS[OBJECTIVE_PROGRESS_SOURCE.MANUAL],
+      evidenceLabel: "Progression saisie manuellement",
+      frictionCount,
+      status: { key: "active", label: "Actif", tone: "execution" },
+    };
+  }
+
+  return {
+    progress: 0,
+    source: OBJECTIVE_PROGRESS_SOURCE.NONE,
+    sourceLabel: "Point de départ",
+    progressLabel: PROGRESS_SOURCE_LABELS[OBJECTIVE_PROGRESS_SOURCE.NONE],
+    evidenceLabel: "Aucun bloc exécuté dans la fenêtre.",
+    frictionCount,
+    status: { key: "needs_structure", label: "À structurer", tone: "attention" },
+  };
+}
+
+function groupStandaloneActions(actionModels, categoriesById) {
   const groups = new Map();
-  for (const action of actions) {
-    const categoryId = action?.categoryId || "standalone";
+  for (const actionModel of actionModels) {
+    const categoryId = actionModel?.action?.categoryId || "standalone";
     if (!groups.has(categoryId)) groups.set(categoryId, []);
-    groups.get(categoryId).push(action);
+    groups.get(categoryId).push(actionModel);
   }
   return Array.from(groups.entries()).map(([categoryId, items]) => {
     const category = categoriesById.get(categoryId) || null;
-    const done = items.filter((item) => item?.status === "done").length;
-    const progress = items.length ? done / items.length : 0;
+    const summary = getStandaloneProgressSummary(items);
     return {
       id: `standalone:${categoryId}`,
       type: "standalone",
       title: category?.name ? `${category.name} ${OBJECTIVES_SCREEN_COPY.standaloneSuffix}` : OBJECTIVES_SCREEN_COPY.standaloneTitle,
       subtitle: OBJECTIVES_SCREEN_COPY.standaloneSubtitle,
       category,
-      progress,
-      actions: items,
+      progress: summary.progress,
+      actions: items.map((item) => item.action).filter(Boolean),
+      source: summary.source,
+      sourceLabel: summary.sourceLabel,
+      progressLabel: summary.progressLabel,
+      evidenceLabel: summary.evidenceLabel,
+      frictionCount: summary.frictionCount,
+      status: summary.status,
     };
   });
 }
@@ -75,15 +136,48 @@ function formatOccurrenceMeta(dateKey) {
   }
 }
 
-function buildObjectiveSections({ actions = [], occurrencesByGoalId, todayKey }) {
+function resolveOccurrenceItemState(occurrence, sessionHistory = []) {
+  const dateKey = normalizeLocalDateKey(occurrence?.date) || "";
+  const derived = deriveExecutionStatusForOccurrence(occurrence, {
+    sessionHistory,
+    dateKey,
+  });
+  if (derived.status === EXECUTION_SURFACE_STATUS.DONE) {
+    return { isDone: true, tone: "execution", statusLabel: "Validé" };
+  }
+  if (derived.status === EXECUTION_SURFACE_STATUS.MISSED) {
+    return { isDone: false, tone: "attention", statusLabel: "Manqué" };
+  }
+  if (derived.status === EXECUTION_SURFACE_STATUS.BLOCKED) {
+    return { isDone: false, tone: "attention", statusLabel: "Bloqué" };
+  }
+  if (derived.status === EXECUTION_SURFACE_STATUS.REPORTED) {
+    return { isDone: false, tone: "attention", statusLabel: "Signalé" };
+  }
+  if (derived.status === EXECUTION_SURFACE_STATUS.POSTPONED) {
+    return { isDone: false, tone: "attention", statusLabel: "Reporté" };
+  }
+  if (derived.status === EXECUTION_SURFACE_STATUS.ACTIVE) {
+    return { isDone: false, tone: "execution", statusLabel: "En cours" };
+  }
+  return { isDone: false, tone: "neutral", statusLabel: "" };
+}
+
+function buildObjectiveSections({ actions = [], actionProgressById, occurrencesByGoalId, sessionHistory, todayKey }) {
   const activeItems = actions
-    .map((action) => ({
-      id: `active:${action.id}`,
-      title: action.title || OBJECTIVES_SCREEN_COPY.untitledAction,
-      meta: "",
-      isDone: action.status === "done",
-      goal: action,
-    }))
+    .map((action) => {
+      const progress = actionProgressById?.get(action.id) || null;
+      const hasEvidence = progress?.hasExecutionData || progress?.hasManualProgress || progress?.frictionCount > 0;
+      return {
+        id: `active:${action.id}`,
+        title: action.title || OBJECTIVES_SCREEN_COPY.untitledAction,
+        meta: hasEvidence ? progress.labels?.evidence || "" : "",
+        isDone: action.status === "done" || progress?.status?.key === "completed",
+        tone: progress?.frictionCount > 0 ? "attention" : "neutral",
+        statusLabel: progress?.frictionCount > 0 ? "Friction" : "",
+        goal: action,
+      };
+    })
     .sort((left, right) => left.title.localeCompare(right.title));
 
   const todayItems = [];
@@ -94,11 +188,14 @@ function buildObjectiveSections({ actions = [], occurrencesByGoalId, todayKey })
     for (const occurrence of occurrences) {
       const dateKey = normalizeLocalDateKey(occurrence?.date) || "";
       if (!dateKey) continue;
+      const state = resolveOccurrenceItemState(occurrence, sessionHistory);
       const item = {
         id: `occurrence:${occurrence.id}`,
         title: action.title || OBJECTIVES_SCREEN_COPY.untitledAction,
         meta: dateKey === todayKey ? "" : formatOccurrenceMeta(dateKey),
-        isDone: occurrence.status === "done",
+        isDone: state.isDone,
+        tone: state.tone,
+        statusLabel: state.statusLabel,
         goal: action,
         occurrence,
       };
@@ -165,6 +262,7 @@ function resolveObjectiveStatus(goal, progress = 0) {
 }
 
 function resolveActionTone(item, todayKey) {
+  if (item?.tone) return item.tone;
   if (item?.isDone) return "execution";
   const dateKey = normalizeLocalDateKey(item?.occurrence?.date) || "";
   if (dateKey && dateKey < todayKey) return "attention";
@@ -243,20 +341,20 @@ export default function Objectives({
       }),
     [categoriesById, goals]
   );
-
-  const goalProgressById = useMemo(() => {
-    const map = new Map();
-    for (const outcome of outcomes) {
-      const linked = computeAggregateProgress({ goals }, outcome.id);
-      const progress = outcome?.progress == null ? linked.progress : getGoalProgress(outcome);
-      map.set(outcome.id, progress);
-    }
-    return map;
-  }, [goals, outcomes]);
-
-  const standaloneActions = useMemo(
-    () => processGoals.filter((goal) => !outcomes.some((outcome) => outcome?.id && goal?.parentId === outcome.id)),
-    [outcomes, processGoals]
+  const sessionHistory = useMemo(
+    () => (Array.isArray(safeData.sessionHistory) ? safeData.sessionHistory : []),
+    [safeData.sessionHistory]
+  );
+  const progressModel = useMemo(
+    () =>
+      buildObjectiveProgressModel({
+        goals,
+        occurrences: safeData.occurrences,
+        sessionHistory,
+        categories,
+        dateKey: todayKey,
+      }),
+    [categories, goals, safeData.occurrences, sessionHistory, todayKey]
   );
   const occurrencesByGoalId = useMemo(() => {
     const map = new Map();
@@ -271,23 +369,30 @@ export default function Objectives({
   const cards = useMemo(() => {
     const outcomeCards = outcomes.map((outcome) => {
       const category = categoriesById.get(outcome.categoryId || "") || null;
-      const linked = splitProcessByLink(processGoals, outcome.id).linked;
+      const progress = progressModel.byObjectiveId.get(outcome.id) || null;
+      const linked = (progress?.linkedActions || []).map((actionModel) => actionModel.action).filter(Boolean);
       return {
         id: outcome.id,
         type: "outcome",
         title: outcome.title || OBJECTIVES_SCREEN_COPY.untitledObjective,
         subtitle: formatSubtitle(outcome, category),
         category,
-        progress: goalProgressById.get(outcome.id) || 0,
+        progress: progress?.displayProgress || 0,
+        source: progress?.source || OBJECTIVE_PROGRESS_SOURCE.NONE,
+        sourceLabel: progress?.labels?.source || PROGRESS_SOURCE_LABELS[OBJECTIVE_PROGRESS_SOURCE.NONE],
+        progressLabel: progress?.labels?.progress || PROGRESS_SOURCE_LABELS[OBJECTIVE_PROGRESS_SOURCE.NONE],
+        evidenceLabel: progress?.labels?.evidence || "",
+        frictionCount: progress?.frictionCount || 0,
+        status: progress?.status || resolveObjectiveStatus(outcome, 0),
         actions: linked,
         outcome,
       };
     });
-    const fallbackCards = groupStandaloneActions(standaloneActions, categoriesById);
+    const fallbackCards = groupStandaloneActions(progressModel.standaloneActions, categoriesById);
     return [...outcomeCards, ...fallbackCards].sort((left, right) => {
       return (right.progress || 0) - (left.progress || 0);
     });
-  }, [categoriesById, goalProgressById, outcomes, processGoals, standaloneActions]);
+  }, [categoriesById, outcomes, progressModel]);
 
   const [expandedCards, setExpandedCards] = useState({});
   const [categoryFilterId, setCategoryFilterId] = useState("all");
@@ -305,26 +410,30 @@ export default function Objectives({
   const overviewMetrics = useMemo(() => {
     const outcomeIds = new Set(outcomes.map((outcome) => outcome.id).filter(Boolean));
     const activeObjectives = outcomes.filter((outcome) => {
-      const progress = goalProgressById.get(outcome.id) || 0;
-      return resolveObjectiveStatus(outcome, progress).key === "active";
+      const progress = progressModel.byObjectiveId.get(outcome.id) || null;
+      return (progress?.status?.key || "active") === "active";
     }).length;
-    const averageProgress = outcomes.length
+    const executableObjectives = outcomes
+      .map((outcome) => progressModel.byObjectiveId.get(outcome.id) || null)
+      .filter((progress) => progress?.source === OBJECTIVE_PROGRESS_SOURCE.EXECUTION);
+    const averageProgress = executableObjectives.length
       ? Math.round(
-          outcomes.reduce((sum, outcome) => sum + clampPercent(goalProgressById.get(outcome.id) || 0), 0) /
-            outcomes.length
+          executableObjectives.reduce((sum, progress) => sum + clampPercent(progress.displayProgress || 0), 0) /
+            executableObjectives.length
         )
       : 0;
     const linkedActionCount = processGoals.filter((goal) => {
-      const linkedId = goal?.parentId || goal?.outcomeId || "";
-      return outcomeIds.has(linkedId);
+      const progress = progressModel.byActionId.get(goal.id) || null;
+      return Boolean(progress?.outcomeId && outcomeIds.has(progress.outcomeId));
     }).length;
 
     return {
       activeObjectives,
       averageProgress,
+      hasExecutionAverage: executableObjectives.length > 0,
       linkedActionCount,
     };
-  }, [goalProgressById, outcomes, processGoals]);
+  }, [outcomes, processGoals, progressModel]);
 
   const openCreateMenuFrom = (event) => {
     if (typeof onOpenCreateMenu !== "function") return;
@@ -341,6 +450,8 @@ export default function Objectives({
     const targetCardId =
       focusTarget?.outcomeId ||
       action?.parentId ||
+      action?.outcomeId ||
+      action?.primaryGoalId ||
       (focusTarget?.categoryId ? `standalone:${focusTarget.categoryId}` : action?.categoryId ? `standalone:${action.categoryId}` : "");
     if (!targetCardId) return;
     setExpandedCards((previous) => ({ ...previous, [targetCardId]: true }));
@@ -421,8 +532,10 @@ export default function Objectives({
               <span className="objectivesMetricLabel">Objectifs actifs</span>
             </div>
             <div className="objectivesMetric">
-              <span className="objectivesMetricValue">{overviewMetrics.averageProgress}%</span>
-              <span className="objectivesMetricLabel">Progression moyenne</span>
+              <span className="objectivesMetricValue">
+                {overviewMetrics.hasExecutionAverage ? `${overviewMetrics.averageProgress}%` : "--"}
+              </span>
+              <span className="objectivesMetricLabel">Progression d’exécution</span>
             </div>
             <div className="objectivesMetric">
               <span className="objectivesMetricValue">{overviewMetrics.linkedActionCount}</span>
@@ -449,7 +562,7 @@ export default function Objectives({
               const expanded = Boolean(expandedCards[card.id]);
               const color = resolveCategoryColor(card.category, "#30f273");
               const progressPercent = clampPercent(card.progress);
-              const status = resolveObjectiveStatus(card.outcome, card.progress);
+              const status = card.status || resolveObjectiveStatus(card.outcome, card.progress);
               return (
                 <CommandCard
                   key={card.id}
@@ -480,6 +593,10 @@ export default function Objectives({
                           style={{ width: `${progressPercent}%` }}
                         />
                       </span>
+                      <span className="objectivesProgressSource">{card.sourceLabel}</span>
+                      {card.evidenceLabel ? (
+                        <span className="objectivesEvidenceText">{card.evidenceLabel}</span>
+                      ) : null}
                     </span>
                     <span className="objectivesCardMeta">
                       <CommandBadge tone={status.tone} className="objectivesStatusBadge">
@@ -500,6 +617,12 @@ export default function Objectives({
                         </div>
                         <div className="objectivesDetailProgress" aria-label={`Progression ${progressPercent}%`}>
                           <span>{progressPercent}%</span>
+                          <span className="objectivesProgressSource">{card.progressLabel}</span>
+                          {card.frictionCount > 0 ? (
+                            <span className="objectivesFrictionText">
+                              {card.frictionCount} friction{card.frictionCount > 1 ? "s" : ""}
+                            </span>
+                          ) : null}
                           <div className="objectivesProgressTrack">
                             <div
                               className="objectivesProgressValue"
@@ -511,7 +634,9 @@ export default function Objectives({
                       <div className="objectivesActionSections">
                         {buildObjectiveSections({
                           actions: card.actions,
+                          actionProgressById: progressModel.byActionId,
                           occurrencesByGoalId,
+                          sessionHistory,
                           todayKey,
                         }).map((section) => (
                           <div key={`${card.id}:${section.key}`} className="objectivesActionSection">
@@ -534,7 +659,9 @@ export default function Objectives({
                                         <span className="objectivesActionTitle">{item.title}</span>
                                         {item.meta ? <span className="objectivesActionMeta">{item.meta}</span> : null}
                                       </span>
-                                      {item.isDone ? <span className="objectivesActionDone">Validé</span> : null}
+                                      {item.statusLabel || item.isDone ? (
+                                        <span className="objectivesActionDone">{item.statusLabel || "Validé"}</span>
+                                      ) : null}
                                     </button>
                                   );
                                 })

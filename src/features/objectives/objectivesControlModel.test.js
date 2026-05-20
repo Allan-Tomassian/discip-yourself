@@ -81,4 +81,48 @@ describe("objectivesControlModel", () => {
     expect(model.overviewCards[0]?.label).toBe("Objectifs actifs");
     expect(model.totals.windowMinutes).toBeGreaterThan(0);
   });
+
+  it("uses execution-derived progress for objective cards", () => {
+    const model = buildObjectivesControlRoom({
+      data: buildState(),
+      activeCategoryId: null,
+      horizon: OBJECTIVES_HORIZONS.WEEK,
+      anchorDateKey: "2026-04-17",
+    });
+
+    const cardio = model.objectiveCards.find((entry) => entry.outcomeId === "out-1");
+
+    expect(cardio.progress).toBe(0.5);
+    expect(cardio.metrics.doneCount).toBe(1);
+    expect(cardio.metrics.expectedCount).toBe(2);
+  });
+
+  it("surfaces blocked and reported histories as execution friction", () => {
+    const state = buildState();
+    state.occurrences = [
+      { id: "occ-1", goalId: "act-1", date: "2026-04-13", status: "planned", durationMinutes: 35 },
+      { id: "occ-2", goalId: "act-2", date: "2026-04-14", status: "planned", durationMinutes: 20 },
+    ];
+    state.sessionHistory = [
+      { id: "hist-1", occurrenceId: "occ-1", actionId: "act-1", dateKey: "2026-04-13", state: "ended", endedReason: "blocked" },
+      { id: "hist-2", occurrenceId: "occ-2", actionId: "act-2", dateKey: "2026-04-14", state: "ended", endedReason: "reported" },
+    ];
+
+    const model = buildObjectivesControlRoom({
+      data: state,
+      activeCategoryId: "cat-1",
+      horizon: OBJECTIVES_HORIZONS.WEEK,
+      anchorDateKey: "2026-04-17",
+    });
+
+    const cardio = model.objectiveCards.find((entry) => entry.outcomeId === "out-1");
+
+    expect(cardio.progress).toBe(0);
+    expect(cardio.metrics.blockedCount).toBe(1);
+    expect(cardio.metrics.reportedCount).toBe(1);
+    expect(cardio.metrics.frictionCount).toBe(2);
+    expect(cardio.status.label).toBe("À recadrer");
+    expect(model.keyActionCards.some((entry) => entry.status.label === "En friction")).toBe(true);
+    expect(model.totals.windowFriction).toBe(2);
+  });
 });
