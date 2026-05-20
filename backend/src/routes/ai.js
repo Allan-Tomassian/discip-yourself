@@ -24,6 +24,7 @@ import {
   systemAnalysisRequestSchema,
 } from "../schemas/systemAnalysis.js";
 import { insertAiRequestLog, hashValue } from "../services/logging.js";
+import { resolveAiFeatureQuotaState } from "../services/aiFeatureQuota.js";
 import { resolveQuotaState, enforceMemoryRateLimit } from "../services/quotas.js";
 import { buildNowContext } from "../services/context/nowContext.js";
 import { buildChatContext } from "../services/context/chatContext.js";
@@ -41,7 +42,7 @@ import {
   resolveSystemAnalysisPromptVersion,
   runSystemAnalysisService,
 } from "../services/systemAnalysis/systemAnalysisService.js";
-import { AI_FEATURE_IDS, COACH_CHAT_MODES } from "../../../src/domain/aiPolicy.js";
+import { AI_FEATURE_IDS, AI_TIERS, COACH_CHAT_MODES } from "../../../src/domain/aiPolicy.js";
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -71,6 +72,50 @@ function resolveSessionGuidanceEntitlement({ user, entitlement }) {
 
 function resolveSessionGuidanceDecisionSource(user) {
   return hasFounderEntitlementOverride(user) ? "auth_override" : null;
+}
+
+function resolveSystemAnalysisAccess({ user, entitlement }) {
+  if (hasFounderEntitlementOverride(user)) {
+    return {
+      planTier: AI_TIERS.PREMIUM_PLUS,
+      decisionSource: "auth_override",
+      quotaEntitlement: {
+        ...(isPlainObject(entitlement) ? entitlement : {}),
+        plan_tier: AI_TIERS.PREMIUM,
+      },
+    };
+  }
+
+  const planTier = normalizeLowerString(entitlement?.plan_tier);
+  if (planTier === AI_TIERS.PREMIUM_PLUS) {
+    return {
+      planTier: AI_TIERS.PREMIUM_PLUS,
+      decisionSource: "rules",
+      quotaEntitlement: {
+        ...(isPlainObject(entitlement) ? entitlement : {}),
+        plan_tier: AI_TIERS.PREMIUM,
+      },
+    };
+  }
+  if (planTier === AI_TIERS.PREMIUM) {
+    return {
+      planTier: AI_TIERS.PREMIUM,
+      decisionSource: "rules",
+      quotaEntitlement: entitlement,
+    };
+  }
+  if (planTier === AI_TIERS.TRIAL) {
+    return {
+      planTier: AI_TIERS.TRIAL,
+      decisionSource: "rules",
+      quotaEntitlement: entitlement,
+    };
+  }
+  return {
+    planTier: AI_TIERS.FREE,
+    decisionSource: "rules",
+    quotaEntitlement: entitlement,
+  };
 }
 
 function getClientIp(request) {
@@ -783,11 +828,16 @@ async function handleSystemAnalysisRoute({ app, request, reply }) {
     });
   }
 
+  const systemAnalysisAccess = resolveSystemAnalysisAccess({
+    user: request.user,
+    entitlement: snapshot.entitlement,
+  });
+
   let quotaState;
   try {
     quotaState = await resolveQuotaState(app.supabase, {
       userId: request.user.id,
-      entitlement: snapshot.entitlement,
+      entitlement: systemAnalysisAccess.quotaEntitlement,
       quotaMode: app.config.AI_QUOTA_MODE,
     });
   } catch (error) {
@@ -810,7 +860,10 @@ async function handleSystemAnalysisRoute({ app, request, reply }) {
     });
   }
 
-  if (quotaState.planTier !== "premium") {
+  if (
+    systemAnalysisAccess.planTier !== AI_TIERS.PREMIUM &&
+    systemAnalysisAccess.planTier !== AI_TIERS.PREMIUM_PLUS
+  ) {
     await insertAiRequestLog(app.supabase, {
       requestId: request.requestId,
       userId: request.user.id,
@@ -818,8 +871,8 @@ async function handleSystemAnalysisRoute({ app, request, reply }) {
       route,
       routeName: routeNameFromPath(route),
       featureId: AI_FEATURE_IDS.SYSTEM_ANALYSIS,
-      planTier: quotaState.planTier,
-      decisionSource: "rules",
+      planTier: systemAnalysisAccess.planTier,
+      decisionSource: systemAnalysisAccess.decisionSource,
       statusCode: 403,
       mode: "system_analysis",
       protocolType: promptVersion,
@@ -847,8 +900,8 @@ async function handleSystemAnalysisRoute({ app, request, reply }) {
       route,
       routeName: routeNameFromPath(route),
       featureId: AI_FEATURE_IDS.SYSTEM_ANALYSIS,
-      planTier: quotaState.planTier,
-      decisionSource: "rules",
+      planTier: systemAnalysisAccess.planTier,
+      decisionSource: systemAnalysisAccess.decisionSource,
       statusCode: 429,
       mode: "system_analysis",
       protocolType: promptVersion,
@@ -869,6 +922,74 @@ async function handleSystemAnalysisRoute({ app, request, reply }) {
     });
   }
 
+  let featureQuotaState;
+  try {
+    featureQuotaState = await resolveAiFeatureQuotaState({
+      supabase: app.supabase,
+      userId: request.user.id,
+      featureId: AI_FEATURE_IDS.SYSTEM_ANALYSIS,
+      tier: systemAnalysisAccess.planTier,
+    });
+  } catch (error) {
+    logAiStageError({
+      app,
+      request,
+      route,
+      stage: "system_analysis_quota_load",
+      status: 503,
+      errorCode: isSupabaseSchemaError(error) ? "BACKEND_SCHEMA_MISSING" : "QUOTA_LOAD_FAILED",
+      err: error,
+    });
+    if (isSupabaseSchemaError(error)) {
+      return reply.code(503).send(buildSchemaErrorReply(request.requestId));
+    }
+    return sendAiStageError(reply, request.requestId, {
+      status: 503,
+      errorCode: "QUOTA_LOAD_FAILED",
+      message: "Unable to verify system analysis quota.",
+    });
+  }
+
+  if (!featureQuotaState.allowed) {
+    await insertAiRequestLog(app.supabase, {
+      requestId: request.requestId,
+      userId: request.user.id,
+      coachKind: "system-analysis",
+      route,
+      routeName: routeNameFromPath(route),
+      featureId: AI_FEATURE_IDS.SYSTEM_ANALYSIS,
+      planTier: systemAnalysisAccess.planTier,
+      decisionSource: systemAnalysisAccess.decisionSource,
+      statusCode: 429,
+      mode: "system_analysis",
+      protocolType: promptVersion,
+      promptVersion,
+      providerStatus: "blocked",
+      countsForQuota: false,
+      cacheHit: false,
+      requestHash,
+      ipHash: hashValue(getClientIp(request)),
+      userAgent: request.headers["user-agent"] || "",
+      latencyMs: Date.now() - startedAt,
+      errorCode: "SYSTEM_ANALYSIS_QUOTA_EXCEEDED",
+    });
+    return reply.code(429).send({
+      error: "SYSTEM_ANALYSIS_QUOTA_EXCEEDED",
+      message: "System analysis monthly quota exceeded.",
+      requestId: request.requestId,
+      quota: {
+        featureId: featureQuotaState.featureId,
+        tier: featureQuotaState.tier,
+        used: featureQuotaState.used,
+        limit: featureQuotaState.limit,
+        remaining: featureQuotaState.remaining,
+        periodStart: featureQuotaState.periodStart,
+        periodEnd: featureQuotaState.periodEnd,
+        resetAt: featureQuotaState.resetAt,
+      },
+    });
+  }
+
   const thinDataCheck = buildSystemAnalysisThinDataCheck(body.snapshot, snapshot.userData);
   const allowThinDataForTest = app?.config?.APP_ENV === "test" && body.allowThinDataForTest === true;
   if (!thinDataCheck.eligible && !allowThinDataForTest) {
@@ -879,8 +1000,8 @@ async function handleSystemAnalysisRoute({ app, request, reply }) {
       route,
       routeName: routeNameFromPath(route),
       featureId: AI_FEATURE_IDS.SYSTEM_ANALYSIS,
-      planTier: quotaState.planTier,
-      decisionSource: "rules",
+      planTier: systemAnalysisAccess.planTier,
+      decisionSource: systemAnalysisAccess.decisionSource,
       statusCode: 422,
       mode: "system_analysis",
       protocolType: promptVersion,
@@ -947,7 +1068,7 @@ async function handleSystemAnalysisRoute({ app, request, reply }) {
       route,
       routeName: routeNameFromPath(route),
       featureId: AI_FEATURE_IDS.SYSTEM_ANALYSIS,
-      planTier: quotaState.planTier,
+      planTier: systemAnalysisAccess.planTier,
       decisionSource: "ai",
       statusCode: status,
       mode: "system_analysis",
@@ -997,7 +1118,7 @@ async function handleSystemAnalysisRoute({ app, request, reply }) {
       route,
       routeName: routeNameFromPath(route),
       featureId: AI_FEATURE_IDS.SYSTEM_ANALYSIS,
-      planTier: quotaState.planTier,
+      planTier: systemAnalysisAccess.planTier,
       decisionSource: "ai",
       statusCode: 502,
       mode: "system_analysis",
@@ -1042,7 +1163,7 @@ async function handleSystemAnalysisRoute({ app, request, reply }) {
     route,
     routeName: routeNameFromPath(route),
     featureId: AI_FEATURE_IDS.SYSTEM_ANALYSIS,
-    planTier: quotaState.planTier,
+    planTier: systemAnalysisAccess.planTier,
     decisionSource: "ai",
     statusCode: 200,
     mode: "system_analysis",

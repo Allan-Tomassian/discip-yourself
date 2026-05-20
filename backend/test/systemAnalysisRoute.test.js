@@ -41,6 +41,7 @@ function createFakeSupabase({
   entitlement = { plan_tier: "premium" },
   dailyCount = 0,
   monthlyCount = 0,
+  systemAnalysisQuotaCount = 0,
   insertedLogs = null,
   mutations = null,
 } = {}) {
@@ -100,20 +101,29 @@ function createFakeSupabase({
         return {
           select(_columns, options = {}) {
             if (options?.head) {
-              return {
-                eq() {
-                  return {
-                    gte() {
-                      return {
-                        lt: async () => {
-                          quotaSelectIndex += 1;
-                          return { count: quotaSelectIndex === 1 ? dailyCount : monthlyCount, error: null };
-                        },
-                      };
-                    },
-                  };
+              const filters = [];
+              const builder = {
+                eq(column, value) {
+                  filters.push({ type: "eq", column, value });
+                  return builder;
+                },
+                gte(column, value) {
+                  filters.push({ type: "gte", column, value });
+                  return builder;
+                },
+                async lt(column, value) {
+                  filters.push({ type: "lt", column, value });
+                  const isFeatureQuotaQuery = filters.some(
+                    (filter) => filter.type === "eq" && filter.column === "feature_id"
+                  );
+                  if (isFeatureQuotaQuery) {
+                    return { count: systemAnalysisQuotaCount, error: null };
+                  }
+                  quotaSelectIndex += 1;
+                  return { count: quotaSelectIndex === 1 ? dailyCount : monthlyCount, error: null };
                 },
               };
+              return builder;
             }
             throw new Error("Unexpected ai_request_logs select usage");
           },
@@ -252,14 +262,27 @@ function createValidResult(overrides = {}) {
   };
 }
 
-async function createSystemAnalysisApp({ config = TEST_CONFIG_WITH_OPENAI, entitlement, insertedLogs, mutations, openAiParse } = {}) {
+async function createSystemAnalysisApp({
+  config = TEST_CONFIG_WITH_OPENAI,
+  entitlement,
+  dailyCount,
+  monthlyCount,
+  systemAnalysisQuotaCount,
+  insertedLogs,
+  mutations,
+  openAiParse,
+  authUser = null,
+} = {}) {
   authUserIndex += 1;
   const app = await buildApp({
     config,
-    verifyAccessToken: async () => ({ id: `user-system-analysis-${authUserIndex}` }),
+    verifyAccessToken: async () => authUser || ({ id: `user-system-analysis-${authUserIndex}` }),
   });
   app.supabase = createFakeSupabase({
     entitlement,
+    dailyCount,
+    monthlyCount,
+    systemAnalysisQuotaCount,
     insertedLogs,
     mutations,
   });
@@ -355,6 +378,153 @@ test("POST /ai/system-analysis rejects free users with PREMIUM_REQUIRED", async 
   assert.equal(insertedLogs[0]?.plan_tier, "free");
   assert.equal(insertedLogs[0]?.feature_id, "system_analysis");
   assert.equal(insertedLogs[0]?.counts_for_quota, false);
+  await app.close();
+});
+
+test("POST /ai/system-analysis rejects trial users with PREMIUM_REQUIRED", async () => {
+  const insertedLogs = [];
+  const app = await createSystemAnalysisApp({
+    entitlement: { plan_tier: "trial" },
+    insertedLogs,
+  });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/system-analysis",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.112" },
+    payload: createRequest(),
+  });
+
+  assert.equal(response.statusCode, 403);
+  assert.equal(response.json().error, "PREMIUM_REQUIRED");
+  assert.equal(insertedLogs[0]?.plan_tier, "trial");
+  assert.equal(insertedLogs[0]?.counts_for_quota, false);
+  await app.close();
+});
+
+test("POST /ai/system-analysis rejects premium users over the 2/month quota before provider call", async () => {
+  const insertedLogs = [];
+  let providerCalls = 0;
+  const app = await createSystemAnalysisApp({
+    entitlement: { plan_tier: "premium" },
+    systemAnalysisQuotaCount: 2,
+    insertedLogs,
+    openAiParse: async () => {
+      providerCalls += 1;
+      return { choices: [{ message: { parsed: createValidResult() } }] };
+    },
+  });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/system-analysis",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.113" },
+    payload: createRequest(),
+  });
+
+  const body = response.json();
+  assert.equal(response.statusCode, 429);
+  assert.equal(body.error, "SYSTEM_ANALYSIS_QUOTA_EXCEEDED");
+  assert.equal(body.quota.used, 2);
+  assert.equal(body.quota.limit, 2);
+  assert.equal(body.quota.remaining, 0);
+  assert.match(body.quota.resetAt, /^\d{4}-\d{2}-\d{2}T00:00:00\.000Z$/);
+  assert.equal(providerCalls, 0);
+  assert.equal(insertedLogs[0]?.feature_id, "system_analysis");
+  assert.equal(insertedLogs[0]?.status_code, 429);
+  assert.equal(insertedLogs[0]?.error_code, "SYSTEM_ANALYSIS_QUOTA_EXCEEDED");
+  assert.equal(insertedLogs[0]?.counts_for_quota, false);
+  assert.equal(insertedLogs[0]?.cache_hit, false);
+  await app.close();
+});
+
+test("POST /ai/system-analysis allows premium plus users below the 5/month quota", async () => {
+  const insertedLogs = [];
+  let providerCalls = 0;
+  const app = await createSystemAnalysisApp({
+    entitlement: { plan_tier: "premium_plus" },
+    systemAnalysisQuotaCount: 4,
+    insertedLogs,
+    openAiParse: async () => {
+      providerCalls += 1;
+      return { choices: [{ message: { parsed: createValidResult() } }] };
+    },
+  });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/system-analysis",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.114" },
+    payload: createRequest(),
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(providerCalls, 1);
+  assert.equal(insertedLogs[0]?.plan_tier, "premium_plus");
+  assert.equal(insertedLogs[0]?.counts_for_quota, true);
+  await app.close();
+});
+
+test("POST /ai/system-analysis rejects premium plus users at the 5/month quota", async () => {
+  const insertedLogs = [];
+  let providerCalls = 0;
+  const app = await createSystemAnalysisApp({
+    entitlement: { plan_tier: "premium_plus" },
+    systemAnalysisQuotaCount: 5,
+    insertedLogs,
+    openAiParse: async () => {
+      providerCalls += 1;
+      return { choices: [{ message: { parsed: createValidResult() } }] };
+    },
+  });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/system-analysis",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.115" },
+    payload: createRequest(),
+  });
+
+  const body = response.json();
+  assert.equal(response.statusCode, 429);
+  assert.equal(body.error, "SYSTEM_ANALYSIS_QUOTA_EXCEEDED");
+  assert.equal(body.quota.used, 5);
+  assert.equal(body.quota.limit, 5);
+  assert.equal(body.quota.tier, "premium_plus");
+  assert.equal(providerCalls, 0);
+  assert.equal(insertedLogs[0]?.plan_tier, "premium_plus");
+  assert.equal(insertedLogs[0]?.counts_for_quota, false);
+  await app.close();
+});
+
+test("POST /ai/system-analysis maps founder/admin override to premium plus quota", async () => {
+  const insertedLogs = [];
+  let providerCalls = 0;
+  const app = await createSystemAnalysisApp({
+    entitlement: null,
+    systemAnalysisQuotaCount: 4,
+    insertedLogs,
+    authUser: {
+      id: "user-system-analysis-founder",
+      app_metadata: { role: "admin" },
+    },
+    openAiParse: async () => {
+      providerCalls += 1;
+      return { choices: [{ message: { parsed: createValidResult() } }] };
+    },
+  });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/system-analysis",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.116" },
+    payload: createRequest(),
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(providerCalls, 1);
+  assert.equal(insertedLogs[0]?.plan_tier, "premium_plus");
+  assert.equal(insertedLogs[0]?.counts_for_quota, true);
   await app.close();
 });
 
@@ -573,7 +743,9 @@ test("POST /ai/system-analysis maps provider timeout to 504", async () => {
 });
 
 test("POST /ai/system-analysis maps provider failure to structured 503", async () => {
+  const insertedLogs = [];
   const app = await createSystemAnalysisApp({
+    insertedLogs,
     openAiParse: async () => {
       throw new Error("provider down");
     },
@@ -588,5 +760,7 @@ test("POST /ai/system-analysis maps provider failure to structured 503", async (
 
   assert.equal(response.statusCode, 503);
   assert.equal(response.json().error, "SYSTEM_ANALYSIS_BACKEND_UNAVAILABLE");
+  assert.equal(insertedLogs[0]?.feature_id, "system_analysis");
+  assert.equal(insertedLogs[0]?.counts_for_quota, false);
   await app.close();
 });

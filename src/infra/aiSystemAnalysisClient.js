@@ -53,6 +53,7 @@ function normalizeBackendErrorCode(status, backendErrorCode) {
   if (code === "SYSTEM_ANALYSIS_INELIGIBLE") return "SYSTEM_ANALYSIS_INELIGIBLE";
   if (code === "SYSTEM_ANALYSIS_PROVIDER_TIMEOUT") return "SYSTEM_ANALYSIS_PROVIDER_TIMEOUT";
   if (code === "INVALID_SYSTEM_ANALYSIS_RESPONSE") return "INVALID_SYSTEM_ANALYSIS_RESPONSE";
+  if (code === "SYSTEM_ANALYSIS_QUOTA_EXCEEDED") return "SYSTEM_ANALYSIS_QUOTA_EXCEEDED";
   if (code === "QUOTA_EXCEEDED") return "QUOTA_EXCEEDED";
   if (code === "RATE_LIMITED") return "RATE_LIMITED";
   if (code === "AUTH_MISSING") return "AUTH_MISSING";
@@ -309,6 +310,8 @@ export async function requestAiSystemAnalysis({
       errorMessage: typeof body?.message === "string" ? body.message : null,
       errorDetails: isPlainObject(body?.details)
         ? body.details
+        : isPlainObject(body?.quota)
+          ? { quota: body.quota }
         : Array.isArray(body?.missingRequirements)
           ? { missingRequirements: body.missingRequirements }
           : null,

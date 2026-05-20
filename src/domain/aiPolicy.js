@@ -61,6 +61,7 @@ export const AI_MODEL_CLASSES = Object.freeze({
   STRUCTURED_JSON_SMALL: "structured_json_small",
   REASONING_MEDIUM: "reasoning_medium",
   REASONING_DEEP: "reasoning_deep",
+  // Reserved for expensive strategic audits. Cheap/free/tactical features should stay on lower-cost classes.
   PREMIUM_DEEP_ANALYSIS: "premium_deep_analysis",
   MULTIMODAL_VISION: "multimodal_vision",
   DOCUMENT_SUMMARY: "document_summary",
@@ -296,8 +297,8 @@ export const AI_FEATURE_POLICY = Object.freeze({
     modelClass: AI_MODEL_CLASSES.PREMIUM_DEEP_ANALYSIS,
     access: AI_TIERS.PREMIUM,
     quotaByTier: quotaByTier({
-      [AI_TIERS.PREMIUM]: quotaPolicy({ monthly: 1, cooldownMs: 86_400_000 }),
-      [AI_TIERS.PREMIUM_PLUS]: quotaPolicy({ monthly: 2, cooldownMs: 86_400_000 }),
+      [AI_TIERS.PREMIUM]: quotaPolicy({ monthly: 2, cooldownMs: 86_400_000 }),
+      [AI_TIERS.PREMIUM_PLUS]: quotaPolicy({ monthly: 5, cooldownMs: 86_400_000 }),
     }),
     countsOn: AI_QUOTA_COUNTS_ON.COMPLETED_VALIDATED_ANALYSIS,
     cacheHitCounts: false,

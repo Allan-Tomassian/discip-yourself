@@ -124,9 +124,10 @@ describe("aiPolicy", () => {
     });
     expect(isAiFeaturePremiumOnly(AI_FEATURE_IDS.SYSTEM_ANALYSIS)).toBe(true);
     expect(isAiFeatureTrialAllowed(AI_FEATURE_IDS.SYSTEM_ANALYSIS)).toBe(false);
+    expect(getAiFeatureQuotaPolicy(AI_FEATURE_IDS.SYSTEM_ANALYSIS, AI_TIERS.FREE).enabled).toBe(false);
     expect(getAiFeatureQuotaPolicy(AI_FEATURE_IDS.SYSTEM_ANALYSIS, AI_TIERS.TRIAL).enabled).toBe(false);
-    expect(getAiFeatureQuotaPolicy(AI_FEATURE_IDS.SYSTEM_ANALYSIS, AI_TIERS.PREMIUM).monthly).toBe(1);
-    expect(getAiFeatureQuotaPolicy(AI_FEATURE_IDS.SYSTEM_ANALYSIS, AI_TIERS.PREMIUM_PLUS).monthly).toBe(2);
+    expect(getAiFeatureQuotaPolicy(AI_FEATURE_IDS.SYSTEM_ANALYSIS, AI_TIERS.PREMIUM).monthly).toBe(2);
+    expect(getAiFeatureQuotaPolicy(AI_FEATURE_IDS.SYSTEM_ANALYSIS, AI_TIERS.PREMIUM_PLUS).monthly).toBe(5);
   });
 
   it("allows limited trial access for first-run and tactical coach features", () => {
@@ -158,16 +159,48 @@ describe("aiPolicy", () => {
     expect(trialQuota.lifetime).toBe(2);
   });
 
-  it("locks future multimodal features to premium plus by default", () => {
-    for (const featureId of [AI_FEATURE_IDS.FUTURE_COACH_IMAGE_INPUT, AI_FEATURE_IDS.FUTURE_COACH_DOCUMENT_INPUT]) {
-      const policy = getAiFeaturePolicy(featureId);
+  it("keeps premium deep analysis reserved away from cheap, free, and tactical features", () => {
+    expect(getAiFeatureModelClass(AI_FEATURE_IDS.WHY_CLARIFICATION)).not.toBe(
+      AI_MODEL_CLASSES.PREMIUM_DEEP_ANALYSIS
+    );
+    expect(getAiFeatureModelClass(AI_FEATURE_IDS.FIRST_RUN_STARTER_HINTS)).not.toBe(
+      AI_MODEL_CLASSES.PREMIUM_DEEP_ANALYSIS
+    );
+    expect(getAiFeatureModelClass(AI_FEATURE_IDS.COACH_CHAT_FREE)).not.toBe(
+      AI_MODEL_CLASSES.PREMIUM_DEEP_ANALYSIS
+    );
+    expect(getAiFeatureModelClass(AI_FEATURE_IDS.SESSION_GUIDANCE)).not.toBe(
+      AI_MODEL_CLASSES.PREMIUM_DEEP_ANALYSIS
+    );
+    expect([AI_MODEL_CLASSES.REASONING_MEDIUM, AI_MODEL_CLASSES.REASONING_DEEP]).toContain(
+      getAiFeatureModelClass(AI_FEATURE_IDS.COACH_PLAN)
+    );
 
+    const freeAccessFeatureIds = Object.values(AI_FEATURE_POLICY)
+      .filter((policy) => policy.access === AI_TIERS.FREE)
+      .map((policy) => policy.featureId);
+    expect(freeAccessFeatureIds.length).toBeGreaterThan(0);
+    for (const featureId of freeAccessFeatureIds) {
+      expect(getAiFeatureModelClass(featureId)).not.toBe(AI_MODEL_CLASSES.PREMIUM_DEEP_ANALYSIS);
+    }
+  });
+
+  it("locks future multimodal features to premium plus by default", () => {
+    const imageInputPolicy = getAiFeaturePolicy(AI_FEATURE_IDS.FUTURE_COACH_IMAGE_INPUT);
+    const documentInputPolicy = getAiFeaturePolicy(AI_FEATURE_IDS.FUTURE_COACH_DOCUMENT_INPUT);
+
+    expect(imageInputPolicy.modelClass).toBe(AI_MODEL_CLASSES.MULTIMODAL_VISION);
+    expect(documentInputPolicy.modelClass).toBe(AI_MODEL_CLASSES.DOCUMENT_SUMMARY);
+    expect(imageInputPolicy.modelClass).not.toBe(AI_MODEL_CLASSES.PREMIUM_DEEP_ANALYSIS);
+    expect(documentInputPolicy.modelClass).not.toBe(AI_MODEL_CLASSES.PREMIUM_DEEP_ANALYSIS);
+
+    for (const policy of [imageInputPolicy, documentInputPolicy]) {
       expect(policy.multimodal).toBe(true);
       expect(policy.costClass).toBe(AI_COST_CLASSES.MULTIMODAL_EXPENSIVE);
-      expect(getAiFeatureQuotaPolicy(featureId, AI_TIERS.FREE).enabled).toBe(false);
-      expect(getAiFeatureQuotaPolicy(featureId, AI_TIERS.TRIAL).enabled).toBe(false);
-      expect(getAiFeatureQuotaPolicy(featureId, AI_TIERS.PREMIUM).enabled).toBe(false);
-      expect(getAiFeatureQuotaPolicy(featureId, AI_TIERS.PREMIUM_PLUS).enabled).toBe(true);
+      expect(getAiFeatureQuotaPolicy(policy.featureId, AI_TIERS.FREE).enabled).toBe(false);
+      expect(getAiFeatureQuotaPolicy(policy.featureId, AI_TIERS.TRIAL).enabled).toBe(false);
+      expect(getAiFeatureQuotaPolicy(policy.featureId, AI_TIERS.PREMIUM).enabled).toBe(false);
+      expect(getAiFeatureQuotaPolicy(policy.featureId, AI_TIERS.PREMIUM_PLUS).enabled).toBe(true);
     }
   });
 

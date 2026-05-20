@@ -169,6 +169,7 @@ describe("requestAiSystemAnalysis", () => {
     [422, "SYSTEM_ANALYSIS_INELIGIBLE", "SYSTEM_ANALYSIS_INELIGIBLE"],
     [504, "SYSTEM_ANALYSIS_PROVIDER_TIMEOUT", "SYSTEM_ANALYSIS_PROVIDER_TIMEOUT"],
     [502, "INVALID_SYSTEM_ANALYSIS_RESPONSE", "INVALID_SYSTEM_ANALYSIS_RESPONSE"],
+    [429, "SYSTEM_ANALYSIS_QUOTA_EXCEEDED", "SYSTEM_ANALYSIS_QUOTA_EXCEEDED"],
     [429, "QUOTA_EXCEEDED", "QUOTA_EXCEEDED"],
     [429, "RATE_LIMITED", "RATE_LIMITED"],
     [503, "SYSTEM_ANALYSIS_BACKEND_UNAVAILABLE", "BACKEND_UNAVAILABLE"],
@@ -188,6 +189,33 @@ describe("requestAiSystemAnalysis", () => {
     expect(result.ok).toBe(false);
     expect(result.errorCode).toBe(expectedCode);
     expect(result.requestId).toBe("req_error");
+  });
+
+  it("preserves system analysis quota metadata from the backend", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({
+      error: "SYSTEM_ANALYSIS_QUOTA_EXCEEDED",
+      message: "System analysis monthly quota exceeded.",
+      requestId: "req_quota",
+      quota: {
+        used: 2,
+        limit: 2,
+        remaining: 0,
+        resetAt: "2026-06-01T00:00:00.000Z",
+      },
+    }, 429));
+
+    const result = await requestAiSystemAnalysis(baseArgs({ fetchImpl }));
+
+    expect(result.ok).toBe(false);
+    expect(result.errorCode).toBe("SYSTEM_ANALYSIS_QUOTA_EXCEEDED");
+    expect(result.errorDetails).toMatchObject({
+      quota: {
+        used: 2,
+        limit: 2,
+        remaining: 0,
+        resetAt: "2026-06-01T00:00:00.000Z",
+      },
+    });
   });
 
   it("supports an external AbortSignal without treating navigation aborts as provider timeouts", async () => {
