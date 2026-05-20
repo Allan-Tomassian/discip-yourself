@@ -52,6 +52,8 @@ function thinData() {
 describe("Adjust system analysis trigger contract", () => {
   it("keeps the header entry connected to local system analysis state", () => {
     const source = readSrc("pages/Adjust.jsx");
+    const ineligibleBranchIndex = source.indexOf("!systemAnalysisEligibility?.eligible");
+    const requestIndex = source.indexOf("requestAiSystemAnalysis({");
 
     expect(source).toContain("requestAiSystemAnalysis");
     expect(source).toContain("SystemAnalysisResultPreview");
@@ -61,6 +63,10 @@ describe("Adjust system analysis trigger contract", () => {
     expect(source).toContain('status: "success"');
     expect(source).toContain('status: "ineligible"');
     expect(source).toContain("AbortController");
+    expect(source).toContain("SYSTEM_ANALYSIS_INELIGIBLE_MESSAGE");
+    expect(ineligibleBranchIndex).toBeGreaterThan(-1);
+    expect(requestIndex).toBeGreaterThan(-1);
+    expect(ineligibleBranchIndex).toBeLessThan(requestIndex);
   });
 
   it("does not import repair or planning mutation helpers", () => {
@@ -81,12 +87,13 @@ describe("Adjust system analysis trigger contract", () => {
     expect(html).toContain("disabled");
   });
 
-  it("keeps thin-data entry locked so the backend is not reachable from the button", () => {
+  it("keeps thin-data entry locked but explanatory so the local guard handles taps", () => {
     const html = renderToStaticMarkup(<Adjust data={thinData()} />);
 
     expect(html).toContain("Analyse système");
     expect(html).toContain('data-system-analysis-state="locked"');
-    expect(html).toContain("disabled");
+    expect(html).toContain('data-system-analysis-explanatory="true"');
+    expect(html).not.toContain("disabled=\"\"");
   });
 
   it("keeps the deterministic recommendation before any analysis preview surface", () => {

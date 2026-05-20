@@ -14,10 +14,12 @@ export default function SystemAnalysisEntryButton({
   const enabled = model.enabled === true;
   const tone = model.tone || "disabled";
   const state = model.state || "locked";
-  const Icon = enabled || state === "running" ? Sparkles : Lock;
+  const isRunning = state === "running";
+  const isExplanatory = !enabled && !isRunning;
+  const Icon = tone === "ai" || enabled || state === "running" ? Sparkles : Lock;
 
   function handleClick(event) {
-    if (!enabled) return;
+    if (isRunning) return;
     onClick?.(event);
   }
 
@@ -32,9 +34,10 @@ export default function SystemAnalysisEntryButton({
       )}
       data-system-analysis-state={state}
       data-system-analysis-tone={tone}
+      data-system-analysis-explanatory={isExplanatory ? "true" : undefined}
       aria-label={model.ariaLabel || model.label}
       title={model.reason || model.title || model.label}
-      disabled={!enabled}
+      disabled={isRunning}
       onClick={handleClick}
     >
       <span className="systemAnalysisEntryButton__icon" aria-hidden="true">

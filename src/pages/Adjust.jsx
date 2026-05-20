@@ -142,6 +142,9 @@ function resolveSystemAnalysisAvailabilityState({ requestState, fallbackState })
   return fallbackState;
 }
 
+const SYSTEM_ANALYSIS_INELIGIBLE_MESSAGE =
+  "Continue à exécuter tes blocs pendant quelques jours. L’analyse devient utile quand elle peut lire ton vrai comportement.";
+
 function TrendSnapshot({ trendSnapshot }) {
   const series = Array.isArray(trendSnapshot?.series) ? trendSnapshot.series : [];
   const visible = series.slice(-7);
@@ -317,12 +320,24 @@ export default function Adjust({
 
     if (systemAnalysisRequestState.status === "loading") return;
 
+    if (systemAnalysisEntryModel.state === "quota_exhausted") {
+      setSystemAnalysisRequestState({
+        status: "error",
+        result: null,
+        errorCode: "QUOTA_EXCEEDED",
+        message: "Quota mensuel utilisé.",
+        missingRequirements: [],
+        requestId: null,
+      });
+      return;
+    }
+
     if (!systemAnalysisEligibility?.eligible) {
       setSystemAnalysisRequestState({
         status: "ineligible",
         result: null,
         errorCode: "SYSTEM_ANALYSIS_INELIGIBLE",
-        message: systemAnalysisEligibility?.unlockCopy || "Continue à exécuter tes blocs pendant quelques jours.",
+        message: SYSTEM_ANALYSIS_INELIGIBLE_MESSAGE,
         missingRequirements: Array.isArray(systemAnalysisEligibility?.missingRequirements)
           ? systemAnalysisEligibility.missingRequirements
           : [],

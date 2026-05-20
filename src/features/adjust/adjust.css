@@ -19,12 +19,12 @@
   min-height: 32px;
   max-width: 100%;
   padding: 0 10px;
-  border: 1px solid color-mix(in srgb, var(--system-analysis-entry-tone) 24%, var(--command-border));
+  border: 1px solid color-mix(in srgb, var(--system-analysis-entry-tone) 30%, var(--command-border));
   border-radius: 999px;
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--system-analysis-entry-tone) 7%, transparent), transparent),
-    color-mix(in srgb, var(--command-surface-strong) 78%, transparent);
-  color: color-mix(in srgb, var(--system-analysis-entry-tone) 68%, #ffffff);
+    linear-gradient(180deg, color-mix(in srgb, var(--system-analysis-entry-tone) 10%, transparent), transparent),
+    color-mix(in srgb, var(--command-surface-strong) 80%, transparent);
+  color: color-mix(in srgb, var(--system-analysis-entry-tone) 76%, #ffffff);
   font: inherit;
   font-size: 10.5px;
   font-weight: 850;
@@ -32,7 +32,7 @@
   line-height: 1;
   white-space: nowrap;
   cursor: pointer;
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--system-analysis-entry-tone) 7%, transparent);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--system-analysis-entry-tone) 11%, transparent);
   transition:
     border-color var(--comfort-motion-fast, 120ms) var(--comfort-motion-ease, ease-out),
     background var(--comfort-motion-fast, 120ms) var(--comfort-motion-ease, ease-out),
@@ -54,9 +54,32 @@
 
 .systemAnalysisEntryButton:disabled {
   cursor: not-allowed;
-  opacity: 0.64;
-  filter: saturate(0.72);
+  opacity: 0.78;
+  filter: saturate(0.84);
   box-shadow: none;
+}
+
+.systemAnalysisEntryButton--tone-ai:disabled {
+  border-color: color-mix(in srgb, var(--command-ai) 22%, var(--command-border));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--command-ai) 7%, transparent), transparent),
+    color-mix(in srgb, var(--command-surface-strong) 78%, transparent);
+  color: color-mix(in srgb, var(--command-ai) 66%, #ffffff);
+}
+
+.systemAnalysisEntryButton[data-system-analysis-explanatory="true"]:not(:disabled) {
+  cursor: pointer;
+  opacity: 0.9;
+  filter: saturate(0.95);
+  box-shadow: 0 7px 16px color-mix(in srgb, var(--system-analysis-entry-tone) 8%, transparent);
+}
+
+.systemAnalysisEntryButton--tone-ai[data-system-analysis-explanatory="true"]:not(:disabled) {
+  border-color: color-mix(in srgb, var(--command-ai) 24%, var(--command-border));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--command-ai) 8%, transparent), transparent),
+    color-mix(in srgb, var(--command-surface-strong) 78%, transparent);
+  color: color-mix(in srgb, var(--command-ai) 68%, #ffffff);
 }
 
 .systemAnalysisEntryButton:hover:not(:disabled) {
@@ -421,8 +444,25 @@
 }
 
 @media (max-width: 767px) {
+  [data-page-id="adjust"] .pageHeader {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  [data-page-id="adjust"] .pageHeaderLeft {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
   [data-page-id="adjust"] .pageHeaderRight {
-    width: 100%;
+    width: auto;
+    flex: 0 0 auto;
+    max-width: 48%;
+    margin-left: auto;
+    align-self: flex-start;
+    justify-content: flex-end;
   }
 
   .systemAnalysisEntryButton {

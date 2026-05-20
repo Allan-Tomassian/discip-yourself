@@ -66,8 +66,9 @@ describe("Adjust system analysis entry", () => {
 
     expect(html).toContain("Analyse système");
     expect(html).toContain('data-system-analysis-state="locked"');
-    expect(html).toContain('data-system-analysis-tone="disabled"');
-    expect(html).toContain("disabled");
+    expect(html).toContain('data-system-analysis-tone="ai"');
+    expect(html).toContain('data-system-analysis-explanatory="true"');
+    expect(html).not.toContain("disabled=\"\"");
   });
 
   it("keeps the diagnostic recommendation before friction details", () => {

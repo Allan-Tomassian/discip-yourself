@@ -22,7 +22,7 @@ function visibleItems(items, max = 2) {
   return safeArray(items).map(firstText).filter(Boolean).slice(0, max);
 }
 
-function resolveErrorCopy({ status, errorCode, message, missingRequirements }) {
+function resolveErrorCopy({ status, errorCode, message }) {
   if (status === "premium_required" || errorCode === "PREMIUM_REQUIRED") {
     return {
       tone: "ai",
@@ -34,16 +34,24 @@ function resolveErrorCopy({ status, errorCode, message, missingRequirements }) {
   }
 
   if (status === "ineligible" || errorCode === "SYSTEM_ANALYSIS_INELIGIBLE") {
-    const firstMissing = safeArray(missingRequirements)[0];
     return {
-      tone: "neutral",
-      icon: Clock3,
+      tone: "ai",
+      icon: Sparkles,
       label: "ANALYSE SYSTÈME",
-      title: "Pas encore assez de signal",
+      title: "Analyse système",
       subtitle:
-        safeString(firstMissing?.label) ||
         safeString(message) ||
-        "Continue à exécuter tes blocs pendant quelques jours.",
+        "Continue à exécuter tes blocs pendant quelques jours. L’analyse devient utile quand elle peut lire ton vrai comportement.",
+    };
+  }
+
+  if (errorCode === "QUOTA_EXCEEDED" || status === "quota_exhausted") {
+    return {
+      tone: "ai",
+      icon: Sparkles,
+      label: "ANALYSE SYSTÈME",
+      title: "Analyse utilisée",
+      subtitle: safeString(message) || "Quota mensuel utilisé.",
     };
   }
 
@@ -81,7 +89,6 @@ export default function SystemAnalysisResultPreview({
   result = null,
   errorCode = "",
   message = "",
-  missingRequirements = [],
   onRetry,
 }) {
   if (status === "idle") return null;
@@ -162,7 +169,7 @@ export default function SystemAnalysisResultPreview({
     );
   }
 
-  const copy = resolveErrorCopy({ status, errorCode, message, missingRequirements });
+  const copy = resolveErrorCopy({ status, errorCode, message });
   const Icon = copy.icon || AlertTriangle;
   return (
     <CommandCard

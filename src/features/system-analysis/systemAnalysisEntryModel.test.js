@@ -31,7 +31,7 @@ describe("buildSystemAnalysisEntryModel", () => {
       visible: true,
       enabled: false,
       state: "locked",
-      tone: "disabled",
+      tone: "ai",
       label: "Analyse système",
       reason: "Pas assez de blocs planifiés",
     });
@@ -51,7 +51,7 @@ describe("buildSystemAnalysisEntryModel", () => {
     });
   });
 
-  it("returns a disabled attention entry for quota exhaustion", () => {
+  it("returns a disabled AI entry for quota exhaustion", () => {
     const model = buildSystemAnalysisEntryModel({
       eligibility: { eligible: true },
       availabilityState: "quota_exhausted",
@@ -60,8 +60,8 @@ describe("buildSystemAnalysisEntryModel", () => {
     expect(model).toMatchObject({
       enabled: false,
       state: "quota_exhausted",
-      tone: "attention",
-      label: "Analyse système",
+      tone: "ai",
+      label: "Analyse utilisée",
       reason: "Quota mensuel utilisé.",
     });
   });
