@@ -4,6 +4,86 @@
   padding-bottom: calc(var(--main-tab-bottom-clearance, 132px) + 18px);
 }
 
+[data-page-id="adjust"] .pageHeaderRight {
+  display: flex;
+  justify-content: flex-end;
+  overflow: visible;
+}
+
+.systemAnalysisEntryButton {
+  --system-analysis-entry-tone: var(--command-ai);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  max-width: 100%;
+  padding: 0 11px;
+  border: 1px solid color-mix(in srgb, var(--system-analysis-entry-tone) 30%, var(--command-border));
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--system-analysis-entry-tone) 10%, transparent), transparent),
+    color-mix(in srgb, var(--command-surface-strong) 78%, transparent);
+  color: color-mix(in srgb, var(--system-analysis-entry-tone) 74%, #ffffff);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--system-analysis-entry-tone) 10%, transparent);
+  transition:
+    border-color var(--comfort-motion-fast, 120ms) var(--comfort-motion-ease, ease-out),
+    background var(--comfort-motion-fast, 120ms) var(--comfort-motion-ease, ease-out),
+    filter var(--comfort-motion-fast, 120ms) var(--comfort-motion-ease, ease-out),
+    transform var(--comfort-motion-fast, 120ms) var(--comfort-motion-ease, ease-out);
+}
+
+.systemAnalysisEntryButton--tone-ai {
+  --system-analysis-entry-tone: var(--command-ai);
+}
+
+.systemAnalysisEntryButton--tone-attention {
+  --system-analysis-entry-tone: var(--command-attention);
+}
+
+.systemAnalysisEntryButton--tone-disabled {
+  --system-analysis-entry-tone: var(--command-disabled);
+}
+
+.systemAnalysisEntryButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.64;
+  filter: saturate(0.72);
+  box-shadow: none;
+}
+
+.systemAnalysisEntryButton:hover:not(:disabled) {
+  filter: brightness(1.035);
+}
+
+.systemAnalysisEntryButton:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.systemAnalysisEntryButton:focus-visible {
+  outline: 1px solid color-mix(in srgb, var(--system-analysis-entry-tone) 62%, rgba(255, 255, 255, 0.28));
+  outline-offset: 2px;
+}
+
+.systemAnalysisEntryButton__icon {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+}
+
+.systemAnalysisEntryButton__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .adjustCommandPage {
   display: grid;
   gap: 11px;
@@ -213,6 +293,19 @@
   color: var(--command-muted);
   font-size: 12px;
   line-height: 1.4;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .systemAnalysisEntryButton {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+@media (max-width: 767px) {
+  [data-page-id="adjust"] .pageHeaderRight {
+    width: 100%;
+  }
 }
 
 .adjustEmptyState {

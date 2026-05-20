@@ -11,6 +11,7 @@ import {
   Target,
 } from "lucide-react";
 import { AppScreen } from "../shared/ui/app";
+import SystemAnalysisEntryButton from "../components/system-analysis/SystemAnalysisEntryButton";
 import {
   CommandAIBlock,
   CommandBadge,
@@ -22,6 +23,9 @@ import {
 } from "../shared/ui/command";
 import { ADJUST_ACTION_IDS, buildAdjustDiagnostic } from "../features/adjust/adjustDiagnostic";
 import { buildAdjustSystemSignalPreview } from "../features/adjust/adjustSystemSignalPreviewModel";
+import { buildSystemAnalysisEligibility } from "../features/system-analysis/systemAnalysisEligibility";
+import { buildSystemAnalysisEntryModel } from "../features/system-analysis/systemAnalysisEntryModel";
+import { buildSystemAnalysisSnapshot } from "../features/system-analysis/systemAnalysisSnapshot";
 import { getPrimarySystemSignal } from "../logic/systemSignals";
 import { fromLocalDateKey, normalizeLocalDateKey, todayLocalKey } from "../utils/datetime";
 import "../features/adjust/adjust.css";
@@ -88,6 +92,10 @@ function resolveStateLabel(summary) {
   if (summary.state === "friction") return "Friction";
   if (summary.state === "control") return "Sous contrôle";
   return "À ajuster";
+}
+
+function buildSystemAnalysisReferenceNow(dateKey) {
+  return new Date(`${dateKey}T12:00:00`);
 }
 
 function TrendSnapshot({ trendSnapshot }) {
@@ -193,7 +201,12 @@ function ActionButton({ action, onAction }) {
   );
 }
 
-export default function Adjust({ data, onAdjustAction }) {
+export default function Adjust({
+  data,
+  onAdjustAction,
+  onSystemAnalysisEntry,
+  systemAnalysisAvailabilityState = "ready",
+}) {
   const safeData = useMemo(() => (data && typeof data === "object" ? data : {}), [data]);
   const activeDateKey =
     normalizeLocalDateKey(safeData?.ui?.selectedDateKey) ||
@@ -215,12 +228,48 @@ export default function Adjust({ data, onAdjustAction }) {
   const hasUsefulData = Boolean(summary?.hasPlannedData || nextBlock || hasSignals);
 
   const recommendationAction = quickActions.find((action) => action.id === recommendation?.actionId) || null;
+  const systemAnalysisSnapshot = useMemo(
+    () => buildSystemAnalysisSnapshot({
+      state: safeData,
+      period: { endDateKey: activeDateKey, days: 14 },
+      referenceDateKey: activeDateKey,
+      now: buildSystemAnalysisReferenceNow(activeDateKey),
+    }),
+    [activeDateKey, safeData]
+  );
+  const systemAnalysisEligibility = useMemo(
+    () => buildSystemAnalysisEligibility({
+      state: safeData,
+      snapshot: systemAnalysisSnapshot,
+      now: buildSystemAnalysisReferenceNow(activeDateKey),
+    }),
+    [activeDateKey, safeData, systemAnalysisSnapshot]
+  );
+  const systemAnalysisEntryModel = useMemo(
+    () => buildSystemAnalysisEntryModel({
+      eligibility: systemAnalysisEligibility,
+      availabilityState: systemAnalysisAvailabilityState,
+    }),
+    [systemAnalysisAvailabilityState, systemAnalysisEligibility]
+  );
+  const systemAnalysisHeaderAction = (
+    <SystemAnalysisEntryButton
+      className="adjustSystemAnalysisEntryButton"
+      model={systemAnalysisEntryModel}
+      onClick={() => onSystemAnalysisEntry?.({
+        status: systemAnalysisEntryModel.state,
+        eligibility: systemAnalysisEligibility,
+        snapshot: systemAnalysisSnapshot,
+      })}
+    />
+  );
 
   return (
     <AppScreen
       pageId="adjust"
       headerTitle={ADJUST_SCREEN_COPY.title}
       headerSubtitle={ADJUST_SCREEN_COPY.subtitle}
+      headerRight={systemAnalysisHeaderAction}
     >
       <div className="adjustCommandPage CommandMotionReveal">
         <CommandSurface tone="execution" className="adjustHero" density="compact">
