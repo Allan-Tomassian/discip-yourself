@@ -19,6 +19,10 @@ import {
   firstRunWhyClarificationRequestSchema,
   firstRunWhyClarificationResponseSchema,
 } from "../schemas/firstRun.js";
+import {
+  systemAnalysisPublicResponseSchema,
+  systemAnalysisRequestSchema,
+} from "../schemas/systemAnalysis.js";
 import { insertAiRequestLog, hashValue } from "../services/logging.js";
 import { resolveQuotaState, enforceMemoryRateLimit } from "../services/quotas.js";
 import { buildNowContext } from "../services/context/nowContext.js";
@@ -33,6 +37,10 @@ import { runSessionGuidanceCoach } from "../services/coach/sessionGuidanceCoach.
 import { runFirstRunPlanService } from "../services/firstRun/firstRunPlanService.js";
 import { runFirstRunStarterHintsService } from "../services/firstRun/firstRunStarterHintsService.js";
 import { runFirstRunWhyClarificationService } from "../services/firstRun/firstRunWhyClarificationService.js";
+import {
+  resolveSystemAnalysisPromptVersion,
+  runSystemAnalysisService,
+} from "../services/systemAnalysis/systemAnalysisService.js";
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -166,6 +174,86 @@ function buildFirstRunPlanLogMetrics({ diagnostics = null, errorDetails = null }
   };
 }
 
+function normalizeDateKey(value) {
+  const raw = String(value || "").trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : "";
+}
+
+function diffDateKeysInDays(fromKey, toKey) {
+  const from = normalizeDateKey(fromKey);
+  const to = normalizeDateKey(toKey);
+  if (!from || !to) return null;
+  const fromTime = Date.parse(`${from}T00:00:00Z`);
+  const toTime = Date.parse(`${to}T00:00:00Z`);
+  if (!Number.isFinite(fromTime) || !Number.isFinite(toTime)) return null;
+  return Math.max(0, Math.round((toTime - fromTime) / 86400000));
+}
+
+function resolveSystemAnalysisActivationDateKey(snapshot, serverState) {
+  const fromSnapshot = normalizeDateKey(snapshot?.firstRunSummary?.appliedAt);
+  if (fromSnapshot) return fromSnapshot;
+  const fromServerCommit = normalizeDateKey(serverState?.ui?.firstRunV1?.commitV1?.appliedAt);
+  if (fromServerCommit) return fromServerCommit;
+  const occurrenceDates = Array.isArray(serverState?.occurrences)
+    ? serverState.occurrences.map((occurrence) => normalizeDateKey(occurrence?.date || occurrence?.dateKey)).filter(Boolean)
+    : [];
+  const historyDates = Array.isArray(serverState?.sessionHistory)
+    ? serverState.sessionHistory
+        .map((history) => normalizeDateKey(history?.dateKey || history?.date || history?.endAt || history?.startAt))
+        .filter(Boolean)
+    : [];
+  return [...occurrenceDates, ...historyDates].sort()[0] || "";
+}
+
+function buildSystemAnalysisThinDataCheck(snapshot, serverState) {
+  const activationDateKey = resolveSystemAnalysisActivationDateKey(snapshot, serverState);
+  const referenceDateKey = normalizeDateKey(snapshot?.referenceDateKey || snapshot?.period?.endDateKey);
+  const daysSinceActivation = diffDateKeysInDays(activationDateKey, referenceDateKey);
+  const plannedBlocks = Number(snapshot?.executionStats?.expectedCount || 0);
+  const executionOutcomes = Number(snapshot?.executionStats?.outcomeCount || 0);
+  const activeDays = Number(snapshot?.executionStats?.activeDayCount || 0);
+  const completionOrFrictionSignals =
+    Number(snapshot?.executionStats?.completedCount || 0) +
+    Number(snapshot?.executionStats?.frictionCount || 0) +
+    Number(snapshot?.sessionStats?.frictionCount || 0);
+  const missingRequirements = [];
+  const addMissing = (code, current, target) => {
+    missingRequirements.push({
+      code,
+      current: Number.isFinite(current) ? current : 0,
+      target,
+      remaining: Math.max(0, target - (Number.isFinite(current) ? current : 0)),
+    });
+  };
+  if (!activationDateKey) addMissing("activation_date_missing", 0, 1);
+  if (!Number.isFinite(daysSinceActivation) || daysSinceActivation < 7) {
+    addMissing("activation_too_recent", daysSinceActivation || 0, 7);
+  }
+  if (plannedBlocks < 10) addMissing("not_enough_planned_blocks", plannedBlocks, 10);
+  if (executionOutcomes < 5) addMissing("not_enough_execution_outcomes", executionOutcomes, 5);
+  if (activeDays < 3) addMissing("not_enough_active_days", activeDays, 3);
+  if (completionOrFrictionSignals < 1) {
+    addMissing("not_enough_completion_or_friction", completionOrFrictionSignals, 1);
+  }
+  return {
+    eligible: missingRequirements.length === 0,
+    missingRequirements,
+    activationDateKey: activationDateKey || null,
+    daysSinceActivation: Number.isFinite(daysSinceActivation) ? daysSinceActivation : 0,
+  };
+}
+
+function buildSystemAnalysisRequestHash({ snapshot, promptVersion }) {
+  return hashValue(
+    JSON.stringify({
+      route: "system-analysis",
+      snapshotHash: snapshot?.snapshotHash || "",
+      period: snapshot?.period || null,
+      promptVersion,
+    })
+  );
+}
+
 function logAiStageError({
   app,
   request,
@@ -269,6 +357,14 @@ export async function aiRoutes(app) {
   app.post("/session-guidance", { preHandler: [app.authenticate] }, async (request, reply) => {
     return handleSessionGuidanceRoute({ app, request, reply });
   });
+
+  app.post(
+    "/system-analysis",
+    { preHandler: [app.authenticate], bodyLimit: 64 * 1024 },
+    async (request, reply) => {
+      return handleSystemAnalysisRoute({ app, request, reply });
+    }
+  );
 
   app.post("/first-run-plan", { preHandler: [app.authenticate] }, async (request, reply) => {
     return handleFirstRunPlanRoute({ app, request, reply });
@@ -496,6 +592,333 @@ async function handleCoachRoute({
       message: "Unable to build AI context.",
     });
   }
+}
+
+async function handleSystemAnalysisRoute({ app, request, reply }) {
+  const startedAt = Date.now();
+  const route = "/ai/system-analysis";
+  const parsedBody = systemAnalysisRequestSchema.safeParse(request.body);
+  if (!parsedBody.success) {
+    return reply.code(400).send({
+      error: "INVALID_SYSTEM_ANALYSIS_SNAPSHOT",
+      message: "System analysis request body is invalid.",
+      issues: parsedBody.error.issues,
+      requestId: request.requestId,
+    });
+  }
+
+  const body = parsedBody.data;
+  const promptVersion = resolveSystemAnalysisPromptVersion(app);
+  const requestHash = buildSystemAnalysisRequestHash({
+    snapshot: body.snapshot,
+    promptVersion,
+  });
+
+  const rateLimited =
+    enforceMemoryRateLimit({
+      key: `system-analysis:user:${request.user.id}`,
+      limit: 2,
+      windowMs: 60 * 1000,
+    }) ||
+    enforceMemoryRateLimit({
+      key: `system-analysis:ip:${getClientIp(request)}`,
+      limit: 8,
+      windowMs: 15 * 60 * 1000,
+    });
+  if (rateLimited) {
+    return reply.code(429).send({
+      error: "RATE_LIMITED",
+      message: "Rate limit exceeded.",
+      requestId: request.requestId,
+    });
+  }
+
+  let snapshot;
+  try {
+    snapshot = await loadUserSnapshot(app.supabase, request.user.id);
+  } catch (error) {
+    logAiStageError({
+      app,
+      request,
+      route,
+      stage: "snapshot_load",
+      status: 503,
+      errorCode: isSupabaseSchemaError(error) ? "BACKEND_SCHEMA_MISSING" : "SNAPSHOT_LOAD_FAILED",
+      err: error,
+    });
+    if (isSupabaseSchemaError(error)) {
+      return reply.code(503).send(buildSchemaErrorReply(request.requestId));
+    }
+    return sendAiStageError(reply, request.requestId, {
+      status: 503,
+      errorCode: "SNAPSHOT_LOAD_FAILED",
+      message: "Unable to load user context.",
+    });
+  }
+
+  let quotaState;
+  try {
+    quotaState = await resolveQuotaState(app.supabase, {
+      userId: request.user.id,
+      entitlement: snapshot.entitlement,
+      quotaMode: app.config.AI_QUOTA_MODE,
+    });
+  } catch (error) {
+    logAiStageError({
+      app,
+      request,
+      route,
+      stage: "quota_load",
+      status: 503,
+      errorCode: isSupabaseSchemaError(error) ? "BACKEND_SCHEMA_MISSING" : "QUOTA_LOAD_FAILED",
+      err: error,
+    });
+    if (isSupabaseSchemaError(error)) {
+      return reply.code(503).send(buildSchemaErrorReply(request.requestId));
+    }
+    return sendAiStageError(reply, request.requestId, {
+      status: 503,
+      errorCode: "QUOTA_LOAD_FAILED",
+      message: "Unable to verify AI quota.",
+    });
+  }
+
+  if (quotaState.planTier !== "premium") {
+    await insertAiRequestLog(app.supabase, {
+      requestId: request.requestId,
+      userId: request.user.id,
+      coachKind: "system-analysis",
+      route,
+      planTier: quotaState.planTier,
+      decisionSource: "rules",
+      statusCode: 403,
+      mode: "system_analysis",
+      protocolType: promptVersion,
+      providerStatus: "blocked",
+      requestHash,
+      ipHash: hashValue(getClientIp(request)),
+      userAgent: request.headers["user-agent"] || "",
+      latencyMs: Date.now() - startedAt,
+      errorCode: "PREMIUM_REQUIRED",
+    });
+    return reply.code(403).send({
+      error: "PREMIUM_REQUIRED",
+      message: "Premium analysis is required for this feature.",
+      requestId: request.requestId,
+    });
+  }
+
+  if (quotaState.exceeded) {
+    await insertAiRequestLog(app.supabase, {
+      requestId: request.requestId,
+      userId: request.user.id,
+      coachKind: "system-analysis",
+      route,
+      planTier: quotaState.planTier,
+      decisionSource: "rules",
+      statusCode: 429,
+      mode: "system_analysis",
+      protocolType: promptVersion,
+      providerStatus: "blocked",
+      requestHash,
+      ipHash: hashValue(getClientIp(request)),
+      userAgent: request.headers["user-agent"] || "",
+      latencyMs: Date.now() - startedAt,
+      errorCode: "QUOTA_EXCEEDED",
+    });
+    return reply.code(429).send({
+      error: "QUOTA_EXCEEDED",
+      message: "AI quota exceeded.",
+      requestId: request.requestId,
+      quotaRemaining: quotaState.remaining,
+    });
+  }
+
+  const thinDataCheck = buildSystemAnalysisThinDataCheck(body.snapshot, snapshot.userData);
+  const allowThinDataForTest = app?.config?.APP_ENV === "test" && body.allowThinDataForTest === true;
+  if (!thinDataCheck.eligible && !allowThinDataForTest) {
+    await insertAiRequestLog(app.supabase, {
+      requestId: request.requestId,
+      userId: request.user.id,
+      coachKind: "system-analysis",
+      route,
+      planTier: quotaState.planTier,
+      decisionSource: "rules",
+      statusCode: 422,
+      mode: "system_analysis",
+      protocolType: promptVersion,
+      providerStatus: "blocked",
+      validationPassed: false,
+      zodIssuePaths: thinDataCheck.missingRequirements.map((requirement) => requirement.code),
+      requestHash,
+      ipHash: hashValue(getClientIp(request)),
+      userAgent: request.headers["user-agent"] || "",
+      latencyMs: Date.now() - startedAt,
+      errorCode: "SYSTEM_ANALYSIS_INELIGIBLE",
+    });
+    return reply.code(422).send({
+      error: "SYSTEM_ANALYSIS_INELIGIBLE",
+      message: "System analysis needs more real usage data.",
+      requestId: request.requestId,
+      missingRequirements: thinDataCheck.missingRequirements,
+    });
+  }
+
+  let serviceResult;
+  try {
+    serviceResult = await runSystemAnalysisService({
+      app,
+      context: {
+        ...body,
+        requestId: request.requestId,
+        promptVersion,
+        quotaRemaining: quotaState.remaining,
+        state: snapshot.userData,
+      },
+    });
+  } catch (error) {
+    const rawErrorCode = String(error?.code || "").trim().toUpperCase() || "UNKNOWN_BACKEND_ERROR";
+    const errorDetails = isPlainObject(error?.details) ? error.details : null;
+    const status =
+      rawErrorCode === "SYSTEM_ANALYSIS_PROVIDER_TIMEOUT" ? 504
+      : rawErrorCode === "INVALID_SYSTEM_ANALYSIS_RESPONSE" ? 502
+      : 503;
+    const responseErrorCode =
+      rawErrorCode === "SYSTEM_ANALYSIS_PROVIDER_TIMEOUT" ? "SYSTEM_ANALYSIS_PROVIDER_TIMEOUT"
+      : rawErrorCode === "INVALID_SYSTEM_ANALYSIS_RESPONSE" ? "INVALID_SYSTEM_ANALYSIS_RESPONSE"
+      : "SYSTEM_ANALYSIS_BACKEND_UNAVAILABLE";
+    logAiStageError({
+      app,
+      request,
+      route,
+      stage: "provider",
+      status,
+      errorCode: responseErrorCode,
+      err: error,
+      context: {
+        aiIntent: "system_analysis",
+        mode: "system_analysis",
+        requestId: request.requestId,
+      },
+    });
+    await insertAiRequestLog(app.supabase, {
+      requestId: request.requestId,
+      userId: request.user.id,
+      coachKind: "system-analysis",
+      route,
+      planTier: quotaState.planTier,
+      decisionSource: "ai",
+      statusCode: status,
+      mode: "system_analysis",
+      protocolType: promptVersion,
+      providerStatus:
+        errorDetails?.providerStatus ||
+        (responseErrorCode === "INVALID_SYSTEM_ANALYSIS_RESPONSE" ? "invalid_response" : "error"),
+      providerMs: Number.isFinite(errorDetails?.providerMs) ? Math.round(errorDetails.providerMs) : null,
+      rejectionStage: errorDetails?.rejectionStage || null,
+      rejectionReason: errorDetails?.rejectionReason || null,
+      validationPassed:
+        typeof errorDetails?.validationPassed === "boolean" ? errorDetails.validationPassed : false,
+      zodIssuePaths:
+        Array.isArray(errorDetails?.zodIssuePaths) && errorDetails.zodIssuePaths.length
+          ? errorDetails.zodIssuePaths
+          : Array.isArray(errorDetails?.governanceIssues)
+            ? errorDetails.governanceIssues.map((issue) => issue.path || issue.code).filter(Boolean).slice(0, 24)
+            : null,
+      requestHash,
+      ipHash: hashValue(getClientIp(request)),
+      userAgent: request.headers["user-agent"] || "",
+      latencyMs: Number.isFinite(errorDetails?.totalMs) ? Math.round(errorDetails.totalMs) : Date.now() - startedAt,
+      errorCode: responseErrorCode,
+    });
+    return reply.code(status).send({
+      error: responseErrorCode,
+      message:
+        responseErrorCode === "SYSTEM_ANALYSIS_PROVIDER_TIMEOUT"
+          ? "System analysis provider timed out."
+          : responseErrorCode === "INVALID_SYSTEM_ANALYSIS_RESPONSE"
+            ? "System analysis response is invalid."
+            : "System analysis backend unavailable.",
+      requestId: request.requestId,
+      ...(errorDetails ? { details: errorDetails } : {}),
+    });
+  }
+
+  const parsedResponse = systemAnalysisPublicResponseSchema.safeParse(serviceResult.response);
+  if (!parsedResponse.success) {
+    await insertAiRequestLog(app.supabase, {
+      requestId: request.requestId,
+      userId: request.user.id,
+      coachKind: "system-analysis",
+      route,
+      planTier: quotaState.planTier,
+      decisionSource: "ai",
+      statusCode: 502,
+      mode: "system_analysis",
+      protocolType: promptVersion,
+      providerStatus: "invalid_response",
+      rejectionStage: "response_schema",
+      rejectionReason: "provider_parse_failed",
+      validationPassed: false,
+      zodIssuePaths: parsedResponse.error.issues.map((issue) => issue.path.join(".")).filter(Boolean).slice(0, 24),
+      requestHash,
+      ipHash: hashValue(getClientIp(request)),
+      userAgent: request.headers["user-agent"] || "",
+      latencyMs: Date.now() - startedAt,
+      errorCode: "INVALID_SYSTEM_ANALYSIS_RESPONSE",
+    });
+    return reply.code(502).send({
+      error: "INVALID_SYSTEM_ANALYSIS_RESPONSE",
+      message: "System analysis response is invalid.",
+      requestId: request.requestId,
+    });
+  }
+
+  request.log.info(
+    {
+      requestId: request.requestId,
+      route,
+      snapshotHash: body.snapshot.snapshotHash,
+      period: body.snapshot.period,
+      promptVersion,
+      model: serviceResult.diagnostics?.model || null,
+      status: "ok",
+      providerMs: serviceResult.diagnostics?.providerMs || null,
+    },
+    "system analysis completed"
+  );
+  await insertAiRequestLog(app.supabase, {
+    requestId: request.requestId,
+    userId: request.user.id,
+    coachKind: "system-analysis",
+    route,
+    planTier: quotaState.planTier,
+    decisionSource: "ai",
+    statusCode: 200,
+    mode: "system_analysis",
+    protocolType: promptVersion,
+    providerStatus: "ok",
+    providerMs: Number.isFinite(serviceResult.diagnostics?.providerMs)
+      ? Math.round(serviceResult.diagnostics.providerMs)
+      : null,
+    rejectionStage: null,
+    rejectionReason: null,
+    validationPassed: true,
+    richnessPassed: true,
+    stepCount: parsedResponse.data.recommendedCorrections.length,
+    itemCount:
+      parsedResponse.data.invisibleFriction.length +
+      parsedResponse.data.systemWeaknesses.length +
+      parsedResponse.data.strongestPatterns.length +
+      parsedResponse.data.recommendedCorrections.length,
+    requestHash,
+    ipHash: hashValue(getClientIp(request)),
+    userAgent: request.headers["user-agent"] || "",
+    latencyMs: Number.isFinite(serviceResult.diagnostics?.totalMs)
+      ? Math.round(serviceResult.diagnostics.totalMs)
+      : Date.now() - startedAt,
+  });
+  return reply.code(200).send(parsedResponse.data);
 }
 
 async function handleSessionGuidanceRoute({ app, request, reply }) {
