@@ -59,6 +59,18 @@ function reviewFixture({ selected = false, unsupported = true, confirmation = fa
   };
 }
 
+function applicationPreviewFixture() {
+  return {
+    ok: true,
+    selectedItems: [{ id: VALID_ITEM_ID, label: "Réduire la durée", description: "Réduire à 30 min." }],
+    notAppliedItems: [{ id: "occurrence:1:occ_focus:protect", label: "Protéger ce bloc" }],
+    summary: {
+      message: "1 correction prête à appliquer après confirmation.",
+      willNotChange: "Les propositions non sélectionnées, à revoir ou non prises en charge ne seront pas modifiées.",
+    },
+  };
+}
+
 describe("SystemAnalysisCorrectionReview", () => {
   it("renders compact correction review with honest non-mutation copy", () => {
     const html = renderToStaticMarkup(<SystemAnalysisCorrectionReview review={reviewFixture()} />);
@@ -95,13 +107,52 @@ describe("SystemAnalysisCorrectionReview", () => {
 
   it("renders a local confirmation placeholder without applying corrections", () => {
     const html = renderToStaticMarkup(
-      <SystemAnalysisCorrectionReview review={reviewFixture({ selected: true })} confirmationOpen />
+      <SystemAnalysisCorrectionReview
+        review={reviewFixture({ selected: true })}
+        applicationPreview={applicationPreviewFixture()}
+        confirmationOpen
+      />
     );
 
     expect(html).toContain("Prochaine étape : validation finale");
-    expect(html).toContain("1 correction prête pour la validation finale.");
+    expect(html).toContain("1 correction prête à appliquer après confirmation.");
+    expect(html).toContain("Appliquer les corrections");
+    expect(html).toContain("Les propositions non sélectionnées");
     expect(html).toContain("Aucune correction n’a encore été appliquée.");
     expect(html).not.toContain("applyOccurrenceRepair");
+  });
+
+  it("renders successful and failed application summaries without implying hidden mutation", () => {
+    const successHtml = renderToStaticMarkup(
+      <SystemAnalysisCorrectionReview
+        review={reviewFixture({ selected: true })}
+        applicationPreview={applicationPreviewFixture()}
+        applicationResult={{
+          status: "success",
+          result: {
+            summary: { message: "1 correction appliquée." },
+            appliedItems: [{ id: VALID_ITEM_ID, label: "Réduire la durée", description: "Réduire à 30 min." }],
+          },
+        }}
+        confirmationOpen
+      />
+    );
+    const errorHtml = renderToStaticMarkup(
+      <SystemAnalysisCorrectionReview
+        review={reviewFixture({ selected: true })}
+        applicationPreview={applicationPreviewFixture()}
+        applicationResult={{
+          status: "error",
+          message: "Rien n’a été modifié.",
+        }}
+        confirmationOpen
+      />
+    );
+
+    expect(successHtml).toContain("Corrections appliquées");
+    expect(successHtml).toContain("1 correction appliquée.");
+    expect(errorHtml).toContain("Les corrections n’ont pas pu être appliquées proprement.");
+    expect(errorHtml).toContain("Rien n’a été modifié.");
   });
 
   it("renders nothing without review items", () => {

@@ -996,7 +996,7 @@ export default function App() {
           }}
         />
       ) : tab === "adjust" ? (
-        <Adjust data={data} onAdjustAction={handleAdjustAction} />
+        <Adjust data={data} setData={setData} onAdjustAction={handleAdjustAction} />
       ) : tab === "objectives" ? (
         <Objectives
           data={data}

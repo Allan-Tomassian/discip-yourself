@@ -692,6 +692,22 @@
   line-height: 1.3;
 }
 
+.systemAnalysisCorrectionReview__confirmation .CommandCTA {
+  width: fit-content;
+  min-height: 30px;
+  padding-inline: 10px;
+  font-size: 11px;
+}
+
+.systemAnalysisCorrectionReview__confirmation .CommandCTA:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.systemAnalysisCorrectionReview__confirmationNote {
+  padding-top: 2px;
+}
+
 .systemAnalysisCorrectionReview__confirmation ul {
   display: grid;
   gap: 3px;
@@ -700,6 +716,29 @@
   color: var(--command-text);
   font-size: 11px;
   line-height: 1.3;
+}
+
+.systemAnalysisCorrectionReview__applicationResult {
+  display: grid;
+  gap: 5px;
+  margin-top: 2px;
+  padding: 8px;
+  border: 1px solid var(--command-border);
+  border-radius: 12px;
+}
+
+.systemAnalysisCorrectionReview__applicationResult--success {
+  border-color: color-mix(in srgb, var(--command-execution) 28%, var(--command-border));
+  background: color-mix(in srgb, var(--command-execution) 8%, transparent);
+}
+
+.systemAnalysisCorrectionReview__applicationResult--error {
+  border-color: color-mix(in srgb, var(--command-attention) 30%, var(--command-border));
+  background: color-mix(in srgb, var(--command-attention) 8%, transparent);
+}
+
+.systemAnalysisCorrectionReview__applicationResult--error strong {
+  color: color-mix(in srgb, var(--command-attention) 76%, #ffffff);
 }
 
 @media (prefers-reduced-motion: reduce) {

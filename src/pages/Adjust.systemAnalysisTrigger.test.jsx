@@ -59,6 +59,8 @@ describe("Adjust system analysis trigger contract", () => {
     expect(source).toContain("SystemAnalysisResultPreview");
     expect(source).toContain("SystemAnalysisCorrectionReview");
     expect(source).toContain("buildSystemAnalysisCorrectionReview");
+    expect(source).toContain("buildSystemAnalysisApplicationPreview");
+    expect(source).toContain("applySystemAnalysisSelectedCorrections");
     expect(source).toContain("useAuth");
     expect(source).toContain("systemAnalysisEligibility?.eligible");
     expect(source).toContain('status: "loading"');
@@ -68,31 +70,46 @@ describe("Adjust system analysis trigger contract", () => {
     expect(source).toContain("SYSTEM_ANALYSIS_INELIGIBLE_MESSAGE");
     expect(source).toContain("showSystemAnalysisReview");
     expect(source).toContain("selectedSystemAnalysisCorrectionIds");
+    expect(source).toContain("preparedSystemAnalysisApplicationPreview");
+    expect(source).toContain("systemAnalysisApplicationState");
     expect(ineligibleBranchIndex).toBeGreaterThan(-1);
     expect(requestIndex).toBeGreaterThan(-1);
     expect(ineligibleBranchIndex).toBeLessThan(requestIndex);
   });
 
-  it("does not import repair or planning mutation helpers", () => {
+  it("keeps PlanningRepairModel behind the system-analysis apply helper", () => {
     const source = readSrc("pages/Adjust.jsx");
 
     expect(source).not.toContain("PlanningRepairModel");
     expect(source).not.toContain("applyOccurrenceRepair");
     expect(source).not.toContain("applyReduceLoadPlan");
+    expect(source).toContain("applySystemAnalysisSelectedCorrections");
   });
 
-  it("keeps correction review local and non-mutating", () => {
+  it("requires final confirmation before the application helper commits data", () => {
     const source = readSrc("pages/Adjust.jsx");
     const previewIndex = source.indexOf("<SystemAnalysisResultPreview");
     const reviewIndex = source.indexOf("<SystemAnalysisCorrectionReview");
+    const prepareIndex = source.indexOf("handleConfirmSystemAnalysisCorrections");
+    const applyIndex = source.indexOf("handleApplySystemAnalysisCorrections");
+    const setDataIndex = source.indexOf("setData(result.nextState)");
+    const applyHandlerSource = source.slice(applyIndex, source.indexOf("const systemAnalysisHeaderAction"));
 
     expect(source).toContain("handleOpenSystemAnalysisCorrections");
     expect(source).toContain("handleToggleSystemAnalysisCorrection");
     expect(source).toContain("handleConfirmSystemAnalysisCorrections");
+    expect(source).toContain("handleApplySystemAnalysisCorrections");
+    expect(source).toContain("setPreparedSystemAnalysisApplicationPreview");
     expect(source).toContain("setSystemAnalysisConfirmationOpen(true)");
+    expect(source).toContain("setData(result.nextState)");
+    expect(source).toContain("onApplySelectedCorrections={handleApplySystemAnalysisCorrections}");
     expect(previewIndex).toBeGreaterThan(-1);
     expect(reviewIndex).toBeGreaterThan(-1);
     expect(previewIndex).toBeLessThan(reviewIndex);
+    expect(prepareIndex).toBeGreaterThan(-1);
+    expect(applyIndex).toBeGreaterThan(prepareIndex);
+    expect(setDataIndex).toBeGreaterThan(applyIndex);
+    expect(applyHandlerSource).not.toContain("requestAiSystemAnalysis");
   });
 
   it("renders the running header state while a request is in progress", () => {

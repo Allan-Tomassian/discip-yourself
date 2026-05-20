@@ -102,12 +102,22 @@ function CorrectionItem({ item, onSelectChange }) {
 
 export default function SystemAnalysisCorrectionReview({
   review,
+  applicationPreview,
+  applicationResult,
   onSelectChange,
   onConfirmSelection,
+  onApplySelectedCorrections,
   confirmationOpen = false,
 }) {
   if (!review || !safeArray(review.items).length) return null;
   const selectedCount = Number(review.validSelectedCount || 0);
+  const previewItems = safeArray(applicationPreview?.selectedItems);
+  const previewSummary = applicationPreview?.summary || {};
+  const applyStatus = safeString(applicationResult?.status);
+  const applySucceeded = applyStatus === "success";
+  const applyFailed = applyStatus === "error";
+  const applyPending = applyStatus === "applying";
+  const appliedItems = safeArray(applicationResult?.result?.appliedItems);
   return (
     <CommandCard
       tone="ai"
@@ -159,15 +169,46 @@ export default function SystemAnalysisCorrectionReview({
         {confirmationOpen ? (
           <div className="systemAnalysisCorrectionReview__confirmation" role="status">
             <strong>Prochaine étape : validation finale</strong>
-            <p>{review.confirmationSummary?.description}</p>
-            {safeArray(review.confirmationSummary?.items).length ? (
+            <p>{previewSummary.message || review.confirmationSummary?.description}</p>
+            {previewItems.length ? (
               <ul>
-                {review.confirmationSummary.items.map((item) => (
+                {previewItems.map((item) => (
                   <li key={item.id}>{item.label} · {item.description}</li>
                 ))}
               </ul>
             ) : null}
-            <small>Aucune correction n’a encore été appliquée.</small>
+            <p className="systemAnalysisCorrectionReview__confirmationNote">
+              {previewSummary.willNotChange || "Les propositions non sélectionnées, à revoir ou non prises en charge ne seront pas modifiées."}
+            </p>
+            {!applySucceeded ? <small>Aucune correction n’a encore été appliquée.</small> : null}
+            <CommandCTA
+              tone="execution"
+              variant="secondary"
+              disabled={!applicationPreview?.ok || applyPending || applySucceeded}
+              onClick={onApplySelectedCorrections}
+              data-system-analysis-apply="true"
+            >
+              {applyPending ? "Application…" : "Appliquer les corrections"}
+            </CommandCTA>
+            {applySucceeded ? (
+              <div className="systemAnalysisCorrectionReview__applicationResult systemAnalysisCorrectionReview__applicationResult--success" role="status">
+                <strong>Corrections appliquées</strong>
+                <p>{applicationResult?.result?.summary?.message || "Les corrections sélectionnées ont été appliquées."}</p>
+                {appliedItems.length ? (
+                  <ul>
+                    {appliedItems.map((item) => (
+                      <li key={item.id}>{item.label} · {item.description}</li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ) : null}
+            {applyFailed ? (
+              <div className="systemAnalysisCorrectionReview__applicationResult systemAnalysisCorrectionReview__applicationResult--error" role="alert">
+                <strong>Les corrections n’ont pas pu être appliquées proprement.</strong>
+                <p>{applicationResult?.message || "Rien n’a été modifié. Réessaie avec une sélection plus simple."}</p>
+              </div>
+            ) : null}
           </div>
         ) : null}
       </div>

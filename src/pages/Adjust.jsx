@@ -26,6 +26,10 @@ import {
 } from "../shared/ui/command";
 import { ADJUST_ACTION_IDS, buildAdjustDiagnostic } from "../features/adjust/adjustDiagnostic";
 import { buildAdjustSystemSignalPreview } from "../features/adjust/adjustSystemSignalPreviewModel";
+import {
+  applySystemAnalysisSelectedCorrections,
+  buildSystemAnalysisApplicationPreview,
+} from "../features/system-analysis/systemAnalysisApplyModel";
 import { buildSystemAnalysisEligibility } from "../features/system-analysis/systemAnalysisEligibility";
 import { buildSystemAnalysisEntryModel } from "../features/system-analysis/systemAnalysisEntryModel";
 import { buildSystemAnalysisCorrectionReview } from "../features/system-analysis/systemAnalysisCorrectionReviewModel";
@@ -127,6 +131,15 @@ function createInitialSystemAnalysisState() {
     message: "",
     missingRequirements: [],
     requestId: null,
+  };
+}
+
+function createInitialSystemAnalysisApplicationState() {
+  return {
+    status: "idle",
+    result: null,
+    errorCode: "",
+    message: "",
   };
 }
 
@@ -252,6 +265,7 @@ function ActionButton({ action, onAction }) {
 
 export default function Adjust({
   data,
+  setData,
   onAdjustAction,
   onSystemAnalysisEntry,
   systemAnalysisAvailabilityState = "ready",
@@ -261,6 +275,8 @@ export default function Adjust({
   const [showSystemAnalysisReview, setShowSystemAnalysisReview] = useState(false);
   const [selectedSystemAnalysisCorrectionIds, setSelectedSystemAnalysisCorrectionIds] = useState([]);
   const [systemAnalysisConfirmationOpen, setSystemAnalysisConfirmationOpen] = useState(false);
+  const [preparedSystemAnalysisApplicationPreview, setPreparedSystemAnalysisApplicationPreview] = useState(null);
+  const [systemAnalysisApplicationState, setSystemAnalysisApplicationState] = useState(createInitialSystemAnalysisApplicationState);
   const systemAnalysisAbortRef = useRef(null);
   const safeData = useMemo(() => (data && typeof data === "object" ? data : {}), [data]);
   const activeDateKey =
@@ -329,6 +345,15 @@ export default function Adjust({
       systemAnalysisSnapshot,
     ]
   );
+  const liveSystemAnalysisApplicationPreview = useMemo(
+    () => systemAnalysisCorrectionReview
+      ? buildSystemAnalysisApplicationPreview({ review: systemAnalysisCorrectionReview })
+      : null,
+    [systemAnalysisCorrectionReview]
+  );
+  const systemAnalysisApplicationPreview = systemAnalysisConfirmationOpen
+    ? preparedSystemAnalysisApplicationPreview || liveSystemAnalysisApplicationPreview
+    : liveSystemAnalysisApplicationPreview;
 
   useEffect(() => () => {
     systemAnalysisAbortRef.current?.abort();
@@ -347,6 +372,8 @@ export default function Adjust({
       setShowSystemAnalysisReview(false);
       setSelectedSystemAnalysisCorrectionIds([]);
       setSystemAnalysisConfirmationOpen(false);
+      setPreparedSystemAnalysisApplicationPreview(null);
+      setSystemAnalysisApplicationState(createInitialSystemAnalysisApplicationState());
       setSystemAnalysisRequestState({
         status: "error",
         result: null,
@@ -362,6 +389,8 @@ export default function Adjust({
       setShowSystemAnalysisReview(false);
       setSelectedSystemAnalysisCorrectionIds([]);
       setSystemAnalysisConfirmationOpen(false);
+      setPreparedSystemAnalysisApplicationPreview(null);
+      setSystemAnalysisApplicationState(createInitialSystemAnalysisApplicationState());
       setSystemAnalysisRequestState({
         status: "ineligible",
         result: null,
@@ -381,6 +410,8 @@ export default function Adjust({
     setShowSystemAnalysisReview(false);
     setSelectedSystemAnalysisCorrectionIds([]);
     setSystemAnalysisConfirmationOpen(false);
+    setPreparedSystemAnalysisApplicationPreview(null);
+    setSystemAnalysisApplicationState(createInitialSystemAnalysisApplicationState());
     setSystemAnalysisRequestState({
       status: "loading",
       result: null,
@@ -407,6 +438,8 @@ export default function Adjust({
       setShowSystemAnalysisReview(false);
       setSelectedSystemAnalysisCorrectionIds([]);
       setSystemAnalysisConfirmationOpen(false);
+      setPreparedSystemAnalysisApplicationPreview(null);
+      setSystemAnalysisApplicationState(createInitialSystemAnalysisApplicationState());
       setSystemAnalysisRequestState({
         status: "success",
         result: result.result,
@@ -421,6 +454,8 @@ export default function Adjust({
     setShowSystemAnalysisReview(false);
     setSelectedSystemAnalysisCorrectionIds([]);
     setSystemAnalysisConfirmationOpen(false);
+    setPreparedSystemAnalysisApplicationPreview(null);
+    setSystemAnalysisApplicationState(createInitialSystemAnalysisApplicationState());
     setSystemAnalysisRequestState({
       status: resolveSystemAnalysisStatus(result),
       result: null,
@@ -446,12 +481,16 @@ export default function Adjust({
     if (systemAnalysisRequestState.status !== "success" || !systemAnalysisRequestState.result) return;
     setShowSystemAnalysisReview(true);
     setSystemAnalysisConfirmationOpen(false);
+    setPreparedSystemAnalysisApplicationPreview(null);
+    setSystemAnalysisApplicationState(createInitialSystemAnalysisApplicationState());
   }, [systemAnalysisRequestState.result, systemAnalysisRequestState.status]);
 
   const handleToggleSystemAnalysisCorrection = useCallback((id, selected) => {
     const safeId = typeof id === "string" ? id.trim() : "";
     if (!safeId) return;
     setSystemAnalysisConfirmationOpen(false);
+    setPreparedSystemAnalysisApplicationPreview(null);
+    setSystemAnalysisApplicationState(createInitialSystemAnalysisApplicationState());
     setSelectedSystemAnalysisCorrectionIds((current) => {
       const existing = new Set(Array.isArray(current) ? current : []);
       if (selected) existing.add(safeId);
@@ -462,8 +501,56 @@ export default function Adjust({
 
   const handleConfirmSystemAnalysisCorrections = useCallback(() => {
     if (!systemAnalysisCorrectionReview?.hasValidSelection) return;
+    setPreparedSystemAnalysisApplicationPreview(
+      buildSystemAnalysisApplicationPreview({ review: systemAnalysisCorrectionReview })
+    );
+    setSystemAnalysisApplicationState(createInitialSystemAnalysisApplicationState());
     setSystemAnalysisConfirmationOpen(true);
-  }, [systemAnalysisCorrectionReview?.hasValidSelection]);
+  }, [systemAnalysisCorrectionReview]);
+
+  const handleApplySystemAnalysisCorrections = useCallback(() => {
+    if (!systemAnalysisCorrectionReview?.hasValidSelection) return;
+    if (typeof setData !== "function") {
+      setSystemAnalysisApplicationState({
+        status: "error",
+        result: null,
+        errorCode: "SET_DATA_MISSING",
+        message: "Les corrections n’ont pas pu être appliquées dans cette vue.",
+      });
+      return;
+    }
+
+    setSystemAnalysisApplicationState({
+      status: "applying",
+      result: null,
+      errorCode: "",
+      message: "",
+    });
+    const result = applySystemAnalysisSelectedCorrections({
+      state: safeData,
+      review: systemAnalysisCorrectionReview,
+      now: buildSystemAnalysisReferenceNow(activeDateKey),
+      invariantOptions: { todayKey: activeDateKey },
+    });
+
+    if (!result.ok) {
+      setSystemAnalysisApplicationState({
+        status: "error",
+        result,
+        errorCode: result.errorCode || "UNKNOWN",
+        message: result.summary?.message || "Rien n’a été modifié.",
+      });
+      return;
+    }
+
+    setData(result.nextState);
+    setSystemAnalysisApplicationState({
+      status: "success",
+      result,
+      errorCode: "",
+      message: "",
+    });
+  }, [activeDateKey, safeData, setData, systemAnalysisCorrectionReview]);
 
   const systemAnalysisHeaderAction = (
     <SystemAnalysisEntryButton
@@ -571,8 +658,11 @@ export default function Adjust({
         {showSystemAnalysisReview && systemAnalysisCorrectionReview ? (
           <SystemAnalysisCorrectionReview
             review={systemAnalysisCorrectionReview}
+            applicationPreview={systemAnalysisApplicationPreview}
+            applicationResult={systemAnalysisApplicationState}
             onSelectChange={handleToggleSystemAnalysisCorrection}
             onConfirmSelection={handleConfirmSystemAnalysisCorrections}
+            onApplySelectedCorrections={handleApplySystemAnalysisCorrections}
             confirmationOpen={systemAnalysisConfirmationOpen}
           />
         ) : null}

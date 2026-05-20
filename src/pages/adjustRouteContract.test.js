@@ -15,7 +15,7 @@ describe("Ajuster route contract", () => {
 
     expect(app).toContain('import Adjust from "./pages/Adjust";');
     expect(app).toContain('tab === "adjust"');
-    expect(app).toContain("<Adjust data={data} onAdjustAction={handleAdjustAction} />");
+    expect(app).toContain("<Adjust data={data} setData={setData} onAdjustAction={handleAdjustAction} />");
     expect(app).toContain('new Set(["today", "objectives", "timeline", "adjust", "coach"])');
   });
 
