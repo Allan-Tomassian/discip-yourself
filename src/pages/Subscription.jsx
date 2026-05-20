@@ -3,6 +3,7 @@ import { getPlanLimits } from "../logic/entitlements";
 import { LABELS, MARKETING_COPY, UI_COPY } from "../ui/labels";
 import {
   AppActionRow,
+  AppBackButton,
   AppCard,
   AppScreen,
   FeedbackMessage,
@@ -14,6 +15,7 @@ import {
 export default function Subscription({
   data,
   entitlementAccess = null,
+  onBack,
   onOpenPaywall,
   onRefreshEntitlement,
   onRestorePurchases,
@@ -62,6 +64,7 @@ export default function Subscription({
       pageId="billing"
       headerTitle="Abonnement"
       headerSubtitle="Plan, achats et accès Premium"
+      headerRight={typeof onBack === "function" ? <AppBackButton onClick={onBack} /> : null}
     >
       <section className="mainPageSection">
         <SectionHeader

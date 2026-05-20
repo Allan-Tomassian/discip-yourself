@@ -51,7 +51,7 @@ import DiagnosticOverlay from "./components/DiagnosticOverlay";
 import { ensureWindowFromScheduleRules, validateOccurrences } from "./logic/occurrencePlanner";
 import { resolveExecutableOccurrence } from "./logic/sessionResolver";
 import PaywallModal from "./components/PaywallModal";
-import { useAppNavigation } from "./hooks/useAppNavigation";
+import { getSafeBackTarget, useAppNavigation } from "./hooks/useAppNavigation";
 import { useEntitlementsPaywall } from "./hooks/useEntitlementsPaywall";
 import { useRemindersLoop } from "./hooks/useRemindersLoop";
 import { useSessionRuntimeLoop } from "./hooks/useSessionRuntimeLoop";
@@ -130,6 +130,7 @@ export default function App() {
     setSessionCategoryId,
     sessionDateKey,
     sessionOccurrenceId,
+    lastMainTab,
     coachAliasRequest,
     consumeCoachAliasRequest,
   } = useAppNavigation({ safeData, setData });
@@ -188,6 +189,9 @@ export default function App() {
   const firstRunDone = isFirstRunDone(safeData.ui);
   const showPlanStep = Boolean(safeData.ui?.showPlanStep);
   const bottomRailRef = useRef(null);
+  const handleSecondaryBack = useCallback(() => {
+    setTab(getSafeBackTarget({ currentTab: tab, lastMainTab }));
+  }, [lastMainTab, setTab, tab]);
   const pendingMainTabScrollResetRef = useRef(null);
 
   useEffect(() => {
@@ -964,6 +968,10 @@ export default function App() {
         <CategoryDetailView
           data={data}
           categoryId={detailCategoryId}
+          onBack={() => {
+            setCategoryDetailId(null);
+            setTab("objectives");
+          }}
           onOpenManage={() => {
             if (!detailCategoryId) return;
             setLibraryCategoryId(detailCategoryId);
@@ -1103,35 +1111,36 @@ export default function App() {
           }}
         />
       ) : tab === "journal" ? (
-        <Journal data={data} setData={setData} />
+        <Journal data={data} setData={setData} onBack={handleSecondaryBack} />
       ) : tab === "micro-actions" ? (
-        <MicroActions data={data} setData={setData} isPremiumPlan={isPremiumPlan} />
+        <MicroActions data={data} setData={setData} isPremiumPlan={isPremiumPlan} onBack={handleSecondaryBack} />
       ) : tab === "history" ? (
-        <History data={data} />
+        <History data={data} onBack={handleSecondaryBack} />
       ) : tab === "account" ? (
-        <Account data={data} />
+        <Account data={data} onBack={handleSecondaryBack} />
       ) : tab === "billing" ? (
         <Subscription
           data={data}
           entitlementAccess={entitlementAccess}
+          onBack={handleSecondaryBack}
           onOpenPaywall={openPaywall}
           onRefreshEntitlement={ensureResolved}
           onRestorePurchases={handleRestorePurchases}
         />
       ) : tab === "data" ? (
-        <DataPage data={data} setData={setData} onOpenPaywall={openPaywall} />
+        <DataPage data={data} setData={setData} onOpenPaywall={openPaywall} onBack={handleSecondaryBack} />
       ) : tab === "privacy" ? (
-        <Privacy data={data} onOpenSupport={() => setTab("support")} />
+        <Privacy data={data} onBack={handleSecondaryBack} onOpenSupport={() => setTab("support")} />
       ) : tab === "legal" ? (
-        <Legal data={data} onOpenSupport={() => setTab("support")} />
+        <Legal data={data} onBack={handleSecondaryBack} onOpenSupport={() => setTab("support")} />
       ) : tab === "support" ? (
-        <Support data={data} />
+        <Support data={data} onBack={handleSecondaryBack} />
       ) : tab === "faq" ? (
-        <Faq data={data} setTab={setTab} />
+        <Faq data={data} setTab={setTab} onBack={handleSecondaryBack} />
       ) : tab === "settings" ? (
-        <Preferences data={data} setData={setData} />
+        <Preferences data={data} setData={setData} onBack={handleSecondaryBack} onNavigate={setTab} />
       ) : (
-        <Preferences data={data} setData={setData} />
+        <Preferences data={data} setData={setData} onBack={handleSecondaryBack} onNavigate={setTab} />
       )}
       {activeReminder ? (
         <AppDialog

@@ -161,6 +161,20 @@ export function GhostButton({ className = "", withSound = true, ...props }) {
   );
 }
 
+export function AppBackButton({ label = "Retour", className = "", children = null, ...props }) {
+  const content = children || `← ${label}`;
+  return (
+    <GhostButton
+      type="button"
+      size="sm"
+      className={cx("btnBackCompact", "backBtn", className)}
+      {...props}
+    >
+      {content}
+    </GhostButton>
+  );
+}
+
 export function AppTextButton(props) {
   return <GateTextButton {...props} />;
 }

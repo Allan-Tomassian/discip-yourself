@@ -10,6 +10,7 @@ import {
 import { todayLocalKey } from "../utils/dateKey";
 import {
   AppActionRow,
+  AppBackButton,
   AppCard,
   AppInput,
   AppInlineMetaCard,
@@ -76,7 +77,7 @@ function buildHistoryItems({ noteHistoryStorageKey, noteKeyPrefix, noteMetaKeyPr
   });
 }
 
-export default function Journal({ data, setData }) {
+export default function Journal({ data, setData, onBack }) {
   const safeData = data && typeof data === "object" ? data : {};
   const categories = useMemo(() => getVisibleCategories(safeData.categories), [safeData.categories]);
   const activeCategoryId = useMemo(
@@ -193,6 +194,7 @@ export default function Journal({ data, setData }) {
       pageId="journal"
       headerTitle={SURFACE_LABELS.journal}
       headerSubtitle="Capture le contexte du jour sans repasser par Aujourd'hui."
+      headerRight={typeof onBack === "function" ? <AppBackButton onClick={onBack} /> : null}
     >
       <section className="mainPageSection">
         <SectionHeader title="Édition" subtitle="Écriture rapide, contexte et niveau d’énergie." />

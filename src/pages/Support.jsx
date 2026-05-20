@@ -1,9 +1,9 @@
 import React from "react";
 import { SURFACE_LABELS, UI_COPY } from "../ui/labels";
-import { AppInlineMetaCard, AppScreen, SectionHeader } from "../shared/ui/app";
+import { AppBackButton, AppInlineMetaCard, AppScreen, SectionHeader } from "../shared/ui/app";
 import pkg from "../../package.json";
 
-export default function Support({ data }) {
+export default function Support({ data, onBack }) {
   const safeData = data && typeof data === "object" ? data : {};
   const version = pkg?.version || "0.0.0";
 
@@ -13,6 +13,7 @@ export default function Support({ data }) {
       pageId="support"
       headerTitle="Support"
       headerSubtitle="Aide, contact et réponses rapides."
+      headerRight={typeof onBack === "function" ? <AppBackButton onClick={onBack} /> : null}
     >
       <section className="mainPageSection">
         <SectionHeader title="Contact" subtitle="Réponse par email." />

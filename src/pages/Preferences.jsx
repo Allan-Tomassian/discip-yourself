@@ -5,6 +5,7 @@ import { isClickSoundEnabled, setClickSoundEnabled } from "../shared/ui/sound/us
 import { MARKETING_COPY, PLACEHOLDER_COPY, SURFACE_LABELS } from "../ui/labels";
 import {
   AppActionRow,
+  AppBackButton,
   AppCard,
   AppScreen,
   AppSettingRow,
@@ -16,7 +17,7 @@ import {
 } from "../shared/ui/app";
 import "../features/preferences/preferencesGate.css";
 
-export default function Preferences({ data, setData }) {
+export default function Preferences({ data, setData, onBack, onNavigate }) {
   const safeData = data && typeof data === "object" ? data : {};
   const profile = safeData?.profile || {};
 
@@ -42,9 +43,8 @@ export default function Preferences({ data, setData }) {
   const cleanWhy = (whyDraft || "").trim();
   const whyChanged = cleanWhy !== (profile.whyText || "").trim();
 
-  function navigateTo(path) {
-    if (typeof window === "undefined") return;
-    window.location.assign(path);
+  function navigateTo(tab) {
+    if (typeof onNavigate === "function") onNavigate(tab);
   }
 
   function toggleSound() {
@@ -59,6 +59,7 @@ export default function Preferences({ data, setData }) {
       pageId="settings"
       headerTitle={<span data-tour-id="settings-title">Réglages</span>}
       headerSubtitle="App, apparence et préférences"
+      headerRight={typeof onBack === "function" ? <AppBackButton onClick={onBack} /> : null}
     >
       <section className="mainPageSection">
         <SectionHeader
@@ -218,7 +219,7 @@ export default function Preferences({ data, setData }) {
             <GhostButton
               type="button"
               size="sm"
-              onClick={() => navigateTo("/subscription")}
+              onClick={() => navigateTo("billing")}
             >
               Ouvrir {SURFACE_LABELS.subscription.toLowerCase()}
             </GhostButton>
@@ -236,7 +237,7 @@ export default function Preferences({ data, setData }) {
             <GhostButton
               type="button"
               size="sm"
-              onClick={() => navigateTo("/data")}
+              onClick={() => navigateTo("data")}
             >
               Ouvrir les données
             </GhostButton>
@@ -254,21 +255,21 @@ export default function Preferences({ data, setData }) {
             <GhostButton
               type="button"
               size="sm"
-              onClick={() => navigateTo("/privacy")}
+              onClick={() => navigateTo("privacy")}
             >
               Confidentialité
             </GhostButton>
             <GhostButton
               type="button"
               size="sm"
-              onClick={() => navigateTo("/terms")}
+              onClick={() => navigateTo("legal")}
             >
               Conditions
             </GhostButton>
             <GhostButton
               type="button"
               size="sm"
-              onClick={() => navigateTo("/support")}
+              onClick={() => navigateTo("support")}
             >
               Support
             </GhostButton>

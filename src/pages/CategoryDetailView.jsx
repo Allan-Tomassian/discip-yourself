@@ -2,10 +2,10 @@ import React from "react";
 import { resolveGoalType } from "../domain/goalType";
 import { isProcessLinkedToOutcome } from "../logic/linking";
 import { LABELS } from "../ui/labels";
-import { AppCard, AppInlineMetaCard, AppScreen, GhostButton, SectionHeader, StatusBadge } from "../shared/ui/app";
+import { AppBackButton, AppCard, AppInlineMetaCard, AppScreen, GhostButton, SectionHeader, StatusBadge } from "../shared/ui/app";
 import "../features/library/library.css";
 
-export default function CategoryDetailView({ data, categoryId, onOpenManage }) {
+export default function CategoryDetailView({ data, categoryId, onBack, onOpenManage }) {
   const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
@@ -39,6 +39,7 @@ export default function CategoryDetailView({ data, categoryId, onOpenManage }) {
       <AppScreen
         headerTitle="Catégorie"
         headerSubtitle="Introuvable"
+        headerRight={typeof onBack === "function" ? <AppBackButton label="Objectifs" onClick={onBack} /> : null}
       >
         <section className="mainPageSection">
           <SectionHeader title="Catégorie introuvable" subtitle="Cette catégorie n’existe plus." />
@@ -56,11 +57,14 @@ export default function CategoryDetailView({ data, categoryId, onOpenManage }) {
       headerTitle={category.name || "Catégorie"}
       headerSubtitle="Vue rattachée à Objectifs"
       headerRight={
-        typeof onOpenManage === "function" ? (
-          <GhostButton type="button" size="sm" onClick={onOpenManage}>
-            Gérer
-          </GhostButton>
-        ) : null
+        <div className="row gap8 alignCenter wrap">
+          {typeof onBack === "function" ? <AppBackButton label="Objectifs" onClick={onBack} /> : null}
+          {typeof onOpenManage === "function" ? (
+            <GhostButton type="button" size="sm" onClick={onOpenManage}>
+              Gérer
+            </GhostButton>
+          ) : null}
+        </div>
       }
     >
       <section className="mainPageSection">

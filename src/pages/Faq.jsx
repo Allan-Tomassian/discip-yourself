@@ -1,6 +1,6 @@
 import React from "react";
 import { UI_COPY } from "../ui/labels";
-import { AppActionRow, AppInlineMetaCard, AppScreen, GhostButton, SectionHeader } from "../shared/ui/app";
+import { AppActionRow, AppBackButton, AppInlineMetaCard, AppScreen, GhostButton, SectionHeader } from "../shared/ui/app";
 
 const QUESTIONS = [
   {
@@ -29,7 +29,7 @@ const QUESTIONS = [
   },
 ];
 
-export default function Faq({ data, setTab }) {
+export default function Faq({ data, setTab, onBack }) {
   const safeData = data && typeof data === "object" ? data : {};
 
   return (
@@ -38,6 +38,7 @@ export default function Faq({ data, setTab }) {
       pageId="faq"
       headerTitle="FAQ"
       headerSubtitle="Réponses rapides aux questions fréquentes."
+      headerRight={typeof onBack === "function" ? <AppBackButton onClick={onBack} /> : null}
     >
       <section className="mainPageSection">
         <SectionHeader title="Questions fréquentes" subtitle="Les réponses utiles les plus courantes." />

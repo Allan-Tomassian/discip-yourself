@@ -22,7 +22,7 @@ import { ensureTotemV1 } from "../logic/totemV1";
 import { emitTotemEvent } from "../ui/totem/totemEvents";
 import { getVisibleCategories } from "../domain/categoryVisibility";
 import { todayLocalKey } from "../utils/dateKey";
-import { AppScreen, SectionHeader } from "../shared/ui/app";
+import { AppBackButton, AppScreen, SectionHeader } from "../shared/ui/app";
 
 function normalizeMicroItemForCompare(item) {
   if (!item || typeof item !== "object") return null;
@@ -77,7 +77,7 @@ function isSameTotemV1(a, b) {
   return JSON.stringify(ensureTotemV1(a)) === JSON.stringify(ensureTotemV1(b));
 }
 
-export default function MicroActions({ data, setData, isPremiumPlan = false }) {
+export default function MicroActions({ data, setData, isPremiumPlan = false, onBack }) {
   const safeData = data && typeof data === "object" ? data : {};
   const categories = useMemo(() => getVisibleCategories(safeData.categories), [safeData.categories]);
   const todayKey = todayLocalKey();
@@ -352,6 +352,7 @@ export default function MicroActions({ data, setData, isPremiumPlan = false }) {
       pageId="micro-actions"
       headerTitle="Micro-actions"
       headerSubtitle="Petites actions rapides pour relancer l’élan du jour."
+      headerRight={typeof onBack === "function" ? <AppBackButton onClick={onBack} /> : null}
     >
       <div className="mainPageStack microActionsPage">
         <section className="mainPageSection">

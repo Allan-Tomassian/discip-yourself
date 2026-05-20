@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { AppCard, AppInlineMetaCard, AppScreen, EmptyState, SectionHeader } from "../shared/ui/app";
+import { AppBackButton, AppCard, AppInlineMetaCard, AppScreen, EmptyState, SectionHeader } from "../shared/ui/app";
 
 function sortHistory(left, right) {
   const leftTs = Date.parse(left?.endAt || left?.startAt || "") || 0;
@@ -37,7 +37,7 @@ function resolveStateLabel(entry) {
   return entry?.state === "in_progress" ? "En cours" : "Clôturée";
 }
 
-export default function History({ data }) {
+export default function History({ data, onBack }) {
   const safeData = data && typeof data === "object" ? data : {};
   const categories = Array.isArray(safeData.categories) ? safeData.categories : [];
   const goals = Array.isArray(safeData.goals) ? safeData.goals : [];
@@ -92,6 +92,7 @@ export default function History({ data }) {
       pageId="history"
       headerTitle="Historique"
       headerSubtitle="Retrouve tes sessions terminées, reportées ou bloquées."
+      headerRight={typeof onBack === "function" ? <AppBackButton onClick={onBack} /> : null}
     >
       <section className="mainPageSection">
         <SectionHeader title="Sessions" subtitle="Lecture chronologique de tes sessions récentes." />

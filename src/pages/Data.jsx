@@ -3,6 +3,7 @@ import { isPremium } from "../logic/entitlements";
 import { STATUS_COPY } from "../ui/labels";
 import {
   AppActionRow,
+  AppBackButton,
   AppCard,
   AppScreen,
   FeedbackMessage,
@@ -27,7 +28,7 @@ function downloadJsonFile(filename, payload) {
   }
 }
 
-export default function Data({ data, setData, onOpenPaywall }) {
+export default function Data({ data, setData, onOpenPaywall, onBack }) {
   const safeData = data && typeof data === "object" ? data : {};
   const premium = isPremium(safeData);
   const importInputRef = useRef(null);
@@ -61,6 +62,7 @@ export default function Data({ data, setData, onOpenPaywall }) {
       pageId="data"
       headerTitle="Données"
       headerSubtitle="Exporter ou réimporter l’état complet de l’app."
+      headerRight={typeof onBack === "function" ? <AppBackButton onClick={onBack} /> : null}
     >
       <section className="mainPageSection">
         <SectionHeader title="Sauvegarde" subtitle="Exporte ou importe l’état complet de l’app." />

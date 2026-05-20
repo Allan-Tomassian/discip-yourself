@@ -27,6 +27,20 @@ const TABS = new Set([
   "faq",
 ]);
 
+const MAIN_NAV_TABS = new Set(["today", "objectives", "timeline", "coach", "adjust"]);
+
+function isMainNavTab(tab) {
+  return MAIN_NAV_TABS.has(normalizeTab(tab));
+}
+
+export function getSafeBackTarget({ currentTab = "", lastMainTab = "" } = {}) {
+  const normalizedCurrent = normalizeTab(currentTab);
+  const normalizedLastMain = normalizeTab(lastMainTab);
+  if (isMainNavTab(normalizedLastMain)) return normalizedLastMain;
+  if (isMainNavTab(normalizedCurrent)) return normalizedCurrent;
+  return "today";
+}
+
 export function normalizeTab(t) {
   if (t === "tools") return "adjust";
   if (t === "pilotage") return "adjust";
@@ -100,6 +114,7 @@ function buildPathForTab({
 export function parseNavigationState(pathname, search, historyState = null) {
   const initialPath = typeof pathname === "string" ? pathname : "/";
   const initialSearch = new URLSearchParams(search || "");
+  const safeHistoryState = historyState && typeof historyState === "object" ? historyState : {};
   const pathParts = initialPath.split("/").filter(Boolean);
   const sessionOccurrenceId =
     pathParts[0] === "session" && pathParts[1] ? decodeURIComponent(pathParts[1] || "") : null;
@@ -140,9 +155,13 @@ export function parseNavigationState(pathname, search, historyState = null) {
   else if (categoryProgressId) initialTab = "category-progress";
   else if (categoryDetailId) initialTab = "category-detail";
   if (coachAliasRequest) initialTab = "coach";
+  const initialLastMainTab = isMainNavTab(initialTab)
+    ? initialTab
+    : getSafeBackTarget({ lastMainTab: safeHistoryState.lastMainTab });
 
   return {
     initialTab,
+    initialLastMainTab,
     initialCategoryDetailId: categoryDetailId,
     initialCategoryProgressId: categoryProgressId,
     initialEditItemId: editItemId,
@@ -163,6 +182,7 @@ function getInitialNavigationState() {
 export function useAppNavigation({ safeData, setData }) {
   const initial = useMemo(() => getInitialNavigationState(), []);
   const [tab, _setTab] = useState(initial.initialTab);
+  const [lastMainTab, setLastMainTab] = useState(initial.initialLastMainTab);
   const [categoryDetailId, setCategoryDetailId] = useState(initial.initialCategoryDetailId);
   const [categoryProgressId, setCategoryProgressId] = useState(initial.initialCategoryProgressId);
   const [editItemId, setEditItemId] = useState(initial.initialEditItemId);
@@ -220,10 +240,16 @@ export function useAppNavigation({ safeData, setData }) {
       } else if (t === "edit-item" && opts.editItemId === null) {
         setEditItemId(null);
       }
+      const nextLastMainTab = isMainNavTab(t)
+        ? t
+        : isMainNavTab(tab)
+          ? normalizeTab(tab)
+          : getSafeBackTarget({ lastMainTab });
+      setLastMainTab(nextLastMainTab);
       _setTab(t);
       setData((prev) => ({
         ...prev,
-        ui: { ...(prev.ui || {}), lastTab: t },
+        ui: { ...(prev.ui || {}), lastTab: t, lastMainTab: nextLastMainTab },
       }));
       if (typeof window !== "undefined") {
         const nextPath = buildPathForTab({
@@ -237,7 +263,7 @@ export function useAppNavigation({ safeData, setData }) {
         });
 
         if (`${window.location.pathname}${window.location.search}` !== nextPath) {
-          const state =
+          const baseState =
             t === "session"
               ? {
                   categoryId: nextSessionCategoryId || null,
@@ -247,11 +273,22 @@ export function useAppNavigation({ safeData, setData }) {
               : opts.historyState && typeof opts.historyState === "object"
                 ? opts.historyState
                 : {};
+          const state = { ...baseState, lastMainTab: nextLastMainTab };
           window.history[opts.replace ? "replaceState" : "pushState"](state, "", nextPath);
         }
       }
     },
-    [sessionCategoryId, sessionDateKey, sessionOccurrenceId, categoryProgressId, categoryDetailId, editItemId, setData]
+    [
+      sessionCategoryId,
+      sessionDateKey,
+      sessionOccurrenceId,
+      categoryProgressId,
+      categoryDetailId,
+      editItemId,
+      lastMainTab,
+      setData,
+      tab,
+    ]
   );
 
   useEffect(() => {
@@ -315,6 +352,7 @@ export function useAppNavigation({ safeData, setData }) {
     const handlePopState = () => {
       const next = parseNavigationState(window.location.pathname, window.location.search, window.history.state);
       _setTab(next.initialTab);
+      setLastMainTab(next.initialLastMainTab);
       setCategoryDetailId(next.initialCategoryDetailId);
       setCategoryProgressId(next.initialCategoryProgressId);
       setEditItemId(next.initialEditItemId);
@@ -330,6 +368,7 @@ export function useAppNavigation({ safeData, setData }) {
   return {
     tab,
     setTab,
+    lastMainTab,
     editItemId,
     categoryDetailId,
     setCategoryDetailId,

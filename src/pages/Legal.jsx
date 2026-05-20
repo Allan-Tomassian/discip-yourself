@@ -1,8 +1,8 @@
 import React from "react";
 import { UI_COPY } from "../ui/labels";
-import { AppActionRow, AppInlineMetaCard, AppScreen, GhostButton, SectionHeader } from "../shared/ui/app";
+import { AppActionRow, AppBackButton, AppInlineMetaCard, AppScreen, GhostButton, SectionHeader } from "../shared/ui/app";
 
-export default function Legal({ data, onOpenSupport }) {
+export default function Legal({ data, onBack, onOpenSupport }) {
   const safeData = data && typeof data === "object" ? data : {};
 
   return (
@@ -11,6 +11,7 @@ export default function Legal({ data, onOpenSupport }) {
       pageId="legal"
       headerTitle="Conditions"
       headerSubtitle="Conditions d’utilisation"
+      headerRight={typeof onBack === "function" ? <AppBackButton onClick={onBack} /> : null}
     >
       <section className="mainPageSection">
         <SectionHeader title="Utilisation" subtitle="Cadre général de l’app." />

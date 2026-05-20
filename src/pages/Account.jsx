@@ -5,6 +5,7 @@ import { normalizeUsername, validateOptionalUsername } from "../profile/username
 import { PLACEHOLDER_COPY, STATUS_COPY, SURFACE_LABELS } from "../ui/labels";
 import {
   AppActionRow,
+  AppBackButton,
   AppCard,
   AppInput,
   AppScreen,
@@ -40,7 +41,7 @@ function getErrorMessage(error) {
   return String(error?.message || "").trim() || "Impossible d’enregistrer ton profil.";
 }
 
-export default function Account({ data }) {
+export default function Account({ data, onBack }) {
   const safeData = data && typeof data === "object" ? data : {};
   const { user, signOut } = useAuth();
   const { profile, loading, loadError, refreshProfile, checkUsernameAvailability, saveProfile } = useProfile();
@@ -168,6 +169,7 @@ export default function Account({ data }) {
       pageId="settings"
       headerTitle={<span>{SURFACE_LABELS.account}</span>}
       headerSubtitle="Identité, accès et profil visible."
+      headerRight={typeof onBack === "function" ? <AppBackButton onClick={onBack} /> : null}
     >
       <section className="mainPageSection">
         <SectionHeader
