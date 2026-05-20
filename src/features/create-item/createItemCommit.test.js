@@ -4,6 +4,7 @@ import {
   commitPreparedCreatePlan,
   prepareCreateCommit,
 } from "./createItemCommit";
+import { validateCoachProposalInvariants } from "../../logic/systemInvariants";
 import {
   buildMinDeadlineKey,
   ensureSuggestedCategory,
@@ -203,6 +204,10 @@ describe("createItem shared helpers", () => {
       categories: [{ id: "cat_work", name: "Business", color: "#111111" }],
       goals: [],
     };
+    const proposal = {
+      primaryActionRef: { index: 0 },
+      unresolvedQuestions: ["Quel créneau ?"],
+    };
 
     expect(
       prepareCreateCommit({
@@ -213,15 +218,13 @@ describe("createItem shared helpers", () => {
           categoryId: "cat_work",
           durationMinutes: 50,
         },
-        proposal: {
-          primaryActionRef: { index: 0 },
-          unresolvedQuestions: ["Quel créneau ?"],
-        },
+        proposal,
       })
     ).toEqual({
       ok: false,
       kind: "validation",
       message: "Confirme d’abord les points en suspens avec le coach.",
     });
+    expect(validateCoachProposalInvariants(proposal).ok).toBe(false);
   });
 });

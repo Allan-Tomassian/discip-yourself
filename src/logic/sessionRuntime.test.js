@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { applySessionRuntimeTransition, resolveRuntimeAutoFinish } from "./sessionRuntime";
+import { assertNoSystemInvariantErrors } from "./systemInvariants";
 
 function baseState(overrides = {}) {
   return {
     ui: { activeSession: null, ...(overrides.ui || {}) },
-    goals: [{ id: "g1", type: "PROCESS" }, ...(overrides.goals || [])],
+    categories: [{ id: "cat_focus", name: "Focus" }, ...(overrides.categories || [])],
+    goals: [{ id: "g1", type: "PROCESS", planType: "ONE_OFF", categoryId: "cat_focus" }, ...(overrides.goals || [])],
     occurrences: [
       { id: "occ1", goalId: "g1", date: "2026-02-20", start: "09:00", status: "planned", durationMinutes: 30 },
       ...(overrides.occurrences || []),
@@ -87,6 +89,7 @@ describe("sessionRuntime transitions", () => {
     expect(done.sessionHistory).toHaveLength(1);
     expect(done.sessionHistory[0].state).toBe("ended");
     expect(done.sessionHistory[0].endedReason).toBe("done");
+    expect(() => assertNoSystemInvariantErrors(done)).not.toThrow();
   });
 
   it("stores feedback on finish when provided", () => {
@@ -137,6 +140,7 @@ describe("sessionRuntime transitions", () => {
     expect(blocked.ui.activeSession.runtimePhase).toBe("blocked");
     expect(blocked.occurrences.find((item) => item.id === "occ1")?.status).toBe("planned");
     expect(blocked.sessionHistory[0].endedReason).toBe("blocked");
+    expect(() => assertNoSystemInvariantErrors(blocked)).not.toThrow();
   });
 
   it("report closes the runtime session with a reported reason", () => {
@@ -164,6 +168,7 @@ describe("sessionRuntime transitions", () => {
     });
     expect(reported.ui.activeSession.runtimePhase).toBe("reported");
     expect(reported.sessionHistory[0].endedReason).toBe("reported");
+    expect(() => assertNoSystemInvariantErrors(reported)).not.toThrow();
   });
 
   it("start on same open occurrence does not reset timer progress", () => {

@@ -14,6 +14,7 @@ import {
   buildDeterministicRecommendedGeneratedPlans,
   buildLocalStubGeneratedPlans,
 } from "./firstRunModel";
+import { validateGeneratedFirstRunPlans } from "../../logic/systemInvariants";
 
 describe("firstRunModel", () => {
   it("normalizes the v1 contract with safe defaults while keeping raw draft text and incomplete windows", () => {
@@ -508,6 +509,7 @@ describe("firstRunModel", () => {
     expect(recommended.commitDraft.goals.length).toBeGreaterThan(0);
     expect(recommended.commitDraft.actions.length).toBeGreaterThanOrEqual(2);
     expect(recommended.commitDraft.occurrences.some((occurrence) => occurrence.date === "2026-04-29")).toBe(true);
+    expect(validateGeneratedFirstRunPlans(generated, { todayKey: "2026-04-29" }).ok).toBe(true);
     expect(recommended.todayPreview.length).toBeGreaterThan(0);
     expect(recommended.weekSchedule).toHaveLength(7);
     expect(generated.ai.status).toBe("locked");

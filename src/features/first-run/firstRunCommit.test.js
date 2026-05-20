@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { initialData, normalizeCategory } from "../../logic/state";
+import { assertNoSystemInvariantErrors } from "../../logic/systemInvariants";
 import { addDaysLocal } from "../../utils/datetime";
 import {
   buildDeterministicRecommendedGeneratedPlans,
@@ -114,6 +115,7 @@ describe("applyFirstRunCommitDraft", () => {
     expect(result.nextState.profile.whyText).toBe("Reprendre le contrôle de mes semaines");
     expect(result.nextState.user_ai_profile.goals).toContain("business");
     expect(result.nextState.category_profiles_v1.byCategoryId[result.nextState.categories[0].id].mainGoal).toBe("Relancer le projet");
+    expect(() => assertNoSystemInvariantErrors(result.nextState, { activationDateKey: TODAY })).not.toThrow();
   });
 
   it("creates at least one Today occurrence and seven days of planning occurrences", () => {

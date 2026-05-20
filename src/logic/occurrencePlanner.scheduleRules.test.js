@@ -4,6 +4,7 @@ import {
   ensureWindowFromScheduleRules,
   removeScheduleRulesForAction,
 } from "./occurrencePlanner";
+import { validateSystemInvariants } from "./systemInvariants";
 
 function baseState(overrides = {}) {
   return {
@@ -193,6 +194,43 @@ describe("removeScheduleRulesForAction", () => {
     });
     const next = removeScheduleRulesForAction(state, "a1");
     expect(next).toBe(state);
+  });
+});
+
+describe("system schedule invariants", () => {
+  it("reports a recurring action that has neither schedule rules nor embedded schedule data", () => {
+    const result = validateSystemInvariants({
+      categories: [{ id: "cat_work", name: "Travail" }],
+      goals: [{ id: "action_unscheduled", type: "PROCESS", planType: "ACTION", categoryId: "cat_work" }],
+      scheduleRules: [],
+      occurrences: [],
+      ui: {},
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.issues.map((issue) => issue.code)).toContain("RECURRING_ACTION_MISSING_SCHEDULE_SOURCE");
+  });
+
+  it("keeps embedded recurring schedule data report-only when no active scheduleRule exists", () => {
+    const result = validateSystemInvariants({
+      categories: [{ id: "cat_work", name: "Travail" }],
+      goals: [
+        {
+          id: "action_daily",
+          type: "PROCESS",
+          planType: "ACTION",
+          categoryId: "cat_work",
+          repeat: "daily",
+          durationMinutes: 25,
+        },
+      ],
+      scheduleRules: [],
+      occurrences: [],
+      ui: {},
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.issues.map((issue) => issue.code)).toContain("RECURRING_ACTION_HAS_EMBEDDED_SCHEDULE_WITHOUT_ACTIVE_RULE");
   });
 });
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildTodayData, getTodayVisualSmokeModel } from "./todayDataAdapter";
+import { validateTodayAdapterInvariants } from "../../logic/systemInvariants";
 
 const SELECTED_DATE_KEY = "2026-04-28";
 const NOW = new Date("2026-04-28T12:00:00");
@@ -342,6 +343,20 @@ describe("buildTodayData", () => {
     expect(result.primaryAction.primaryLabel).toBe("Voir demain");
     expect(result.primaryAction.detailLabel).toBe("Voir progression");
     expect(result.primaryAction.canPrimary).toBe(false);
+  });
+
+  it("never ties the primary action to done, canceled, or skipped occurrences", () => {
+    const data = {
+      occurrences: [
+        { id: "done-1", goalId: "goal-deep", date: SELECTED_DATE_KEY, start: "07:00", status: "done" },
+        { id: "canceled-1", goalId: "goal-deep", date: SELECTED_DATE_KEY, start: "09:00", status: "canceled" },
+        { id: "skipped-1", goalId: "goal-deep", date: SELECTED_DATE_KEY, start: "11:00", status: "skipped" },
+      ],
+    };
+    const result = build({ data });
+
+    expect(["done-1", "canceled-1", "skipped-1"]).not.toContain(result.primaryAction.occurrenceId);
+    expect(validateTodayAdapterInvariants({ state: baseData(data), todayData: result, selectedDateKey: SELECTED_DATE_KEY }).ok).toBe(true);
   });
 
   it("maps risk for a currently exposed planned block without flashing late", () => {
