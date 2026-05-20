@@ -57,6 +57,8 @@ describe("Adjust system analysis trigger contract", () => {
 
     expect(source).toContain("requestAiSystemAnalysis");
     expect(source).toContain("SystemAnalysisResultPreview");
+    expect(source).toContain("SystemAnalysisCorrectionReview");
+    expect(source).toContain("buildSystemAnalysisCorrectionReview");
     expect(source).toContain("useAuth");
     expect(source).toContain("systemAnalysisEligibility?.eligible");
     expect(source).toContain('status: "loading"');
@@ -64,6 +66,8 @@ describe("Adjust system analysis trigger contract", () => {
     expect(source).toContain('status: "ineligible"');
     expect(source).toContain("AbortController");
     expect(source).toContain("SYSTEM_ANALYSIS_INELIGIBLE_MESSAGE");
+    expect(source).toContain("showSystemAnalysisReview");
+    expect(source).toContain("selectedSystemAnalysisCorrectionIds");
     expect(ineligibleBranchIndex).toBeGreaterThan(-1);
     expect(requestIndex).toBeGreaterThan(-1);
     expect(ineligibleBranchIndex).toBeLessThan(requestIndex);
@@ -75,6 +79,20 @@ describe("Adjust system analysis trigger contract", () => {
     expect(source).not.toContain("PlanningRepairModel");
     expect(source).not.toContain("applyOccurrenceRepair");
     expect(source).not.toContain("applyReduceLoadPlan");
+  });
+
+  it("keeps correction review local and non-mutating", () => {
+    const source = readSrc("pages/Adjust.jsx");
+    const previewIndex = source.indexOf("<SystemAnalysisResultPreview");
+    const reviewIndex = source.indexOf("<SystemAnalysisCorrectionReview");
+
+    expect(source).toContain("handleOpenSystemAnalysisCorrections");
+    expect(source).toContain("handleToggleSystemAnalysisCorrection");
+    expect(source).toContain("handleConfirmSystemAnalysisCorrections");
+    expect(source).toContain("setSystemAnalysisConfirmationOpen(true)");
+    expect(previewIndex).toBeGreaterThan(-1);
+    expect(reviewIndex).toBeGreaterThan(-1);
+    expect(previewIndex).toBeLessThan(reviewIndex);
   });
 
   it("renders the running header state while a request is in progress", () => {

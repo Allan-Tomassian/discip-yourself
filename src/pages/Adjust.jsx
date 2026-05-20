@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { AppScreen } from "../shared/ui/app";
 import SystemAnalysisEntryButton from "../components/system-analysis/SystemAnalysisEntryButton";
+import SystemAnalysisCorrectionReview from "../components/system-analysis/SystemAnalysisCorrectionReview";
 import SystemAnalysisResultPreview from "../components/system-analysis/SystemAnalysisResultPreview";
 import { useAuth } from "../auth/useAuth";
 import {
@@ -27,6 +28,7 @@ import { ADJUST_ACTION_IDS, buildAdjustDiagnostic } from "../features/adjust/adj
 import { buildAdjustSystemSignalPreview } from "../features/adjust/adjustSystemSignalPreviewModel";
 import { buildSystemAnalysisEligibility } from "../features/system-analysis/systemAnalysisEligibility";
 import { buildSystemAnalysisEntryModel } from "../features/system-analysis/systemAnalysisEntryModel";
+import { buildSystemAnalysisCorrectionReview } from "../features/system-analysis/systemAnalysisCorrectionReviewModel";
 import { buildSystemAnalysisSnapshot } from "../features/system-analysis/systemAnalysisSnapshot";
 import { requestAiSystemAnalysis } from "../infra/aiSystemAnalysisClient";
 import { getPrimarySystemSignal } from "../logic/systemSignals";
@@ -256,6 +258,9 @@ export default function Adjust({
 }) {
   const { session } = useAuth();
   const [systemAnalysisRequestState, setSystemAnalysisRequestState] = useState(createInitialSystemAnalysisState);
+  const [showSystemAnalysisReview, setShowSystemAnalysisReview] = useState(false);
+  const [selectedSystemAnalysisCorrectionIds, setSelectedSystemAnalysisCorrectionIds] = useState([]);
+  const [systemAnalysisConfirmationOpen, setSystemAnalysisConfirmationOpen] = useState(false);
   const systemAnalysisAbortRef = useRef(null);
   const safeData = useMemo(() => (data && typeof data === "object" ? data : {}), [data]);
   const activeDateKey =
@@ -306,6 +311,24 @@ export default function Adjust({
     }),
     [resolvedSystemAnalysisAvailabilityState, systemAnalysisEligibility]
   );
+  const systemAnalysisCorrectionReview = useMemo(
+    () => {
+      if (systemAnalysisRequestState.status !== "success" || !systemAnalysisRequestState.result) return null;
+      return buildSystemAnalysisCorrectionReview({
+        result: systemAnalysisRequestState.result,
+        state: safeData,
+        snapshot: systemAnalysisSnapshot,
+        selectedIds: selectedSystemAnalysisCorrectionIds,
+      });
+    },
+    [
+      safeData,
+      selectedSystemAnalysisCorrectionIds,
+      systemAnalysisRequestState.result,
+      systemAnalysisRequestState.status,
+      systemAnalysisSnapshot,
+    ]
+  );
 
   useEffect(() => () => {
     systemAnalysisAbortRef.current?.abort();
@@ -321,6 +344,9 @@ export default function Adjust({
     if (systemAnalysisRequestState.status === "loading") return;
 
     if (systemAnalysisEntryModel.state === "quota_exhausted") {
+      setShowSystemAnalysisReview(false);
+      setSelectedSystemAnalysisCorrectionIds([]);
+      setSystemAnalysisConfirmationOpen(false);
       setSystemAnalysisRequestState({
         status: "error",
         result: null,
@@ -333,6 +359,9 @@ export default function Adjust({
     }
 
     if (!systemAnalysisEligibility?.eligible) {
+      setShowSystemAnalysisReview(false);
+      setSelectedSystemAnalysisCorrectionIds([]);
+      setSystemAnalysisConfirmationOpen(false);
       setSystemAnalysisRequestState({
         status: "ineligible",
         result: null,
@@ -349,6 +378,9 @@ export default function Adjust({
     systemAnalysisAbortRef.current?.abort();
     const controller = new AbortController();
     systemAnalysisAbortRef.current = controller;
+    setShowSystemAnalysisReview(false);
+    setSelectedSystemAnalysisCorrectionIds([]);
+    setSystemAnalysisConfirmationOpen(false);
     setSystemAnalysisRequestState({
       status: "loading",
       result: null,
@@ -372,6 +404,9 @@ export default function Adjust({
     systemAnalysisAbortRef.current = null;
 
     if (result.ok) {
+      setShowSystemAnalysisReview(false);
+      setSelectedSystemAnalysisCorrectionIds([]);
+      setSystemAnalysisConfirmationOpen(false);
       setSystemAnalysisRequestState({
         status: "success",
         result: result.result,
@@ -383,6 +418,9 @@ export default function Adjust({
       return;
     }
 
+    setShowSystemAnalysisReview(false);
+    setSelectedSystemAnalysisCorrectionIds([]);
+    setSystemAnalysisConfirmationOpen(false);
     setSystemAnalysisRequestState({
       status: resolveSystemAnalysisStatus(result),
       result: null,
@@ -403,6 +441,29 @@ export default function Adjust({
     systemAnalysisRequestState.status,
     systemAnalysisSnapshot,
   ]);
+
+  const handleOpenSystemAnalysisCorrections = useCallback(() => {
+    if (systemAnalysisRequestState.status !== "success" || !systemAnalysisRequestState.result) return;
+    setShowSystemAnalysisReview(true);
+    setSystemAnalysisConfirmationOpen(false);
+  }, [systemAnalysisRequestState.result, systemAnalysisRequestState.status]);
+
+  const handleToggleSystemAnalysisCorrection = useCallback((id, selected) => {
+    const safeId = typeof id === "string" ? id.trim() : "";
+    if (!safeId) return;
+    setSystemAnalysisConfirmationOpen(false);
+    setSelectedSystemAnalysisCorrectionIds((current) => {
+      const existing = new Set(Array.isArray(current) ? current : []);
+      if (selected) existing.add(safeId);
+      else existing.delete(safeId);
+      return Array.from(existing);
+    });
+  }, []);
+
+  const handleConfirmSystemAnalysisCorrections = useCallback(() => {
+    if (!systemAnalysisCorrectionReview?.hasValidSelection) return;
+    setSystemAnalysisConfirmationOpen(true);
+  }, [systemAnalysisCorrectionReview?.hasValidSelection]);
 
   const systemAnalysisHeaderAction = (
     <SystemAnalysisEntryButton
@@ -504,7 +565,17 @@ export default function Adjust({
           message={systemAnalysisRequestState.message}
           missingRequirements={systemAnalysisRequestState.missingRequirements}
           onRetry={handleSystemAnalysisEntry}
+          onOpenCorrections={handleOpenSystemAnalysisCorrections}
         />
+
+        {showSystemAnalysisReview && systemAnalysisCorrectionReview ? (
+          <SystemAnalysisCorrectionReview
+            review={systemAnalysisCorrectionReview}
+            onSelectChange={handleToggleSystemAnalysisCorrection}
+            onConfirmSelection={handleConfirmSystemAnalysisCorrections}
+            confirmationOpen={systemAnalysisConfirmationOpen}
+          />
+        ) : null}
 
         {nextBlock ? (
           <CommandCard tone="execution" className="adjustNextBlockCard" density="compact">

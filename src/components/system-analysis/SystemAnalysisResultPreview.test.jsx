@@ -46,6 +46,15 @@ describe("SystemAnalysisResultPreview", () => {
     expect(html).not.toContain("{&quot;");
   });
 
+  it("can expose the correction review entry after a successful result", () => {
+    const html = renderToStaticMarkup(
+      <SystemAnalysisResultPreview status="success" result={RESULT} onOpenCorrections={() => {}} />
+    );
+
+    expect(html).toContain("Voir les corrections proposées");
+    expect(html).not.toContain("Corrections à valider bientôt");
+  });
+
   it("renders calm premium, ineligible, timeout, and invalid states", () => {
     const premium = renderToStaticMarkup(<SystemAnalysisResultPreview status="premium_required" />);
     const ineligible = renderToStaticMarkup(

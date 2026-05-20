@@ -90,6 +90,7 @@ export default function SystemAnalysisResultPreview({
   errorCode = "",
   message = "",
   onRetry,
+  onOpenCorrections,
 }) {
   if (status === "idle") return null;
 
@@ -161,9 +162,20 @@ export default function SystemAnalysisResultPreview({
           <p className="systemAnalysisResultPreview__honestNote">
             Aucune modification n’a été appliquée.
           </p>
-          <span className="systemAnalysisResultPreview__disabledCta" aria-disabled="true">
-            Corrections à valider bientôt
-          </span>
+          {result.correctionDraft && typeof onOpenCorrections === "function" ? (
+            <CommandCTA
+              tone="ai"
+              variant="secondary"
+              className="systemAnalysisResultPreview__openCorrections"
+              onClick={onOpenCorrections}
+            >
+              Voir les corrections proposées
+            </CommandCTA>
+          ) : (
+            <span className="systemAnalysisResultPreview__disabledCta" aria-disabled="true">
+              Corrections à valider bientôt
+            </span>
+          )}
         </div>
       </CommandCard>
     );
