@@ -173,6 +173,94 @@ describe("ensureWindowFromScheduleRules", () => {
     expect(next.occurrences[0].durationMinutes).toBe(20);
     expect(next.occurrences[0].scheduleRuleId).toBe("rule_update");
   });
+
+  it("does not overwrite a protected one-off repair with schedule-rule values", () => {
+    const state = baseState({
+      scheduleRules: [
+        {
+          id: "rule_protected",
+          actionId: "g6",
+          kind: "recurring",
+          daysOfWeek: [1],
+          timeType: "fixed",
+          startTime: "09:00",
+          durationMin: 20,
+          isActive: true,
+        },
+      ],
+      occurrences: [
+        {
+          id: "occ_repaired",
+          goalId: "g6",
+          date: "2026-02-02",
+          start: "07:00",
+          slotKey: "07:00",
+          durationMinutes: 45,
+          status: "planned",
+          scheduleRuleId: "rule_protected",
+          repairV1: {
+            version: 1,
+            protectFromRuleSync: true,
+            type: "choose_time",
+          },
+        },
+      ],
+    });
+
+    const next = ensureWindowFromScheduleRules(state, "2026-02-02", "2026-02-02", null, new Date("2026-02-02T06:00"));
+    expect(next).toBe(state);
+    expect(next.occurrences[0]).toMatchObject({
+      start: "07:00",
+      durationMinutes: 45,
+      scheduleRuleId: "rule_protected",
+    });
+  });
+
+  it("does not duplicate a protected repaired target and still generates normal unrepaired dates", () => {
+    const state = baseState({
+      scheduleRules: [
+        {
+          id: "rule_target",
+          actionId: "g7",
+          kind: "recurring",
+          daysOfWeek: [1, 2],
+          timeType: "fixed",
+          startTime: "09:00",
+          durationMin: 30,
+          isActive: true,
+        },
+      ],
+      occurrences: [
+        {
+          id: "occ_target_repaired",
+          goalId: "g7",
+          date: "2026-02-02",
+          start: "09:00",
+          slotKey: "09:00",
+          durationMinutes: 30,
+          status: "planned",
+          repairV1: {
+            version: 1,
+            protectFromRuleSync: true,
+            type: "move_tomorrow",
+          },
+        },
+      ],
+    });
+
+    const first = ensureWindowFromScheduleRules(state, "2026-02-02", "2026-02-03", null, new Date("2026-02-02T06:00"));
+    const second = ensureWindowFromScheduleRules(first, "2026-02-02", "2026-02-03", null, new Date("2026-02-02T06:00"));
+
+    expect(first.occurrences).toHaveLength(2);
+    expect(first.occurrences.find((occurrence) => occurrence.id === "occ_target_repaired").scheduleRuleId).toBeUndefined();
+    expect(first.occurrences.filter((occurrence) => occurrence.date === "2026-02-02")).toHaveLength(1);
+    expect(first.occurrences.find((occurrence) => occurrence.date === "2026-02-03")).toMatchObject({
+      goalId: "g7",
+      start: "09:00",
+      scheduleRuleId: "rule_target",
+    });
+    expect(second).toBe(first);
+  });
 });
 
 describe("removeScheduleRulesForAction", () => {

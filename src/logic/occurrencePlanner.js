@@ -741,6 +741,10 @@ function buildOccurrenceFromRule(rule, dateKey) {
   };
 }
 
+function isRuleSyncProtectedOccurrence(occurrence) {
+  return occurrence?.repairV1?.protectFromRuleSync === true;
+}
+
 export function dedupeOccurrences(occurrences) {
   const list = Array.isArray(occurrences) ? occurrences : [];
   const seen = new Map();
@@ -1053,6 +1057,7 @@ export function ensureWindowFromScheduleRules(data, fromKey, toKey, actionIds = 
         const current = nextOccurrences[idx];
         const status = normalizeOccurrenceStatus(current?.status);
         if (!isPlannedOccurrenceStatus(status)) continue;
+        if (isRuleSyncProtectedOccurrence(current)) continue;
         const patch = {};
         patch.scheduleRuleId = rule.id;
         patch.timeType = rule.timeType === "window" ? "window" : "fixed";
@@ -1103,6 +1108,10 @@ export function ensureWindowFromScheduleRules(data, fromKey, toKey, actionIds = 
         const legacyIdx = legacyByKey.get(legacyKey);
         if (typeof legacyIdx === "number") {
           const current = nextOccurrences[legacyIdx];
+          if (isRuleSyncProtectedOccurrence(current)) {
+            byRuleDate.set(ruleKey, legacyIdx);
+            continue;
+          }
           const status = normalizeOccurrenceStatus(current?.status);
           if (!isPlannedOccurrenceStatus(status)) {
             byRuleDate.set(ruleKey, legacyIdx);
