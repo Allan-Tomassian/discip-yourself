@@ -1,4 +1,5 @@
 import { validateSystemAnalysisResult } from "../features/system-analysis/systemAnalysisContract";
+import { buildSystemAnalysisBackendSnapshot } from "../features/system-analysis/systemAnalysisSnapshot";
 import { buildAiTransportMeta, logAiTransportIssue } from "./aiTransportDiagnostics";
 import { ensureAiBackendWarm } from "./aiBackendWarmup";
 import { fetchJsonWithTimeout } from "./aiRequest";
@@ -106,7 +107,7 @@ function normalizeRequestPayload({ snapshot, locale, timezone, referenceDateKey,
 
   return {
     version: 1,
-    snapshot,
+    snapshot: buildSystemAnalysisBackendSnapshot(snapshot),
     locale: normalizeLocale(locale),
     timezone: normalizeTimezone(timezone),
     referenceDateKey: normalizedReferenceDateKey,

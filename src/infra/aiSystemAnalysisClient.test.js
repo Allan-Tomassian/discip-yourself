@@ -35,6 +35,11 @@ function snapshotFixture() {
     profilePreferences: {},
     dataLimitations: [{ code: "compact_snapshot" }],
     sourceCounts: { occurrences: 1 },
+    plannedSystem: { whyText: "Local v2 enrichment" },
+    behaviorSystem: { completedCount: 0 },
+    comparisonSignals: { nextBlockMissing: { detected: false } },
+    confidenceBySignal: { nextBlockMissing: "low" },
+    analysisModeRecommendation: "initial_analysis",
     snapshotHash: "snapshot_hash",
   };
 }
@@ -151,6 +156,7 @@ describe("requestAiSystemAnalysis", () => {
       referenceDateKey: "2026-05-20",
     });
     expect(body.snapshot.snapshotHash).toBe("snapshot_hash");
+    expect(body.snapshot.plannedSystem).toBeUndefined();
     expect(result.result.executiveSummary).toContain("Ton système");
   });
 

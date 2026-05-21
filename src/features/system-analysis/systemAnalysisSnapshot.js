@@ -9,18 +9,32 @@ import {
 import { buildSystemSignals } from "../../logic/systemSignals";
 import {
   addDaysLocal,
+  appDowFromDate,
   buildDateRangeLocalKeys,
+  fromLocalDateKey,
   normalizeLocalDateKey,
+  normalizeStartTime,
   parseTimeToMinutes,
   toLocalDateKey,
 } from "../../utils/datetime";
 
 export const SYSTEM_ANALYSIS_SNAPSHOT_VERSION = 1;
 export const DEFAULT_SYSTEM_ANALYSIS_WINDOW_DAYS = 14;
+export const SYSTEM_ANALYSIS_MODE = Object.freeze({
+  INITIAL: "initial_analysis",
+  HYBRID: "hybrid_analysis",
+  BEHAVIORAL: "behavioral_analysis",
+});
 
 const MAX_ENTITY_SUMMARIES = 20;
 const MAX_SIGNAL_SUMMARIES = 24;
 const MAX_PATTERN_SUMMARIES = 8;
+const CURRENT_BEHAVIORAL_ANALYSIS_REQUIREMENTS = Object.freeze({
+  MIN_PLANNED_BLOCKS: 10,
+  MIN_EXECUTION_OUTCOMES: 5,
+  MIN_ACTIVE_DAYS: 3,
+  MIN_COMPLETION_OR_FRICTION_SIGNALS: 1,
+});
 
 const EXECUTION_OUTCOME_STATUSES = new Set([
   EXECUTION_SURFACE_STATUS.DONE,
@@ -45,6 +59,30 @@ const FRICTION_STATUSES = new Set([
   EXECUTION_SURFACE_STATUS.POSTPONED,
   EXECUTION_SURFACE_STATUS.BLOCKED,
   EXECUTION_SURFACE_STATUS.REPORTED,
+]);
+
+const BACKEND_COMPATIBLE_SNAPSHOT_KEYS = Object.freeze([
+  "version",
+  "period",
+  "generatedAt",
+  "referenceDateKey",
+  "userWhy",
+  "firstRunSummary",
+  "goalsSummary",
+  "actionsSummary",
+  "executionStats",
+  "sessionStats",
+  "timePatterns",
+  "frictionPatterns",
+  "objectiveSignals",
+  "planningLoadSignals",
+  "systemSignals",
+  "adjustDiagnosticSummary",
+  "coachThemes",
+  "profilePreferences",
+  "dataLimitations",
+  "sourceCounts",
+  "snapshotHash",
 ]);
 
 function isPlainObject(value) {
@@ -112,6 +150,14 @@ function getOccurrenceDateKey(occurrence) {
   return normalizeLocalDateKey(occurrence?.date || occurrence?.dateKey);
 }
 
+function getDateDow(dateKey) {
+  const normalized = normalizeLocalDateKey(dateKey);
+  if (!normalized) return null;
+  const date = fromLocalDateKey(normalized);
+  const dow = appDowFromDate(date);
+  return Number.isInteger(dow) ? dow : null;
+}
+
 function getHistoryDateKey(history) {
   return (
     normalizeLocalDateKey(history?.dateKey) ||
@@ -132,6 +178,40 @@ function getOccurrenceDurationMinutes(occurrence, goalById) {
   const goal = goalById.get(getOccurrenceActionId(occurrence));
   const fromGoal = safeNumber(goal?.sessionMinutes || goal?.durationMinutes, NaN);
   return Number.isFinite(fromGoal) && fromGoal > 0 ? Math.round(fromGoal) : 0;
+}
+
+function normalizeFirstRunWindowForSnapshot(windowValue) {
+  const source = isPlainObject(windowValue) ? windowValue : {};
+  const startTime = normalizeStartTime(source.startTime);
+  const endTime = normalizeStartTime(source.endTime);
+  return {
+    id: safeString(source.id, 120) || null,
+    label: safeString(source.label, 80) || null,
+    daysOfWeek: safeArray(source.daysOfWeek)
+      .map((day) => Number(day))
+      .filter((day) => Number.isInteger(day) && day >= 1 && day <= 7)
+      .slice(0, 7),
+    startTime: startTime || null,
+    endTime: endTime || null,
+    timeBucket: startTime ? getTimeBucket({ start: startTime }) : "no_time",
+  };
+}
+
+function normalizeFirstRunWindowsForSnapshot(value) {
+  return safeArray(value)
+    .map(normalizeFirstRunWindowForSnapshot)
+    .filter((windowValue) => windowValue.daysOfWeek.length || windowValue.startTime || windowValue.endTime || windowValue.label)
+    .slice(0, MAX_PATTERN_SUMMARIES);
+}
+
+function resolveCapacityDailyMinutes(capacity, profilePreferences) {
+  const profileMinutes = safeNumber(profilePreferences?.userAiProfile?.timeBudgetDailyMin, NaN);
+  if (Number.isFinite(profileMinutes) && profileMinutes > 0) return Math.round(profileMinutes);
+  const normalized = safeString(capacity).toLowerCase();
+  if (normalized === "reprise") return 30;
+  if (normalized === "forte") return 90;
+  if (normalized === "stable") return 60;
+  return null;
 }
 
 function normalizeLifecycleStatus(goal) {
@@ -691,6 +771,553 @@ function buildProfilePreferences(state) {
   };
 }
 
+function findSelectedFirstRunPlan(firstRun) {
+  const generatedPlans = firstRun?.generatedPlans;
+  const plans = safeArray(generatedPlans?.plans);
+  const selectedPlanId = safeString(firstRun?.selectedPlanId) || safeString(firstRun?.commitV1?.selectedPlanId);
+  return plans.find((plan) => safeString(plan?.id) === selectedPlanId) || plans[0] || null;
+}
+
+function buildScheduleRuleSummary(state, actions) {
+  const rules = safeArray(state?.scheduleRules);
+  const activeRules = rules.filter((rule) => rule?.isActive !== false);
+  const ruleActionIds = new Set(activeRules.map((rule) => safeString(rule?.actionId || rule?.goalId)).filter(Boolean));
+  return {
+    totalCount: rules.length,
+    activeCount: activeRules.length,
+    recurringCount: activeRules.filter((rule) => safeString(rule?.kind || rule?.type).toLowerCase() === "recurring").length,
+    actionIdsWithRules: Array.from(ruleActionIds).slice(0, MAX_ENTITY_SUMMARIES),
+    actionsWithScheduleFields: actions
+      .filter((action) => isRecurringAction(action))
+      .map((action) => action.id)
+      .filter(Boolean)
+      .slice(0, MAX_ENTITY_SUMMARIES),
+  };
+}
+
+function buildWeeklyPlannedLoad(planningLoadSignals, period) {
+  const periodMinutes = safeArray(planningLoadSignals?.byDate).reduce((sum, day) => sum + Math.max(0, Number(day?.totalMinutes) || 0), 0);
+  const periodBlocks = safeArray(planningLoadSignals?.byDate).reduce((sum, day) => sum + Math.max(0, Number(day?.plannedCount) || 0), 0);
+  const days = Math.max(1, Number(period?.days) || safeArray(planningLoadSignals?.byDate).length || 1);
+  const averageDailyMinutes = Math.round(periodMinutes / days);
+  return {
+    periodDays: days,
+    periodBlocks,
+    periodMinutes,
+    averageDailyMinutes,
+    estimatedWeeklyMinutes: Math.round(averageDailyMinutes * 7),
+    maxDailyMinutes: planningLoadSignals?.maxDailyMinutes || 0,
+    maxDailyBlocks: planningLoadSignals?.maxDailyBlocks || 0,
+    overloadedDayCount: safeArray(planningLoadSignals?.overloadedDays).length,
+  };
+}
+
+function buildNextBlockCoverage({ occurrences, activeSession, sessionHistory, period, referenceDateKey }) {
+  const candidates = safeArray(occurrences)
+    .map((occurrence) => {
+      const dateKey = getOccurrenceDateKey(occurrence);
+      const status = deriveExecutionStatusForOccurrence(occurrence, { activeSession, sessionHistory, dateKey }).status;
+      return {
+        occurrence,
+        occurrenceId: safeString(occurrence?.id),
+        actionId: getOccurrenceActionId(occurrence),
+        dateKey,
+        start: normalizeStartTime(occurrence?.start || occurrence?.slotKey) || null,
+        status,
+      };
+    })
+    .filter((entry) => (
+      entry.occurrenceId &&
+      entry.dateKey &&
+      entry.dateKey >= referenceDateKey &&
+      isWithinPeriod(entry.dateKey, period) &&
+      [EXECUTION_SURFACE_STATUS.PLANNED, EXECUTION_SURFACE_STATUS.ACTIVE].includes(entry.status)
+    ))
+    .sort((left, right) => {
+      if (left.dateKey !== right.dateKey) return left.dateKey.localeCompare(right.dateKey);
+      return safeString(left.start).localeCompare(safeString(right.start)) || left.occurrenceId.localeCompare(right.occurrenceId);
+    });
+  const next = candidates[0] || null;
+  return {
+    hasUpcomingBlock: Boolean(next),
+    nextOccurrenceId: next?.occurrenceId || null,
+    nextActionId: next?.actionId || null,
+    nextDateKey: next?.dateKey || null,
+    nextStart: next?.start || null,
+    upcomingPlannedCount: candidates.length,
+    missingNextBlock: !next,
+  };
+}
+
+function buildActionObjectiveStructure({ objectiveModel, goalsSummary, actionsSummary }) {
+  return {
+    objectiveCount: goalsSummary.outcomeCount,
+    actionCount: goalsSummary.processActionCount,
+    linkedObjectiveCount: safeArray(objectiveModel.objectives).filter((objective) => safeArray(objective.linkedActions).length > 0).length,
+    objectiveIdsWithoutActions: safeArray(objectiveModel.objectives)
+      .filter((objective) => safeArray(objective.linkedActions).length === 0)
+      .map((objective) => objective.id)
+      .filter(Boolean)
+      .slice(0, MAX_PATTERN_SUMMARIES),
+    standaloneActionIds: safeArray(objectiveModel.standaloneActions).map((action) => action.id).filter(Boolean).slice(0, MAX_PATTERN_SUMMARIES),
+    tooManyActions: actionsSummary.tooManyActions,
+  };
+}
+
+function buildFirstRunPlanSummary(firstRun) {
+  const selectedPlan = findSelectedFirstRunPlan(firstRun);
+  const metrics = selectedPlan?.comparisonMetrics || {};
+  const rationale = selectedPlan?.rationale || {};
+  return {
+    selectedPlanId: safeString(firstRun?.selectedPlanId || firstRun?.commitV1?.selectedPlanId) || safeString(selectedPlan?.id) || null,
+    selectedPlanSource: safeString(firstRun?.generatedPlans?.source || firstRun?.commitV1?.selectedPlanSource) || null,
+    generatedPlanCount: safeArray(firstRun?.generatedPlans?.plans).length,
+    weeklyMinutes: Number.isFinite(Number(metrics.weeklyMinutes)) ? Number(metrics.weeklyMinutes) : null,
+    totalBlocks: Number.isFinite(Number(metrics.totalBlocks)) ? Number(metrics.totalBlocks) : null,
+    activeDays: Number.isFinite(Number(metrics.activeDays)) ? Number(metrics.activeDays) : null,
+    engagementLevel: safeString(metrics.engagementLevel) || null,
+    rationale: {
+      whyFit: safeString(rationale.whyFit, 240) || null,
+      capacityFit: safeString(rationale.capacityFit, 240) || null,
+      constraintFit: safeString(rationale.constraintFit, 240) || null,
+    },
+  };
+}
+
+function buildPlannedSystemSummary({
+  state,
+  firstRun,
+  userWhy,
+  objectiveModel,
+  goalsSummary,
+  actionsSummary,
+  planningLoadSignals,
+  profilePreferences,
+  occurrences,
+  sessionHistory,
+  period,
+  referenceDateKey,
+}) {
+  const draftAnswers = isPlainObject(firstRun?.draftAnswers) ? firstRun.draftAnswers : {};
+  const capacity = safeString(draftAnswers.currentCapacity || draftAnswers.capacity) || null;
+  const preferredWindows = normalizeFirstRunWindowsForSnapshot(draftAnswers.preferredWindows);
+  const unavailableWindows = normalizeFirstRunWindowsForSnapshot(draftAnswers.unavailableWindows);
+  const primaryObjective =
+    safeString(draftAnswers.primaryGoal, 240) ||
+    safeString(objectiveModel.objectives?.[0]?.goal?.title || objectiveModel.objectives?.[0]?.objective?.title, 240) ||
+    null;
+  return {
+    whyText: safeString(userWhy, 1200),
+    primaryObjective,
+    capacity: {
+      value: capacity,
+      dailyMinutes: resolveCapacityDailyMinutes(capacity, profilePreferences),
+    },
+    preferredWindows,
+    unavailableWindows,
+    priorityCategoryIds: safeArray(draftAnswers.priorityCategoryIds).map((id) => safeString(id)).filter(Boolean).slice(0, 6),
+    weeklyPlannedLoad: buildWeeklyPlannedLoad(planningLoadSignals, period),
+    actionObjectiveStructure: buildActionObjectiveStructure({ objectiveModel, goalsSummary, actionsSummary }),
+    nextBlockCoverage: buildNextBlockCoverage({
+      occurrences,
+      activeSession: state?.ui?.activeSession || null,
+      sessionHistory,
+      period,
+      referenceDateKey,
+    }),
+    scheduleRuleSummary: buildScheduleRuleSummary(state, safeArray(objectiveModel.actions).map((actionModel) => actionModel.action || actionModel.goal).filter(Boolean)),
+    firstRunPlanSummary: buildFirstRunPlanSummary(firstRun),
+  };
+}
+
+function buildRepairHistorySummary({ occurrences, period }) {
+  const byType = {};
+  const byAction = new Map();
+  const repairedOccurrenceIds = [];
+  for (const occurrence of safeArray(occurrences)) {
+    const dateKey = getOccurrenceDateKey(occurrence);
+    if (!isWithinPeriod(dateKey, period) || !isPlainObject(occurrence?.repairV1)) continue;
+    const type = safeString(occurrence.repairV1.type) || "unknown";
+    const actionId = getOccurrenceActionId(occurrence);
+    byType[type] = (byType[type] || 0) + 1;
+    if (repairedOccurrenceIds.length < MAX_ENTITY_SUMMARIES && safeString(occurrence.id)) repairedOccurrenceIds.push(safeString(occurrence.id));
+    if (actionId) byAction.set(actionId, (byAction.get(actionId) || 0) + 1);
+  }
+  return {
+    repairedCount: repairedOccurrenceIds.length,
+    repairedOccurrenceIds,
+    byType,
+    repeatedActionRepairs: Array.from(byAction.entries())
+      .filter(([, count]) => count >= 2)
+      .map(([actionId, count]) => ({ actionId, count }))
+      .sort((left, right) => right.count - left.count || left.actionId.localeCompare(right.actionId))
+      .slice(0, MAX_PATTERN_SUMMARIES),
+  };
+}
+
+function buildAnalysisHistorySummary(state) {
+  const analyses = safeArray(state?.system_analysis_v1?.analyses);
+  const latest = analyses[0] || null;
+  const appliedRecords = analyses.filter((record) => safeString(record?.status) === "applied" || safeString(record?.status) === "partially_applied");
+  return {
+    recordCount: analyses.length,
+    latestAnalysisId: safeString(state?.system_analysis_v1?.latestAnalysisId || latest?.id) || null,
+    latestStatus: safeString(latest?.status) || null,
+    latestSnapshotHash: safeString(latest?.snapshotHash, 160) || null,
+    appliedRecordCount: appliedRecords.length,
+    appliedCorrectionCount: analyses.reduce((sum, record) => sum + safeArray(record?.appliedCorrectionIds).length, 0),
+    changedOccurrenceCount: analyses.reduce((sum, record) => sum + safeArray(record?.changedOccurrenceIds).length, 0),
+  };
+}
+
+function summarizeObjectiveExecution(objectiveModel) {
+  return safeArray(objectiveModel.objectives)
+    .map((objective) => ({
+      objectiveId: objective.id,
+      completedCount: objective.completedCount,
+      expectedCount: objective.expectedCount,
+      missedCount: objective.missedCount,
+      blockedCount: objective.blockedCount,
+      reportedCount: objective.reportedCount,
+      frictionCount: objective.frictionCount,
+      status: objective.status?.key || "active",
+    }))
+    .slice(0, MAX_ENTITY_SUMMARIES);
+}
+
+function summarizeActionExecution(objectiveModel) {
+  return safeArray(objectiveModel.actions)
+    .map((action) => ({
+      actionId: action.id,
+      objectiveId: action.outcomeId || null,
+      completedCount: action.completedCount,
+      expectedCount: action.expectedCount,
+      missedCount: action.missedCount,
+      blockedCount: action.blockedCount,
+      reportedCount: action.reportedCount,
+      frictionCount: action.frictionCount,
+      status: action.status?.key || "active",
+    }))
+    .slice(0, MAX_ENTITY_SUMMARIES);
+}
+
+function buildBehaviorSystemSummary({
+  executionStats,
+  sessionStats,
+  timePatterns,
+  objectiveModel,
+  frictionPatterns,
+  repairHistorySummary,
+  analysisHistorySummary,
+}) {
+  return {
+    completedCount: executionStats.completedCount,
+    missedCount: executionStats.counts?.[EXECUTION_SURFACE_STATUS.MISSED] || 0,
+    reportedCount: executionStats.counts?.[EXECUTION_SURFACE_STATUS.REPORTED] || 0,
+    blockedCount: executionStats.counts?.[EXECUTION_SURFACE_STATUS.BLOCKED] || 0,
+    skippedCanceledCount:
+      (executionStats.counts?.[EXECUTION_SURFACE_STATUS.SKIPPED] || 0) +
+      (executionStats.counts?.[EXECUTION_SURFACE_STATUS.CANCELED] || 0) +
+      (sessionStats.countsByReason?.canceled || 0),
+    sessionStarts: sessionStats.endedCount,
+    activeDays: executionStats.activeDayCount,
+    plannedVsCompletedMinutes: {
+      plannedMinutes: executionStats.expectedMinutes,
+      completedMinutes: executionStats.completedMinutes,
+      deltaMinutes: executionStats.expectedMinutes - executionStats.completedMinutes,
+      completionRate: executionStats.completionRate,
+    },
+    completionByTimeWindow: safeArray(timePatterns.buckets).slice(0, 4),
+    objectiveExecutionSummary: summarizeObjectiveExecution(objectiveModel),
+    actionExecutionSummary: summarizeActionExecution(objectiveModel),
+    repeatedFrictionPatterns: {
+      repeatedBlocked: safeArray(frictionPatterns.repeatedBlocked),
+      repeatedReported: safeArray(frictionPatterns.repeatedReported),
+      repeatedPostpone: safeArray(frictionPatterns.repeatedPostpone),
+      byAction: safeArray(frictionPatterns.byAction),
+    },
+    repairHistorySummary,
+    analysisHistorySummary,
+  };
+}
+
+function windowMatchesOccurrence(windowValue, occurrence) {
+  const dateKey = getOccurrenceDateKey(occurrence);
+  const dow = getDateDow(dateKey);
+  if (!dow || !safeArray(windowValue.daysOfWeek).includes(dow)) return false;
+  const startMinutes = parseTimeToMinutes(occurrence?.start || occurrence?.slotKey);
+  const windowStart = parseTimeToMinutes(windowValue.startTime);
+  const windowEnd = parseTimeToMinutes(windowValue.endTime);
+  if (!Number.isFinite(startMinutes) || !Number.isFinite(windowStart) || !Number.isFinite(windowEnd) || windowEnd <= windowStart) {
+    return getTimeBucket(occurrence) === windowValue.timeBucket;
+  }
+  return startMinutes >= windowStart && startMinutes < windowEnd;
+}
+
+function buildUnusedAvailableWindowsSignal({ preferredWindows, occurrences, period }) {
+  const expectedOccurrences = safeArray(occurrences).filter((occurrence) => {
+    const dateKey = getOccurrenceDateKey(occurrence);
+    if (!isWithinPeriod(dateKey, period)) return false;
+    const status = deriveExecutionStatusForOccurrence(occurrence, { dateKey }).status;
+    return EXPECTED_EXECUTION_STATUSES.has(status);
+  });
+  const unused = safeArray(preferredWindows)
+    .filter((windowValue) => windowValue.startTime && windowValue.daysOfWeek.length)
+    .filter((windowValue) => !expectedOccurrences.some((occurrence) => windowMatchesOccurrence(windowValue, occurrence)))
+    .map((windowValue) => ({
+      windowId: windowValue.id,
+      label: windowValue.label,
+      daysOfWeek: windowValue.daysOfWeek,
+      startTime: windowValue.startTime,
+      endTime: windowValue.endTime,
+    }))
+    .slice(0, MAX_PATTERN_SUMMARIES);
+  return {
+    detected: unused.length > 0,
+    count: unused.length,
+    windows: unused,
+  };
+}
+
+function buildActualBestWindowSignal(timePatterns) {
+  const buckets = safeArray(timePatterns?.buckets)
+    .filter((bucket) => bucket.expectedCount >= 2 && bucket.completionRate !== null)
+    .sort((left, right) => {
+      const completionDelta = (right.completionRate || 0) - (left.completionRate || 0);
+      if (completionDelta) return completionDelta;
+      return right.completedCount - left.completedCount || left.id.localeCompare(right.id);
+    });
+  const best = buckets[0] || null;
+  return {
+    detected: Boolean(best),
+    bucketId: best?.id || null,
+    completionRate: best?.completionRate ?? null,
+    expectedCount: best?.expectedCount || 0,
+    completedCount: best?.completedCount || 0,
+  };
+}
+
+function buildActionAvoidanceSignal(frictionPatterns) {
+  const actions = safeArray(frictionPatterns?.byAction)
+    .map((entry) => ({
+      actionId: entry.actionId,
+      title: entry.title,
+      frictionCount: entry.missedCount + entry.blockedCount + entry.reportedCount + entry.postponedCount,
+      missedCount: entry.missedCount,
+      blockedCount: entry.blockedCount,
+      reportedCount: entry.reportedCount,
+      postponedCount: entry.postponedCount,
+      occurrenceIds: safeArray(entry.occurrenceIds).slice(0, 6),
+      historyIds: safeArray(entry.historyIds).slice(0, 6),
+    }))
+    .filter((entry) => entry.frictionCount >= 2)
+    .slice(0, MAX_PATTERN_SUMMARIES);
+  return {
+    detected: actions.length > 0,
+    actionCount: actions.length,
+    actions,
+  };
+}
+
+function buildSystemDriftSignal({ firstRun, goals, occurrences }) {
+  const commit = isPlainObject(firstRun?.commitV1) ? firstRun.commitV1 : {};
+  const createdGoalIds = safeArray(commit.createdGoalIds).map(safeString).filter(Boolean);
+  const createdActionIds = safeArray(commit.createdActionIds).map(safeString).filter(Boolean);
+  const createdOccurrenceIds = safeArray(commit.createdOccurrenceIds).map(safeString).filter(Boolean);
+  const goalIds = new Set(safeArray(goals).map((goal) => safeString(goal?.id)).filter(Boolean));
+  const occurrenceIds = new Set(safeArray(occurrences).map((occurrence) => safeString(occurrence?.id)).filter(Boolean));
+  const missingGoalIds = [...createdGoalIds, ...createdActionIds].filter((id) => !goalIds.has(id)).slice(0, MAX_PATTERN_SUMMARIES);
+  const missingOccurrenceIds = createdOccurrenceIds.filter((id) => !occurrenceIds.has(id)).slice(0, MAX_PATTERN_SUMMARIES);
+  return {
+    detected: missingGoalIds.length > 0 || missingOccurrenceIds.length > 0,
+    missingGoalIds,
+    missingOccurrenceIds,
+    firstRunCreatedGoalCount: createdGoalIds.length,
+    firstRunCreatedActionCount: createdActionIds.length,
+    firstRunCreatedOccurrenceCount: createdOccurrenceIds.length,
+  };
+}
+
+function getActionOutcomeId(action, outcomeIds) {
+  const candidates = [
+    action?.parentId,
+    action?.outcomeId,
+    action?.primaryGoalId,
+    action?.parentGoalId,
+  ].map(safeString).filter(Boolean);
+  return candidates.find((id) => outcomeIds.has(id)) || null;
+}
+
+function findObjectiveIdsWithoutExecutableBlocks({ goals, occurrences, period }) {
+  const outcomes = safeArray(goals).filter((goal) => safeString(goal?.id) && resolveGoalType(goal) === "OUTCOME");
+  const outcomeIds = new Set(outcomes.map((goal) => safeString(goal.id)));
+  const actionToOutcome = new Map();
+  for (const action of safeArray(goals)) {
+    if (!safeString(action?.id) || resolveGoalType(action) !== "PROCESS") continue;
+    const outcomeId = getActionOutcomeId(action, outcomeIds);
+    if (outcomeId) actionToOutcome.set(safeString(action.id), outcomeId);
+  }
+  const executableObjectiveIds = new Set();
+  for (const occurrence of safeArray(occurrences)) {
+    const dateKey = getOccurrenceDateKey(occurrence);
+    if (!isWithinPeriod(dateKey, period)) continue;
+    const status = deriveExecutionStatusForOccurrence(occurrence, { dateKey }).status;
+    if (![EXECUTION_SURFACE_STATUS.PLANNED, EXECUTION_SURFACE_STATUS.ACTIVE].includes(status)) continue;
+    const objectiveId = actionToOutcome.get(getOccurrenceActionId(occurrence));
+    if (objectiveId) executableObjectiveIds.add(objectiveId);
+  }
+  return outcomes
+    .map((objective) => safeString(objective.id))
+    .filter((objectiveId) => objectiveId && !executableObjectiveIds.has(objectiveId))
+    .slice(0, MAX_PATTERN_SUMMARIES);
+}
+
+function buildComparisonSignals({
+  plannedSystem,
+  behaviorSystem,
+  objectiveSignals,
+  frictionPatterns,
+  timePatterns,
+  executionStats,
+  firstRun,
+  goals,
+  occurrences,
+  period,
+}) {
+  const completionOrFriction =
+    executionStats.completedCount +
+    executionStats.frictionCount +
+    behaviorSystem.reportedCount +
+    behaviorSystem.blockedCount;
+  const capacityMinutes = plannedSystem.capacity?.dailyMinutes;
+  const averageDailyMinutes = plannedSystem.weeklyPlannedLoad?.averageDailyMinutes || 0;
+  const loadMismatch = Boolean(
+    Number.isFinite(capacityMinutes) &&
+      capacityMinutes > 0 &&
+      (averageDailyMinutes > capacityMinutes || plannedSystem.weeklyPlannedLoad.maxDailyMinutes > Math.round(capacityMinutes * 1.25))
+  );
+  const repairHistory = behaviorSystem.repairHistorySummary || {};
+  const analysisHistory = behaviorSystem.analysisHistorySummary || {};
+  const objectiveIdsWithoutExecutableBlocks = findObjectiveIdsWithoutExecutableBlocks({ goals, occurrences, period });
+  return {
+    unusedAvailableWindows: buildUnusedAvailableWindowsSignal({
+      preferredWindows: plannedSystem.preferredWindows,
+      occurrences,
+      period,
+    }),
+    objectiveWithoutExecutableBlocks: {
+      detected: safeArray(plannedSystem.actionObjectiveStructure.objectiveIdsWithoutActions).length > 0 ||
+        safeArray(objectiveSignals.needsStructureObjectiveIds).length > 0 ||
+        objectiveIdsWithoutExecutableBlocks.length > 0,
+      objectiveIds: Array.from(new Set([
+        ...safeArray(plannedSystem.actionObjectiveStructure.objectiveIdsWithoutActions),
+        ...safeArray(objectiveSignals.needsStructureObjectiveIds),
+        ...objectiveIdsWithoutExecutableBlocks,
+      ])).slice(0, MAX_PATTERN_SUMMARIES),
+    },
+    nextBlockMissing: {
+      detected: plannedSystem.nextBlockCoverage.missingNextBlock,
+      upcomingPlannedCount: plannedSystem.nextBlockCoverage.upcomingPlannedCount,
+    },
+    loadVsCapacityMismatch: {
+      detected: loadMismatch,
+      capacityDailyMinutes: capacityMinutes || null,
+      averageDailyMinutes,
+      maxDailyMinutes: plannedSystem.weeklyPlannedLoad.maxDailyMinutes,
+    },
+    actualBestWindow: buildActualBestWindowSignal(timePatterns),
+    actionAvoidance: buildActionAvoidanceSignal(frictionPatterns),
+    repairHistorySignal: {
+      detected: repairHistory.repairedCount > 0,
+      repairedCount: repairHistory.repairedCount || 0,
+      repeatedActionRepairs: safeArray(repairHistory.repeatedActionRepairs),
+      byType: repairHistory.byType || {},
+    },
+    analysisHistorySignal: {
+      detected: analysisHistory.recordCount > 0,
+      recordCount: analysisHistory.recordCount || 0,
+      appliedCorrectionCount: analysisHistory.appliedCorrectionCount || 0,
+      latestStatus: analysisHistory.latestStatus || null,
+    },
+    whyExecutionMismatch: objectiveSignals.whyExecutionMismatch || { detected: false },
+    systemDrift: buildSystemDriftSignal({ firstRun, goals, occurrences }),
+    completionOrFrictionSignalCount: completionOrFriction,
+  };
+}
+
+function countSignalEvidence(signal) {
+  if (!isPlainObject(signal)) return 0;
+  let count = 0;
+  for (const value of Object.values(signal)) {
+    if (Array.isArray(value)) count += value.length;
+    else if (isPlainObject(value)) count += countSignalEvidence(value);
+    else if (value === true) count += 1;
+    else if (typeof value === "number" && value > 0) count += value;
+  }
+  return count;
+}
+
+function confidenceForSignal(signal, { behaviorEvidence = 0, structuralEvidence = 0 } = {}) {
+  if (!isPlainObject(signal) || signal.detected !== true) return "low";
+  const evidenceCount = countSignalEvidence(signal);
+  if (behaviorEvidence >= 5 && evidenceCount >= 3) return "high";
+  if (behaviorEvidence > 0 || structuralEvidence > 0 || evidenceCount >= 2) return "medium";
+  return "low";
+}
+
+function buildConfidenceBySignal({ comparisonSignals, executionStats }) {
+  const behaviorEvidence = executionStats.outcomeCount + executionStats.frictionCount;
+  const structuralEvidence = executionStats.expectedCount;
+  return Object.fromEntries(
+    Object.keys(comparisonSignals)
+      .filter((key) => key !== "completionOrFrictionSignalCount")
+      .map((key) => [
+        key,
+        confidenceForSignal(comparisonSignals[key], { behaviorEvidence, structuralEvidence }),
+      ])
+  );
+}
+
+export function recommendSystemAnalysisMode({
+  firstRunSummary,
+  executionStats,
+  sessionStats,
+} = {}) {
+  const expectedCount = safeNumber(executionStats?.expectedCount, 0);
+  const outcomeCount = safeNumber(executionStats?.outcomeCount, 0);
+  const activeDayCount = safeNumber(executionStats?.activeDayCount, 0);
+  const completionOrFriction =
+    safeNumber(executionStats?.completedCount, 0) +
+    safeNumber(executionStats?.frictionCount, 0) +
+    safeNumber(sessionStats?.frictionCount, 0);
+  const fullBehavioral =
+    expectedCount >= CURRENT_BEHAVIORAL_ANALYSIS_REQUIREMENTS.MIN_PLANNED_BLOCKS &&
+    outcomeCount >= CURRENT_BEHAVIORAL_ANALYSIS_REQUIREMENTS.MIN_EXECUTION_OUTCOMES &&
+    activeDayCount >= CURRENT_BEHAVIORAL_ANALYSIS_REQUIREMENTS.MIN_ACTIVE_DAYS &&
+    completionOrFriction >= CURRENT_BEHAVIORAL_ANALYSIS_REQUIREMENTS.MIN_COMPLETION_OR_FRICTION_SIGNALS;
+  if (fullBehavioral) return SYSTEM_ANALYSIS_MODE.BEHAVIORAL;
+
+  if (
+    safeString(firstRunSummary?.commitStatus) === "applied" &&
+    (
+      outcomeCount < CURRENT_BEHAVIORAL_ANALYSIS_REQUIREMENTS.MIN_EXECUTION_OUTCOMES ||
+      activeDayCount < CURRENT_BEHAVIORAL_ANALYSIS_REQUIREMENTS.MIN_ACTIVE_DAYS
+    )
+  ) {
+    return SYSTEM_ANALYSIS_MODE.INITIAL;
+  }
+
+  const hasBehavior =
+    outcomeCount > 0 ||
+    activeDayCount > 0 ||
+    safeNumber(sessionStats?.endedCount, 0) > 0 ||
+    completionOrFriction > 0;
+  if (hasBehavior) return SYSTEM_ANALYSIS_MODE.HYBRID;
+
+  if (safeString(firstRunSummary?.commitStatus) === "applied") return SYSTEM_ANALYSIS_MODE.INITIAL;
+  return SYSTEM_ANALYSIS_MODE.INITIAL;
+}
+
 function buildDataLimitations({ userWhy, firstRun, executionStats, sessionStats, coachThemes, profilePreferences }) {
   const limitations = [];
   function add(code, message) {
@@ -704,6 +1331,9 @@ function buildDataLimitations({ userWhy, firstRun, executionStats, sessionStats,
   if (sessionStats.endedCount <= 0) add("missing_session_history", "Session history is not available for the period.");
   if (coachThemes.messageCount <= 0) add("missing_coach_themes", "Coach conversations are unavailable or empty.");
   if (!profilePreferences.userAiProfile.goals.length) add("missing_profile_preferences", "AI profile preferences are sparse.");
+  add("missing_planning_edit_telemetry", "Detailed planning edit telemetry is not available yet.");
+  add("missing_correction_ignore_telemetry", "Ignored AI correction telemetry is not available yet.");
+  add("missing_detailed_session_event_telemetry", "Detailed pause/resume event telemetry is not available yet.");
   return limitations;
 }
 
@@ -730,6 +1360,15 @@ export function buildSystemAnalysisSnapshotHash(snapshot) {
     hash = Math.imul(hash, 16777619);
   }
   return `sas_${(hash >>> 0).toString(16).padStart(8, "0")}`;
+}
+
+export function buildSystemAnalysisBackendSnapshot(snapshot) {
+  const source = isPlainObject(snapshot) ? snapshot : {};
+  return Object.fromEntries(
+    BACKEND_COMPATIBLE_SNAPSHOT_KEYS
+      .filter((key) => Object.prototype.hasOwnProperty.call(source, key))
+      .map((key) => [key, source[key]])
+  );
 }
 
 export function buildSystemAnalysisSnapshot({
@@ -810,6 +1449,49 @@ export function buildSystemAnalysisSnapshot({
   );
   const coachThemes = buildCoachThemes(collectCoachConversations(safeState, coachConversations));
   const profilePreferences = buildProfilePreferences(safeState);
+  const repairHistorySummary = buildRepairHistorySummary({ occurrences, period: normalizedPeriod });
+  const analysisHistorySummary = buildAnalysisHistorySummary(safeState);
+  const plannedSystem = buildPlannedSystemSummary({
+    state: safeState,
+    firstRun,
+    userWhy,
+    objectiveModel,
+    goalsSummary,
+    actionsSummary,
+    planningLoadSignals,
+    profilePreferences,
+    occurrences,
+    sessionHistory,
+    period: normalizedPeriod,
+    referenceDateKey: referenceKey,
+  });
+  const behaviorSystem = buildBehaviorSystemSummary({
+    executionStats,
+    sessionStats,
+    timePatterns,
+    objectiveModel,
+    frictionPatterns,
+    repairHistorySummary,
+    analysisHistorySummary,
+  });
+  const comparisonSignals = buildComparisonSignals({
+    plannedSystem,
+    behaviorSystem,
+    objectiveSignals,
+    frictionPatterns,
+    timePatterns,
+    executionStats,
+    firstRun,
+    goals,
+    occurrences,
+    period: normalizedPeriod,
+  });
+  const confidenceBySignal = buildConfidenceBySignal({ comparisonSignals, executionStats });
+  const analysisModeRecommendation = recommendSystemAnalysisMode({
+    firstRunSummary,
+    executionStats,
+    sessionStats,
+  });
   const dataLimitations = buildDataLimitations({
     userWhy,
     firstRun: firstRunSummary,
@@ -828,6 +1510,8 @@ export function buildSystemAnalysisSnapshot({
     periodSessionHistory: sessionHistory.filter((history) => isWithinPeriod(getHistoryDateKey(history), normalizedPeriod)).length,
     systemSignals: systemSignals.length,
     coachConversations: coachThemes.conversationCount,
+    repairHistory: repairHistorySummary.repairedCount,
+    systemAnalysisHistory: analysisHistorySummary.recordCount,
   };
 
   const snapshot = {
@@ -849,6 +1533,11 @@ export function buildSystemAnalysisSnapshot({
     adjustDiagnosticSummary,
     coachThemes,
     profilePreferences,
+    plannedSystem,
+    behaviorSystem,
+    comparisonSignals,
+    confidenceBySignal,
+    analysisModeRecommendation,
     dataLimitations,
     sourceCounts,
     snapshotHash: "",

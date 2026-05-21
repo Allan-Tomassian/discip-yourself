@@ -10,7 +10,16 @@ import {
   upsertSystemAnalysisRecord,
   buildSystemAnalysisHistoryDisplayModel,
 } from "./systemAnalysisHistory";
-import { SYSTEM_ANALYSIS_CORRECTION_ACTION } from "./systemAnalysisContract";
+import {
+  SYSTEM_ANALYSIS_CONFIRMATION_LEVEL,
+  SYSTEM_ANALYSIS_CORRECTION_ACTION,
+  SYSTEM_ANALYSIS_CORRECTION_ITEM_ACTION,
+  SYSTEM_ANALYSIS_CORRECTION_TARGET_TYPE,
+  SYSTEM_ANALYSIS_DRAFT_VERSION,
+  SYSTEM_ANALYSIS_MODE,
+  SYSTEM_ANALYSIS_RESULT_VERSION,
+  SYSTEM_ANALYSIS_SUPPORT_STATUS,
+} from "./systemAnalysisContract";
 
 const PERIOD = { startDateKey: "2026-05-14", endDateKey: "2026-05-20", days: 7 };
 
@@ -80,6 +89,44 @@ function legalResult(overrides = {}) {
   };
 }
 
+function legalV2Result(overrides = {}) {
+  return legalResult({
+    version: SYSTEM_ANALYSIS_RESULT_VERSION.V2,
+    analysisMode: SYSTEM_ANALYSIS_MODE.BEHAVIORAL,
+    diagnosisSummary: {
+      primaryFinding: "La charge se concentre sur un bloc fragile.",
+      risk: "Le bloc peut rester difficile à exécuter.",
+      opportunity: "Réduire le bloc stabilise l’action.",
+      evidence: [{ occurrenceId: "occ-1" }],
+      confidence: 0.77,
+    },
+    correctionDraft: {
+      ...legalResult().correctionDraft,
+      version: SYSTEM_ANALYSIS_DRAFT_VERSION.V2,
+      correctionItems: [{
+        id: "ci-reduce-1",
+        type: "occurrence_reduce",
+        targetType: SYSTEM_ANALYSIS_CORRECTION_TARGET_TYPE.OCCURRENCE,
+        targetId: "occ-1",
+        action: SYSTEM_ANALYSIS_CORRECTION_ITEM_ACTION.REDUCE,
+        title: "Réduire la durée",
+        whatChanges: "Passer le bloc à 30 minutes.",
+        why: "Le bloc actuel est trop long.",
+        evidence: [{ occurrenceId: "occ-1" }],
+        expectedImpact: "Moins de friction.",
+        risk: "Risque faible.",
+        confidence: 0.8,
+        supportStatus: SYSTEM_ANALYSIS_SUPPORT_STATUS.APPLICABLE,
+        destructive: false,
+        confirmationLevel: SYSTEM_ANALYSIS_CONFIRMATION_LEVEL.STANDARD,
+        validationRequirements: ["user_confirmation"],
+        proposedDurationMinutes: 30,
+      }],
+    },
+    ...overrides,
+  });
+}
+
 function validRecord(id, generatedAt, overrides = {}) {
   return {
     id,
@@ -129,6 +176,28 @@ describe("systemAnalysisHistory", () => {
     });
     expect(invalid.ok).toBe(false);
     expect(invalid.record).toBeNull();
+  });
+
+  it("stores validated v2 results without dropping correctionItems", () => {
+    const recordResult = createSystemAnalysisRecord({
+      result: legalV2Result(),
+      snapshot: snapshotFixture(),
+      eligibility: { eligible: true },
+      state: stateFixture(),
+      now: new Date("2026-05-20T13:00:00.000Z"),
+    });
+
+    expect(recordResult.ok).toBe(true);
+    expect(recordResult.record.result).toMatchObject({
+      version: SYSTEM_ANALYSIS_RESULT_VERSION.V2,
+      analysisMode: SYSTEM_ANALYSIS_MODE.BEHAVIORAL,
+      correctionDraft: {
+        version: SYSTEM_ANALYSIS_DRAFT_VERSION.V2,
+        correctionItems: [
+          expect.objectContaining({ id: "ci-reduce-1", action: SYSTEM_ANALYSIS_CORRECTION_ITEM_ACTION.REDUCE }),
+        ],
+      },
+    });
   });
 
   it("does not persist raw snapshots or raw transcripts", () => {
