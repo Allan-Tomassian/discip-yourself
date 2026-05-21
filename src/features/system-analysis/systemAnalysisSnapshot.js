@@ -30,6 +30,7 @@ const MAX_ENTITY_SUMMARIES = 20;
 const MAX_SIGNAL_SUMMARIES = 24;
 const MAX_PATTERN_SUMMARIES = 8;
 const CURRENT_BEHAVIORAL_ANALYSIS_REQUIREMENTS = Object.freeze({
+  MIN_DAYS_SINCE_ACTIVATION: 7,
   MIN_PLANNED_BLOCKS: 10,
   MIN_EXECUTION_OUTCOMES: 5,
   MIN_ACTIVE_DAYS: 3,
@@ -119,6 +120,16 @@ function resolveReferenceDateKey(referenceDateKey, now) {
 function getInclusiveDays(startDateKey, endDateKey) {
   const range = buildDateRangeLocalKeys(startDateKey, endDateKey);
   return range.length || 1;
+}
+
+function diffLocalDateKeysInDays(fromKey, toKey) {
+  const from = normalizeLocalDateKey(fromKey);
+  const to = normalizeLocalDateKey(toKey);
+  if (!from || !to) return null;
+  const fromTime = Date.parse(`${from}T00:00:00`);
+  const toTime = Date.parse(`${to}T00:00:00`);
+  if (!Number.isFinite(fromTime) || !Number.isFinite(toTime)) return null;
+  return Math.max(0, Math.round((toTime - fromTime) / 86400000));
 }
 
 function resolvePeriod(period = {}, referenceDateKey) {
@@ -1282,6 +1293,8 @@ export function recommendSystemAnalysisMode({
   firstRunSummary,
   executionStats,
   sessionStats,
+  daysSinceActivation,
+  hasMeaningfulPlannedSystem,
 } = {}) {
   const expectedCount = safeNumber(executionStats?.expectedCount, 0);
   const outcomeCount = safeNumber(executionStats?.outcomeCount, 0);
@@ -1290,12 +1303,25 @@ export function recommendSystemAnalysisMode({
     safeNumber(executionStats?.completedCount, 0) +
     safeNumber(executionStats?.frictionCount, 0) +
     safeNumber(sessionStats?.frictionCount, 0);
-  const fullBehavioral =
+  const hasBehavior =
+    outcomeCount > 0 ||
+    safeNumber(sessionStats?.endedCount, 0) > 0 ||
+    completionOrFriction > 0;
+  const hasPlannedStructure = hasMeaningfulPlannedSystem !== false;
+  const safeDaysSinceActivation = safeNumber(daysSinceActivation, NaN);
+  const activationAgeSatisfied =
+    !Number.isFinite(safeDaysSinceActivation) ||
+    safeDaysSinceActivation >= CURRENT_BEHAVIORAL_ANALYSIS_REQUIREMENTS.MIN_DAYS_SINCE_ACTIVATION;
+  const fullBehavioralCounts =
     expectedCount >= CURRENT_BEHAVIORAL_ANALYSIS_REQUIREMENTS.MIN_PLANNED_BLOCKS &&
     outcomeCount >= CURRENT_BEHAVIORAL_ANALYSIS_REQUIREMENTS.MIN_EXECUTION_OUTCOMES &&
     activeDayCount >= CURRENT_BEHAVIORAL_ANALYSIS_REQUIREMENTS.MIN_ACTIVE_DAYS &&
     completionOrFriction >= CURRENT_BEHAVIORAL_ANALYSIS_REQUIREMENTS.MIN_COMPLETION_OR_FRICTION_SIGNALS;
-  if (fullBehavioral) return SYSTEM_ANALYSIS_MODE.BEHAVIORAL;
+  if (fullBehavioralCounts && activationAgeSatisfied) return SYSTEM_ANALYSIS_MODE.BEHAVIORAL;
+
+  if (!activationAgeSatisfied && hasPlannedStructure) {
+    return hasBehavior ? SYSTEM_ANALYSIS_MODE.HYBRID : SYSTEM_ANALYSIS_MODE.INITIAL;
+  }
 
   if (
     safeString(firstRunSummary?.commitStatus) === "applied" &&
@@ -1307,11 +1333,6 @@ export function recommendSystemAnalysisMode({
     return SYSTEM_ANALYSIS_MODE.INITIAL;
   }
 
-  const hasBehavior =
-    outcomeCount > 0 ||
-    activeDayCount > 0 ||
-    safeNumber(sessionStats?.endedCount, 0) > 0 ||
-    completionOrFriction > 0;
   if (hasBehavior) return SYSTEM_ANALYSIS_MODE.HYBRID;
 
   if (safeString(firstRunSummary?.commitStatus) === "applied") return SYSTEM_ANALYSIS_MODE.INITIAL;
@@ -1487,10 +1508,18 @@ export function buildSystemAnalysisSnapshot({
     period: normalizedPeriod,
   });
   const confidenceBySignal = buildConfidenceBySignal({ comparisonSignals, executionStats });
+  const hasMeaningfulPlannedSystem =
+    goalsSummary.totalCount > 0 ||
+    actionsSummary.totalCount > 0 ||
+    executionStats.expectedCount > 0 ||
+    occurrences.length > 0 ||
+    safeString(firstRunSummary.commitStatus) === "applied";
   const analysisModeRecommendation = recommendSystemAnalysisMode({
     firstRunSummary,
     executionStats,
     sessionStats,
+    daysSinceActivation: diffLocalDateKeysInDays(firstRunSummary.appliedAt, referenceKey),
+    hasMeaningfulPlannedSystem,
   });
   const dataLimitations = buildDataLimitations({
     userWhy,

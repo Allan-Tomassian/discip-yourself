@@ -49,7 +49,7 @@ function snapshotFor(state) {
 }
 
 describe("buildSystemAnalysisEligibility", () => {
-  it("fails before seven days since activation", () => {
+  it("allows a recent usable system as hybrid analysis before seven days since activation", () => {
     const state = buildEligibleState({
       ui: {
         firstRunV1: {
@@ -60,8 +60,12 @@ describe("buildSystemAnalysisEligibility", () => {
     });
     const result = buildSystemAnalysisEligibility({ state, snapshot: snapshotFor(state), now: NOW });
 
-    expect(result.eligible).toBe(false);
-    expect(result.missingRequirements.map((item) => item.code)).toContain("activation_too_recent");
+    expect(result.eligible).toBe(true);
+    expect(result.analysisMode).toBe(SYSTEM_ANALYSIS_MODE.HYBRID);
+    expect(result.reasons).toEqual(["hybrid_analysis_available"]);
+    expect(result.behavioralEligible).toBe(false);
+    expect(result.behavioralMissingRequirements.map((item) => item.code)).toContain("activation_too_recent");
+    expect(result.missingRequirements).toEqual([]);
   });
 
   it("allows initial analysis with a committed first-run system and too few planned blocks", () => {

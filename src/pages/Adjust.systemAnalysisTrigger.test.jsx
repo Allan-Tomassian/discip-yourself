@@ -49,6 +49,20 @@ function thinData() {
   };
 }
 
+function recentUsableData() {
+  const data = eligibleData();
+  return {
+    ...data,
+    ui: {
+      ...data.ui,
+      firstRunV1: {
+        ...data.ui.firstRunV1,
+        commitV1: { status: "applied", appliedAt: "2026-05-18T10:00:00.000Z" },
+      },
+    },
+  };
+}
+
 function emptyData() {
   return {
     categories: [],
@@ -241,6 +255,16 @@ describe("Adjust system analysis trigger contract", () => {
     expect(html).toContain("Analyse en cours");
     expect(html).toContain('data-system-analysis-state="running"');
     expect(html).toContain("disabled");
+  });
+
+  it("keeps recent usable systems on the intro-capable entry path", () => {
+    const html = renderToStaticMarkup(<Adjust data={recentUsableData()} />);
+
+    expect(html).toContain("Analyser le système");
+    expect(html).toContain('data-system-analysis-state="available"');
+    expect(html).not.toContain("Activation trop récente");
+    expect(html).not.toContain('data-system-analysis-explanatory="true"');
+    expect(html).not.toContain("disabled=\"\"");
   });
 
   it("allows thin planned data to open the initial-analysis entry path", () => {

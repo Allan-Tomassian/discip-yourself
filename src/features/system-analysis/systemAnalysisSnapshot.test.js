@@ -265,16 +265,57 @@ describe("buildSystemAnalysisSnapshot", () => {
       referenceDateKey: "2026-05-20",
       now: NOW,
     });
+    const recentWithBehavioralCounts = buildSystemAnalysisSnapshot({
+      state: baseState({
+        occurrences: behavioralOccurrences,
+        ui: {
+          firstRunV1: {
+            status: "done",
+            draftAnswers: { whyText: "Construire une discipline stable pour ma santé et mon travail." },
+            commitV1: { status: "applied", appliedAt: "2026-05-18T10:00:00.000Z" },
+          },
+        },
+      }),
+      period: PERIOD,
+      referenceDateKey: "2026-05-20",
+      now: NOW,
+    });
+    const recentThinStructure = buildSystemAnalysisSnapshot({
+      state: baseState({
+        occurrences: [
+          { id: "occ-planned", goalId: "act-work", date: "2026-05-20", start: "09:00", durationMinutes: 30, status: "planned" },
+        ],
+        ui: {
+          firstRunV1: {
+            status: "done",
+            draftAnswers: { whyText: "Construire une discipline stable pour ma santé et mon travail." },
+            commitV1: { status: "applied", appliedAt: "2026-05-18T10:00:00.000Z" },
+          },
+        },
+      }),
+      period: PERIOD,
+      referenceDateKey: "2026-05-20",
+      now: NOW,
+    });
 
     expect(initial.analysisModeRecommendation).toBe(SYSTEM_ANALYSIS_MODE.INITIAL);
     expect(thinInitial.analysisModeRecommendation).toBe(SYSTEM_ANALYSIS_MODE.INITIAL);
     expect(hybrid.analysisModeRecommendation).toBe(SYSTEM_ANALYSIS_MODE.HYBRID);
     expect(behavioral.analysisModeRecommendation).toBe(SYSTEM_ANALYSIS_MODE.BEHAVIORAL);
+    expect(recentWithBehavioralCounts.analysisModeRecommendation).toBe(SYSTEM_ANALYSIS_MODE.HYBRID);
+    expect(recentThinStructure.analysisModeRecommendation).toBe(SYSTEM_ANALYSIS_MODE.INITIAL);
     expect(recommendSystemAnalysisMode({
       firstRunSummary: { commitStatus: "applied" },
       executionStats: { expectedCount: 0, outcomeCount: 0, activeDayCount: 0, completedCount: 0, frictionCount: 0 },
       sessionStats: { endedCount: 0, frictionCount: 0 },
     })).toBe(SYSTEM_ANALYSIS_MODE.INITIAL);
+    expect(recommendSystemAnalysisMode({
+      firstRunSummary: { commitStatus: "applied" },
+      executionStats: { expectedCount: 10, outcomeCount: 5, activeDayCount: 3, completedCount: 5, frictionCount: 0 },
+      sessionStats: { endedCount: 0, frictionCount: 0 },
+      daysSinceActivation: 2,
+      hasMeaningfulPlannedSystem: true,
+    })).toBe(SYSTEM_ANALYSIS_MODE.HYBRID);
   });
 
   it("summarizes behavior counts and marks unavailable telemetry limitations", () => {
