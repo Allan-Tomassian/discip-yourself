@@ -21,7 +21,7 @@ const TEST_CONFIG = {
   SESSION_GUIDANCE_PREPARE_OPENAI_TIMEOUT_MS: 60000,
   SYSTEM_ANALYSIS_MODEL: "",
   SYSTEM_ANALYSIS_TIMEOUT_MS: 65000,
-  SYSTEM_ANALYSIS_PROMPT_VERSION: "system_analysis_v1_0",
+  SYSTEM_ANALYSIS_PROMPT_VERSION: "system_analysis_v2_0",
   AI_QUOTA_MODE: "normal",
   CORS_ALLOW_PRIVATE_NETWORK_DEV: false,
   CORS_ALLOWED_ORIGINS: ["http://localhost:5173", "http://127.0.0.1:5173"],
@@ -181,6 +181,18 @@ function createSnapshot(overrides = {}) {
     profilePreferences: { hasProfile: true },
     dataLimitations: [{ code: "missing_coach_themes", message: "No transcript included." }],
     sourceCounts: { categories: 1, goals: 2, occurrences: 12, sessionHistory: 6 },
+    plannedSystem: {
+      whyText: "Construire un système d'exécution fiable.",
+      primaryObjective: { id: "out-1", title: "Ship" },
+      capacity: { dailyMinutes: 60 },
+      preferredWindows: [{ id: "morning", daysOfWeek: [1, 2, 3, 4, 5], startTime: "09:00", endTime: "11:00" }],
+      unavailableWindows: [{ id: "evening", daysOfWeek: [1, 2, 3, 4, 5], startTime: "18:00", endTime: "22:00" }],
+      weeklyPlannedLoad: { averageDailyMinutes: 45, maxDailyMinutes: 70 },
+    },
+    behaviorSystem: { completedCount: 4, missedCount: 1, reportedCount: 1, blockedCount: 1, activeDays: 4 },
+    comparisonSignals: { loadVsCapacityMismatch: { detected: false } },
+    confidenceBySignal: { loadVsCapacityMismatch: "medium" },
+    analysisModeRecommendation: "behavioral_analysis",
     snapshotHash: "sas_route1234",
     ...overrides,
   };
@@ -199,8 +211,26 @@ function createRequest(overrides = {}) {
 
 function createValidResult(overrides = {}) {
   return {
-    version: 1,
+    version: 2,
     period: PERIOD,
+    analysisMode: "behavioral_analysis",
+    diagnosisSummary: {
+      primaryFinding: "Le bloc principal concentre trop de charge.",
+      risk: "La charge rend l'exécution fragile.",
+      opportunity: "Un créneau plus stable peut aider.",
+      evidence: [{
+        source: "snapshot",
+        dateKey: null,
+        occurrenceId: "occ-1",
+        historyId: null,
+        actionId: "act-1",
+        goalId: "out-1",
+        objectiveId: "out-1",
+        count: 1,
+        facts: ["1 bloc principal observé"],
+      }],
+      confidence: 0.76,
+    },
     executiveSummary: "Le système tient mieux quand la charge reste courte et claire.",
     invisibleFriction: [
       {
@@ -224,6 +254,42 @@ function createValidResult(overrides = {}) {
     strongestPatterns: [],
     recommendedCorrections: [],
     correctionDraft: {
+      version: 2,
+      userConfirmationRequired: true,
+      correctionItems: [
+        {
+          id: "ci-move-1",
+          type: "occurrence_move",
+          targetType: "occurrence",
+          targetId: "occ-1",
+          action: "move",
+          title: "Déplacer le bloc",
+          whatChanges: "Déplacer le bloc Deep work vers un créneau plus stable.",
+          why: "Le créneau actuel concentre déjà trop d'effort.",
+          evidence: [{
+            source: "snapshot",
+            dateKey: "2026-05-20",
+            occurrenceId: "occ-1",
+            historyId: null,
+            actionId: "act-1",
+            goalId: "out-1",
+            objectiveId: "out-1",
+            count: 1,
+            facts: ["Bloc actuel à 09:00"],
+          }],
+          expectedImpact: "Rendre le bloc plus exécutable.",
+          risk: "Risque faible si le créneau reste disponible.",
+          confidence: 0.8,
+          supportStatus: "applicable",
+          destructive: false,
+          confirmationLevel: "standard",
+          validationRequirements: ["user_confirmation"],
+          proposedDateKey: "2026-05-21",
+          proposedStart: "10:00",
+          proposedDurationMinutes: null,
+          proposedLoad: null,
+        },
+      ],
       correctedLoad: {
         targetBlocksPerDay: 2,
         maxDailyMinutes: 60,
@@ -244,7 +310,6 @@ function createValidResult(overrides = {}) {
       actionAdjustments: [{ actionId: "act-1", action: "protect", reason: "Action motrice du système.", confidence: null }],
       next7DaysPlan: [],
       validationRequirements: ["user_confirmation"],
-      userConfirmationRequired: true,
     },
     next7DaysFocus: [],
     coachQuestions: ["Quel créneau reste réellement protégé ?"],
@@ -560,13 +625,17 @@ test("POST /ai/system-analysis returns structured result for mocked provider and
 
   const body = response.json();
   assert.equal(response.statusCode, 200);
-  assert.equal(body.version, 1);
+  assert.equal(body.version, 2);
+  assert.equal(body.analysisMode, "behavioral_analysis");
   assert.equal(body.correctionDraft.userConfirmationRequired, true);
+  assert.equal(body.correctionDraft.version, 2);
+  assert.equal(Array.isArray(body.correctionDraft.correctionItems), true);
   assert.equal(body.modelMeta.model, "gpt-system-route");
   assert.equal(body.modelMeta.promptVersion, "system_analysis_route_v1");
   assert.equal(requestedModel, "gpt-system-route");
   assert.equal(requestedTimeout, 87000);
   assert.match(requestedPrompt, /French|fr-FR|Do not mutate|medical|evidence/i);
+  assert.match(requestedPrompt, /version must be 2|correctionItems|plannedSystem|behaviorSystem/i);
   assert.equal(mutations.length, 0);
   assert.equal(insertedLogs[0]?.coach_kind, "system-analysis");
   assert.equal(insertedLogs[0]?.route, "/ai/system-analysis");

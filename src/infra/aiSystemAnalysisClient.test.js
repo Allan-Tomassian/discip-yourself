@@ -109,6 +109,93 @@ function resultFixture(overrides = {}) {
   };
 }
 
+function v2ResultFixture(overrides = {}) {
+  return resultFixture({
+    version: 2,
+    analysisMode: "initial_analysis",
+    diagnosisSummary: {
+      primaryFinding: "Le système a surtout besoin de structure.",
+      risk: "Le prochain bloc peut manquer de clarté.",
+      opportunity: "Un créneau existant peut être mieux exploité.",
+      evidence: [{
+        source: "snapshot",
+        dateKey: "2026-05-20",
+        occurrenceId: "occ_focus",
+        historyId: null,
+        actionId: "act_focus",
+        goalId: "out_focus",
+        objectiveId: "out_focus",
+        count: 1,
+        facts: ["1 bloc observé"],
+      }],
+      confidence: 0.72,
+    },
+    correctionDraft: {
+      version: 2,
+      userConfirmationRequired: true,
+      correctionItems: [
+        {
+          id: "ci-reduce-focus",
+          type: "occurrence_reduce",
+          targetType: "occurrence",
+          targetId: "occ_focus",
+          action: "reduce",
+          title: "Réduire le bloc",
+          whatChanges: "Passer le bloc Focus profond à 30 minutes.",
+          why: "La version plus courte protège mieux l’exécution.",
+          evidence: [{
+            source: "snapshot",
+            dateKey: "2026-05-20",
+            occurrenceId: "occ_focus",
+            historyId: null,
+            actionId: "act_focus",
+            goalId: "out_focus",
+            objectiveId: "out_focus",
+            count: 1,
+            facts: ["Bloc actuel à 45 minutes"],
+          }],
+          expectedImpact: "Réduire la friction.",
+          risk: "Risque faible.",
+          confidence: 0.8,
+          supportStatus: "applicable",
+          destructive: false,
+          confirmationLevel: "standard",
+          validationRequirements: ["user_confirmation"],
+          proposedDateKey: null,
+          proposedStart: null,
+          proposedDurationMinutes: 30,
+          proposedLoad: null,
+        },
+      ],
+      correctedLoad: {
+        targetBlocksPerDay: 2,
+        maxDailyMinutes: 90,
+        reason: "Réduire la charge protège l’exécution.",
+      },
+      occurrenceAdjustments: [{
+        occurrenceId: "occ_focus",
+        action: "reduce_duration",
+        proposedDateKey: null,
+        proposedStart: null,
+        proposedDurationMinutes: 30,
+        reason: "Version plus courte.",
+        confidence: 0.7,
+      }],
+      objectiveAdjustments: [],
+      actionAdjustments: [],
+      next7DaysPlan: [],
+      validationRequirements: ["Confirmer la réduction de durée"],
+    },
+    modelMeta: {
+      model: "gpt-system-analysis",
+      promptVersion: "system_analysis_v2_0",
+      requestId: "req_analysis",
+      snapshotHash: "snapshot_hash",
+    },
+    ...overrides,
+  });
+}
+
 function jsonResponse(body, status = 200) {
   return {
     ok: status >= 200 && status < 300,
@@ -156,8 +243,20 @@ describe("requestAiSystemAnalysis", () => {
       referenceDateKey: "2026-05-20",
     });
     expect(body.snapshot.snapshotHash).toBe("snapshot_hash");
-    expect(body.snapshot.plannedSystem).toBeUndefined();
+    expect(body.snapshot.plannedSystem).toMatchObject({ whyText: "Local v2 enrichment" });
+    expect(body.snapshot.analysisModeRecommendation).toBe("initial_analysis");
     expect(result.result.executiveSummary).toContain("Ton système");
+  });
+
+  it("validates v2 system analysis responses", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(v2ResultFixture()));
+
+    const result = await requestAiSystemAnalysis(baseArgs({ fetchImpl }));
+
+    expect(result.ok).toBe(true);
+    expect(result.result.version).toBe(2);
+    expect(result.result.analysisMode).toBe("initial_analysis");
+    expect(result.result.correctionDraft.correctionItems).toHaveLength(1);
   });
 
   it("rejects an invalid successful response through frontend validation", async () => {

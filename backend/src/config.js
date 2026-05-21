@@ -97,7 +97,7 @@ const envSchema = z.object({
   SESSION_GUIDANCE_PREPARE_OPENAI_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60000).optional().default(60000),
   SYSTEM_ANALYSIS_MODEL: z.string().optional().default(""),
   SYSTEM_ANALYSIS_TIMEOUT_MS: z.coerce.number().int().min(1000).max(90000).optional().default(65000),
-  SYSTEM_ANALYSIS_PROMPT_VERSION: z.string().optional().default("system_analysis_v1_0"),
+  SYSTEM_ANALYSIS_PROMPT_VERSION: z.string().optional().default("system_analysis_v2_0"),
   AI_QUOTA_MODE: z.enum(["normal", "dev_relaxed"]).default("normal"),
   CORS_ALLOW_PRIVATE_NETWORK_DEV: z.union([z.string(), z.boolean()]).optional().default("false").transform(parseBooleanFlag),
   CORS_ALLOWED_ORIGINS: z

@@ -57,6 +57,7 @@ function item({
   selected = true,
   selectable = true,
   group = "occurrences",
+  targetType,
   repairPreview = {
     type: PLANNING_REPAIR_TYPE.REDUCE_DURATION,
     occurrenceId: "occ_focus",
@@ -68,6 +69,7 @@ function item({
     label,
     description,
     group,
+    targetType,
     selected,
     selectable,
     status: selectable ? "valid" : "unsupported",
@@ -115,6 +117,35 @@ describe("systemAnalysisApplyModel", () => {
     expect(preview.selectedItems).toHaveLength(1);
     expect(preview.notAppliedItems.map((entry) => entry.label)).toContain("Protéger ce bloc");
     expect(preview.summary.willChange[0]).toContain("Réduire la durée");
+  });
+
+  it("treats v2 priority occurrence repairs as applicable without widening application scope", () => {
+    const review = reviewFixture([
+      item({
+        id: "ci_reduce",
+        group: "priority",
+        targetType: "occurrence",
+      }),
+      item({
+        id: "ci_objective",
+        label: "Mettre en pause",
+        group: "priority",
+        targetType: "objective",
+        selected: true,
+        selectable: true,
+        repairPreview: {
+          type: PLANNING_REPAIR_TYPE.REDUCE_DURATION,
+          occurrenceId: "occ_focus",
+          durationMinutes: 25,
+        },
+      }),
+    ]);
+
+    const preview = buildSystemAnalysisApplicationPreview({ review });
+
+    expect(preview.ok).toBe(true);
+    expect(preview.selectedItems.map((entry) => entry.id)).toEqual(["ci_reduce"]);
+    expect(preview.selectedNotAppliedItems.map((entry) => entry.id)).toEqual(["ci_objective"]);
   });
 
   it("applies reduce_duration through PlanningRepairModel and preserves links", () => {

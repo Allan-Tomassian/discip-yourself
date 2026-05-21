@@ -54,10 +54,12 @@ function normalizeSelectedItem(item) {
 
 function isSelectedApplicableOccurrenceItem(item) {
   const repairPreview = item?.repairPreview;
+  const itemGroup = safeString(item?.group);
+  const targetType = safeString(item?.targetType);
   return Boolean(
     item?.selected === true &&
       item?.selectable === true &&
-      item?.group === SYSTEM_ANALYSIS_CORRECTION_GROUP.OCCURRENCES &&
+      (itemGroup === SYSTEM_ANALYSIS_CORRECTION_GROUP.OCCURRENCES || targetType === "occurrence") &&
       isPlainObject(repairPreview) &&
       SUPPORTED_REPAIR_TYPES.has(safeString(repairPreview.type)) &&
       safeString(repairPreview.occurrenceId)
