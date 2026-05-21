@@ -17,9 +17,14 @@ function formatConfidence(confidence) {
   return `${Math.round(Math.max(0, Math.min(1, value)) * 100)}%`;
 }
 
-function statusCopy(status, selected) {
+function statusCopy(item) {
+  const status = item?.status;
+  const selected = item?.selected;
   if (status === SYSTEM_ANALYSIS_CORRECTION_REVIEW_STATUS.APPLIED) {
     return { label: "Déjà appliquée", tone: "execution", Icon: CheckCircle2 };
+  }
+  if (item?.destructive) {
+    return { label: "DESTRUCTIF", tone: "attention", Icon: AlertTriangle };
   }
   if (status === SYSTEM_ANALYSIS_CORRECTION_REVIEW_STATUS.VALID) {
     return { label: selected ? "SÉLECTIONNÉE" : "APPLICABLE", tone: "execution", Icon: CheckCircle2 };
@@ -27,7 +32,7 @@ function statusCopy(status, selected) {
   if (status === SYSTEM_ANALYSIS_CORRECTION_REVIEW_STATUS.NEEDS_REVIEW) {
     return { label: "À REVOIR", tone: "attention", Icon: AlertTriangle };
   }
-  return { label: "À REVOIR", tone: "attention", Icon: AlertTriangle };
+  return { label: "NON PRIS EN CHARGE", tone: "attention", Icon: AlertTriangle };
 }
 
 function formatReadyCount(count) {
@@ -44,13 +49,14 @@ function issueText(issues) {
 }
 
 function CorrectionItem({ item, onSelectChange }) {
-  const status = statusCopy(item.status, item.selected);
+  const status = statusCopy(item);
   const confidence = formatConfidence(item.confidence);
   return (
     <article
       className={`systemAnalysisCorrectionItem systemAnalysisCorrectionItem--${item.status}`}
       data-system-analysis-correction-id={item.id}
       data-system-analysis-correction-status={item.status}
+      data-system-analysis-correction-destructive={item.destructive ? "true" : undefined}
     >
       <div className="systemAnalysisCorrectionItem__main">
         <div className="systemAnalysisCorrectionItem__titleRow">

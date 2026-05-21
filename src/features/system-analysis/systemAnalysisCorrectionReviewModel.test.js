@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { PLANNING_REPAIR_TYPE } from "../../logic/planningRepairModel";
 import {
+  SYSTEM_ANALYSIS_CONFIRMATION_LEVEL,
+  SYSTEM_ANALYSIS_CORRECTION_ITEM_ACTION,
+  SYSTEM_ANALYSIS_CORRECTION_TARGET_TYPE,
+  SYSTEM_ANALYSIS_DRAFT_VERSION,
+  SYSTEM_ANALYSIS_SUPPORT_STATUS,
+} from "./systemAnalysisContract";
+import {
   SYSTEM_ANALYSIS_CORRECTION_REVIEW_STATUS,
   buildSystemAnalysisCorrectionReview,
 } from "./systemAnalysisCorrectionReviewModel";
@@ -44,6 +51,38 @@ function correctionDraft(overrides = {}) {
 
 function resultFixture(draft) {
   return { correctionDraft: draft };
+}
+
+function correctionItem(overrides = {}) {
+  return {
+    id: "ci-move",
+    type: "occurrence_move",
+    targetType: SYSTEM_ANALYSIS_CORRECTION_TARGET_TYPE.OCCURRENCE,
+    targetId: "occ_focus",
+    action: SYSTEM_ANALYSIS_CORRECTION_ITEM_ACTION.MOVE,
+    title: "Déplacer le bloc",
+    whatChanges: "Déplacer le bloc vers un créneau plus stable.",
+    why: "Le créneau actuel est fragile.",
+    evidence: [{ occurrenceId: "occ_focus", facts: ["Bloc actuel exposé."] }],
+    expectedImpact: "Exécution plus stable.",
+    risk: "Risque faible.",
+    confidence: 0.8,
+    supportStatus: SYSTEM_ANALYSIS_SUPPORT_STATUS.APPLICABLE,
+    destructive: false,
+    confirmationLevel: SYSTEM_ANALYSIS_CONFIRMATION_LEVEL.STANDARD,
+    validationRequirements: ["user_confirmation"],
+    proposedDateKey: "2026-05-22",
+    proposedStart: "10:30",
+    ...overrides,
+  };
+}
+
+function v2Draft(items, overrides = {}) {
+  return correctionDraft({
+    version: SYSTEM_ANALYSIS_DRAFT_VERSION.V2,
+    correctionItems: items,
+    ...overrides,
+  });
 }
 
 function firstOccurrenceItem(review) {
@@ -281,5 +320,190 @@ describe("buildSystemAnalysisCorrectionReview", () => {
     });
     expect(applied.selectedIds).toEqual([]);
     expect(applied.hasValidSelection).toBe(false);
+  });
+
+  it("prefers v2 correctionItems over legacy v1 arrays when both are present", () => {
+    const review = buildSystemAnalysisCorrectionReview({
+      result: resultFixture(v2Draft([
+        correctionItem({ id: "ci-reduce", action: SYSTEM_ANALYSIS_CORRECTION_ITEM_ACTION.REDUCE, proposedDateKey: undefined, proposedStart: undefined, proposedDurationMinutes: 25 }),
+      ], {
+        occurrenceAdjustments: [{
+          occurrenceId: "occ_focus",
+          action: "move",
+          proposedDateKey: "2026-05-23",
+          proposedStart: "14:00",
+          reason: "Legacy fallback.",
+        }],
+      })),
+      state: stateFixture(),
+      snapshot: SNAPSHOT,
+    });
+
+    expect(review.items).toHaveLength(1);
+    expect(review.items[0]).toMatchObject({
+      id: "ci-reduce",
+      label: "Réduire",
+      status: SYSTEM_ANALYSIS_CORRECTION_REVIEW_STATUS.VALID,
+      selectable: true,
+      repairPreview: {
+        type: PLANNING_REPAIR_TYPE.REDUCE_DURATION,
+        occurrenceId: "occ_focus",
+        durationMinutes: 25,
+      },
+    });
+  });
+
+  it("maps v2 occurrence move to choose_time and exposes priority metadata", () => {
+    const review = buildSystemAnalysisCorrectionReview({
+      result: resultFixture(v2Draft([correctionItem()])),
+      state: stateFixture(),
+      snapshot: SNAPSHOT,
+    });
+
+    expect(review.items[0]).toMatchObject({
+      id: "ci-move",
+      group: "priority",
+      label: "Déplacer",
+      description: "Vers 2026-05-22 à 10:30.",
+      reason: "Le créneau actuel est fragile.",
+      expectedImpact: "Exécution plus stable. · Risque : Risque faible.",
+      status: SYSTEM_ANALYSIS_CORRECTION_REVIEW_STATUS.VALID,
+      selectable: true,
+      visibleByDefault: true,
+      priorityRank: 1,
+      destructive: false,
+      supportStatus: SYSTEM_ANALYSIS_SUPPORT_STATUS.APPLICABLE,
+      targetType: SYSTEM_ANALYSIS_CORRECTION_TARGET_TYPE.OCCURRENCE,
+      action: SYSTEM_ANALYSIS_CORRECTION_ITEM_ACTION.MOVE,
+      repairPreview: {
+        type: PLANNING_REPAIR_TYPE.CHOOSE_TIME,
+        occurrenceId: "occ_focus",
+        dateKey: "2026-05-22",
+        start: "10:30",
+      },
+    });
+  });
+
+  it("keeps v2 add/protect/objective/action/schedule/system items visible but non-selectable", () => {
+    const review = buildSystemAnalysisCorrectionReview({
+      result: resultFixture(v2Draft([
+        correctionItem({
+          id: "ci-add-action",
+          targetType: SYSTEM_ANALYSIS_CORRECTION_TARGET_TYPE.ACTION,
+          targetId: "",
+          action: SYSTEM_ANALYSIS_CORRECTION_ITEM_ACTION.ADD,
+          supportStatus: SYSTEM_ANALYSIS_SUPPORT_STATUS.NEEDS_REVIEW,
+          title: "Ajouter une action",
+          whatChanges: "Ajouter une action plus courte.",
+        }),
+        correctionItem({
+          id: "ci-clarify-objective",
+          targetType: SYSTEM_ANALYSIS_CORRECTION_TARGET_TYPE.OBJECTIVE,
+          targetId: "out_focus",
+          action: SYSTEM_ANALYSIS_CORRECTION_ITEM_ACTION.CLARIFY,
+          supportStatus: SYSTEM_ANALYSIS_SUPPORT_STATUS.NEEDS_REVIEW,
+        }),
+        correctionItem({
+          id: "ci-rebalance",
+          targetType: SYSTEM_ANALYSIS_CORRECTION_TARGET_TYPE.SYSTEM,
+          targetId: "",
+          action: SYSTEM_ANALYSIS_CORRECTION_ITEM_ACTION.REBALANCE,
+          supportStatus: SYSTEM_ANALYSIS_SUPPORT_STATUS.NEEDS_REVIEW,
+        }),
+      ])),
+      state: stateFixture(),
+      snapshot: SNAPSHOT,
+    });
+
+    expect(review.items.map((item) => item.id)).toEqual(["ci-add-action", "ci-clarify-objective", "ci-rebalance"]);
+    expect(review.items.every((item) => item.selectable === false)).toBe(true);
+    expect(review.groups.map((group) => group.id)).toEqual(["objectives", "actions", "planning"]);
+  });
+
+  it("shows v2 destructive and unsupported items without allowing selection", () => {
+    const review = buildSystemAnalysisCorrectionReview({
+      result: resultFixture(v2Draft([
+        correctionItem({
+          id: "ci-remove",
+          action: SYSTEM_ANALYSIS_CORRECTION_ITEM_ACTION.REMOVE,
+          supportStatus: SYSTEM_ANALYSIS_SUPPORT_STATUS.NEEDS_REVIEW,
+          destructive: true,
+          confirmationLevel: SYSTEM_ANALYSIS_CONFIRMATION_LEVEL.DESTRUCTIVE,
+        }),
+        correctionItem({
+          id: "ci-unsupported",
+          action: SYSTEM_ANALYSIS_CORRECTION_ITEM_ACTION.PROTECT,
+          supportStatus: SYSTEM_ANALYSIS_SUPPORT_STATUS.UNSUPPORTED,
+        }),
+      ])),
+      state: stateFixture(),
+      snapshot: SNAPSHOT,
+      selectedIds: ["ci-remove", "ci-unsupported"],
+    });
+
+    expect(review.items).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "ci-remove", group: "unsupported", destructive: true, selectable: false, selected: false }),
+      expect.objectContaining({ id: "ci-unsupported", group: "unsupported", status: SYSTEM_ANALYSIS_CORRECTION_REVIEW_STATUS.UNSUPPORTED, selectable: false }),
+    ]));
+    expect(review.hasValidSelection).toBe(false);
+  });
+
+  it("surfaces v2 correctionItems validation issues inline", () => {
+    const review = buildSystemAnalysisCorrectionReview({
+      result: resultFixture(v2Draft([
+        correctionItem({ targetId: "missing_occ" }),
+      ])),
+      state: stateFixture(),
+      snapshot: SNAPSHOT,
+    });
+
+    expect(review.contractIssues.map((issue) => issue.code)).toContain("UNKNOWN_EVIDENCE_OCCURRENCE");
+    expect(review.items[0]).toMatchObject({
+      status: SYSTEM_ANALYSIS_CORRECTION_REVIEW_STATUS.UNSUPPORTED,
+      selectable: false,
+      repairPreview: null,
+    });
+    expect(review.items[0].validationIssues.map((issue) => issue.code)).toContain("UNKNOWN_EVIDENCE_OCCURRENCE");
+  });
+
+  it("uses v2 item ids for selection, applied state, and confirmation summary", () => {
+    const initial = buildSystemAnalysisCorrectionReview({
+      result: resultFixture(v2Draft([
+        correctionItem({ id: "ci-move" }),
+        correctionItem({ id: "ci-reduce", action: SYSTEM_ANALYSIS_CORRECTION_ITEM_ACTION.REDUCE, proposedDateKey: undefined, proposedStart: undefined, proposedDurationMinutes: 30 }),
+      ])),
+      state: stateFixture(),
+      snapshot: SNAPSHOT,
+      selectedIds: ["ci-move", "ci-reduce"],
+      appliedCorrectionIds: ["ci-reduce"],
+    });
+
+    expect(initial.selectedIds).toEqual(["ci-move"]);
+    expect(initial.hasValidSelection).toBe(true);
+    expect(initial.items.find((item) => item.id === "ci-reduce")).toMatchObject({
+      status: SYSTEM_ANALYSIS_CORRECTION_REVIEW_STATUS.APPLIED,
+      applied: true,
+      selectable: false,
+      repairPreview: null,
+    });
+    expect(initial.confirmationSummary.items).toHaveLength(1);
+    expect(initial.confirmationSummary.items[0]).toMatchObject({
+      id: "ci-move",
+      repairPreview: { type: PLANNING_REPAIR_TYPE.CHOOSE_TIME },
+    });
+  });
+
+  it("does not return persisted source objects for v2 reviews", () => {
+    const state = stateFixture();
+    const review = buildSystemAnalysisCorrectionReview({
+      result: resultFixture(v2Draft([correctionItem()])),
+      state,
+      snapshot: SNAPSHOT,
+    });
+    const serialized = JSON.stringify(review);
+
+    expect(serialized).not.toContain("\"status\":\"planned\"");
+    expect(serialized).not.toContain("\"goalId\":\"act_focus\"");
+    expect(serialized).not.toContain("\"parentId\":\"out_focus\"");
   });
 });

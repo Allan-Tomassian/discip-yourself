@@ -59,6 +59,56 @@ function reviewFixture({ selected = false, unsupported = true, confirmation = fa
   };
 }
 
+function v2ReviewFixture() {
+  const destructiveItem = {
+    id: "ci-remove",
+    group: "unsupported",
+    label: "Supprimer",
+    description: "Supprimer un bloc non prioritaire.",
+    reason: "Ce bloc crée une surcharge.",
+    expectedImpact: "Charge plus basse",
+    confidence: 0.7,
+    status: "needs_review",
+    selected: false,
+    selectable: false,
+    destructive: true,
+    supportStatus: "needs_review",
+    validationIssues: [],
+    repairPreview: null,
+  };
+  const unsupportedItem = {
+    id: "ci-protect",
+    group: "unsupported",
+    label: "Protéger",
+    description: "Protéger une fenêtre de focus.",
+    reason: "Créneau sensible.",
+    expectedImpact: "",
+    confidence: 0.6,
+    status: "unsupported",
+    selected: false,
+    selectable: false,
+    destructive: false,
+    supportStatus: "unsupported",
+    validationIssues: [],
+    repairPreview: null,
+  };
+  const items = [destructiveItem, unsupportedItem];
+  return {
+    ...reviewFixture({ unsupported: false }),
+    items,
+    groups: [{
+      id: "unsupported",
+      label: "À revoir",
+      items,
+      itemCount: items.length,
+      selectableCount: 0,
+      validCount: 0,
+    }],
+    selectableCount: 0,
+    hasValidSelection: false,
+  };
+}
+
 function applicationPreviewFixture() {
   return {
     ok: true,
@@ -100,9 +150,18 @@ describe("SystemAnalysisCorrectionReview", () => {
   it("renders unsupported corrections with explanatory copy and no accept button for that item", () => {
     const html = renderToStaticMarkup(<SystemAnalysisCorrectionReview review={reviewFixture({ unsupported: true })} />);
 
-    expect(html).toContain("À REVOIR");
+    expect(html).toContain("NON PRIS EN CHARGE");
     expect(html).toContain("Protect corrections are display-only.");
     expect(html).toContain("Revue manuelle requise");
+  });
+
+  it("renders v2 destructive and unsupported badges without pre-application validée copy", () => {
+    const html = renderToStaticMarkup(<SystemAnalysisCorrectionReview review={v2ReviewFixture()} />);
+
+    expect(html).toContain("DESTRUCTIF");
+    expect(html).toContain("NON PRIS EN CHARGE");
+    expect(html).not.toContain("VALIDÉE");
+    expect(html).not.toContain("Sélectionner");
   });
 
   it("renders already-applied corrections as visible but non-selectable", () => {
