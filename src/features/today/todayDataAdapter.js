@@ -4,7 +4,9 @@ import { isRuntimeSessionOpen } from "../../logic/sessionRuntime";
 import {
   EXECUTION_SURFACE_STATUS,
   deriveExecutionStatus,
+  getSessionFrictionSignalsForDate,
   isExecutableExecutionStatus,
+  isFrictionExecutionStatus,
 } from "../../logic/executionStatus";
 import { buildSystemSignals, getPrimarySystemSignal } from "../../logic/systemSignals";
 import {
@@ -287,6 +289,27 @@ function formatDurationLabel(value) {
   return `${Math.round(numeric)} min`;
 }
 
+function formatTrajectoryDayLabel(dateKey) {
+  const date = fromLocalDateKey(dateKey);
+  try {
+    const weekday = new Intl.DateTimeFormat("fr-FR", { weekday: "short" })
+      .format(date)
+      .replace(".", "");
+    const day = new Intl.DateTimeFormat("fr-FR", { day: "numeric" }).format(date);
+    return `${weekday.slice(0, 3)} ${day}`;
+  } catch {
+    return dateKey.slice(5);
+  }
+}
+
+function resolveOccurrenceMinutes(occurrence, goalsById) {
+  const direct = Number(occurrence?.durationMinutes);
+  if (Number.isFinite(direct) && direct > 0) return Math.round(direct);
+  const goal = goalsById?.get?.(safeString(occurrence?.goalId)) || null;
+  const fromGoal = Number(goal?.durationMinutes || goal?.sessionMinutes);
+  return Number.isFinite(fromGoal) && fromGoal > 0 ? Math.round(fromGoal) : 0;
+}
+
 function parsePercentLabel(value) {
   const raw = safeString(value).replace("%", "");
   const numeric = Number(raw);
@@ -516,6 +539,91 @@ function buildBlockCounts(occurrencesForDay) {
   };
 }
 
+export function buildTodayTrajectoryModel({
+  occurrences,
+  sessionHistory,
+  activeSession,
+  selectedDateKey,
+  goalsById,
+} = {}) {
+  const safeSelectedDateKey = normalizeLocalDateKey(selectedDateKey) || toLocalDateKey(new Date());
+  const safeOccurrences = safeArray(occurrences);
+  const safeSessionHistory = safeArray(sessionHistory);
+  const startKey = addDaysKey(safeSelectedDateKey, -6);
+  const dayKeys = Array.from({ length: 7 }, (_, index) => addDaysKey(startKey, index));
+  let currentDayIndex = Math.max(0, dayKeys.indexOf(safeSelectedDateKey));
+  if (currentDayIndex < 0) currentDayIndex = 6;
+
+  const days = dayKeys.map((dateKey, index) => {
+    const dayOccurrences = safeOccurrences
+      .filter((occurrence) => normalizeLocalDateKey(occurrence?.date) === dateKey)
+      .map((occurrence) => ({
+        occurrence,
+        execution: deriveExecutionStatus({
+          occurrence,
+          activeSession,
+          sessionHistory: safeSessionHistory,
+          dateKey,
+        }),
+      }));
+    const countable = dayOccurrences.filter(
+      ({ execution }) =>
+        execution.status !== EXECUTION_SURFACE_STATUS.CANCELED &&
+        execution.status !== EXECUTION_SURFACE_STATUS.SKIPPED &&
+        execution.status !== EXECUTION_SURFACE_STATUS.POSTPONED
+    );
+    const completedCount = countable.filter(({ execution }) => execution.status === EXECUTION_SURFACE_STATUS.DONE).length;
+    const totalCount = countable.length;
+    const sessionOnlyFriction = getSessionFrictionSignalsForDate({
+      sessionHistory: safeSessionHistory,
+      dateKey,
+    }).filter((signal) => !dayOccurrences.some(({ occurrence }) => safeString(occurrence?.id) === safeString(signal.occurrenceId)));
+    const frictionCount =
+      dayOccurrences.filter(({ execution }) => isFrictionExecutionStatus(execution.status)).length +
+      sessionOnlyFriction.length;
+    const completionPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+    return {
+      id: dateKey,
+      dateKey,
+      label: formatTrajectoryDayLabel(dateKey),
+      completionPercent,
+      completedCount,
+      totalCount,
+      frictionCount,
+      hasFriction: frictionCount > 0,
+      isCurrent: index === currentDayIndex,
+      isEmpty: totalCount <= 0 && frictionCount <= 0,
+    };
+  });
+
+  const today = days[currentDayIndex] || days[days.length - 1] || null;
+  const todayOccurrences = safeOccurrences
+    .filter((occurrence) => normalizeLocalDateKey(occurrence?.date) === safeSelectedDateKey)
+    .map((occurrence) => ({
+      occurrence,
+      execution: deriveExecutionStatus({
+        occurrence,
+        activeSession,
+        sessionHistory: safeSessionHistory,
+        dateKey: safeSelectedDateKey,
+      }),
+    }));
+  const remainingMinutesToday = todayOccurrences.reduce((sum, { occurrence, execution }) => {
+    if (!isExecutableExecutionStatus(execution.status)) return sum;
+    return sum + resolveOccurrenceMinutes(occurrence, goalsById);
+  }, 0);
+
+  return {
+    days,
+    currentDayIndex,
+    completedBlocks: today?.completedCount || 0,
+    todayFrictionCount: today?.frictionCount || 0,
+    remainingMinutesToday,
+    hasData: days.some((day) => day.totalCount > 0 || day.frictionCount > 0),
+  };
+}
+
 function resolvePrimaryActionCandidate({ occurrencesForDay, goalsById, activeSession, now, selectedDateKey }) {
   const activeOccurrenceId = safeString(activeSession?.occurrenceId);
   if (activeOccurrenceId) {
@@ -573,17 +681,17 @@ function buildPrimaryAction({ occurrencesForDay, goalsById, categoriesById, acti
   if (!candidate?.occurrence) {
     return {
       status: "empty",
-      label: "STRUCTURER LA JOURNÉE",
+      label: "Prochaine action",
       occurrenceId: null,
       actionId: null,
-      title: "Construire le prochain bloc",
-      description: "Aucun bloc structuré pour aujourd’hui.",
+      title: "Construis ton prochain bloc",
+      description: "Ta journée a un espace libre, mais aucun bloc clair.",
       durationLabel: "",
       timingLabel: "À planifier",
       categoryLabel: "",
       priorityLabel: "",
       reason: "Passe par Coach IA, Ajuster ou Planning pour structurer la journée.",
-      primaryLabel: "Construire avec le Coach IA",
+      primaryLabel: "Créer le bloc avec le Coach IA",
       secondaryLabel: "Planning",
       detailLabel: "Coach IA",
       canPrimary: true,
@@ -841,11 +949,11 @@ function applyPrimaryState(primaryAction, state) {
     return {
       ...next,
       status: "empty",
-      label: "STRUCTURER LA JOURNÉE",
-      title: next.title || "Construire le prochain bloc",
-      description: "Aucun bloc structuré pour aujourd’hui.",
+      label: "Prochaine action",
+      title: "Construis ton prochain bloc",
+      description: "Ta journée a un espace libre, mais aucun bloc clair.",
       reason: "Passe par Coach IA, Ajuster ou Planning pour structurer la journée.",
-      primaryLabel: "Construire avec le Coach IA",
+      primaryLabel: "Créer le bloc avec le Coach IA",
       secondaryLabel: "Planning",
       detailLabel: "Coach IA",
       canPrimary: true,
@@ -855,8 +963,10 @@ function applyPrimaryState(primaryAction, state) {
   if (next.status === "blocked") {
     return {
       ...next,
-      label: "BLOC BLOQUÉ",
-      primaryLabel: "Reprendre simple",
+      label: "Prochaine action",
+      title: "Récupérer le prochain bloc",
+      description: "Rends le bloc plus simple avant de reprendre.",
+      primaryLabel: "Simplifier le bloc",
       secondaryLabel: "Ajuster",
       detailLabel: "Voir détail",
       reason: "Ce bloc a rencontré une friction. Repars court, ou ajuste-le.",
@@ -866,8 +976,10 @@ function applyPrimaryState(primaryAction, state) {
   if (next.status === "reported") {
     return {
       ...next,
-      label: "BLOC SIGNALÉ",
-      primaryLabel: "Lancer une version simple",
+      label: "Prochaine action",
+      title: "Récupérer le prochain bloc",
+      description: "Rends le bloc plus simple avant de reprendre.",
+      primaryLabel: "Simplifier le bloc",
       secondaryLabel: "Changer l’heure",
       detailLabel: "Voir détail",
       reason: "Tu as signalé une friction. Choisis une version faisable.",
@@ -877,8 +989,10 @@ function applyPrimaryState(primaryAction, state) {
   if (state === "first_day" && hasAction) {
     return {
       ...next,
-      label: "PREMIER BLOC",
-      primaryLabel: "Verrouiller 20 min",
+      label: "Prochaine action",
+      title: "Démarrer le bloc",
+      description: safeString(next.title) || next.description,
+      primaryLabel: "Démarrer",
       secondaryLabel: "Reporter",
       detailLabel: "Voir détail",
       reason: next.reason || "Une preuve courte suffit pour lancer le système.",
@@ -888,8 +1002,10 @@ function applyPrimaryState(primaryAction, state) {
   if (state === "returning_after_absence" && hasAction) {
     return {
       ...next,
-      label: "BLOC DE REPRISE",
-      primaryLabel: "Reprendre simple",
+      label: "Prochaine action",
+      title: "Récupérer le prochain bloc",
+      description: "Rends le bloc plus simple avant de reprendre.",
+      primaryLabel: "Simplifier le bloc",
       secondaryLabel: "Reporter",
       detailLabel: "Voir détail",
       reason: next.reason || "Réduis la friction et ferme un bloc proprement.",
@@ -931,8 +1047,10 @@ function applyPrimaryState(primaryAction, state) {
     return {
       ...next,
       status: "late",
-      label: "BLOC EN RETARD",
-      primaryLabel: "Rattraper maintenant",
+      label: "Prochaine action",
+      title: "Récupérer le prochain bloc",
+      description: "Rends le bloc plus simple avant de reprendre.",
+      primaryLabel: "Simplifier le bloc",
       secondaryLabel: "Réduire",
       detailLabel: "Reporter",
       reason: next.reason || "Reprends avec une version courte et utile.",
@@ -954,8 +1072,13 @@ function applyPrimaryState(primaryAction, state) {
   if (state === "risk") {
     return {
       ...next,
-      label: "BLOC À PROTÉGER",
-      primaryLabel: "Verrouiller 15 min",
+      label: "Prochaine action",
+      title: next.status === "blocked" || next.status === "reported" ? "Récupérer le prochain bloc" : "Démarrer le bloc",
+      description:
+        next.status === "blocked" || next.status === "reported"
+          ? "Rends le bloc plus simple avant de reprendre."
+          : safeString(next.title) || next.description,
+      primaryLabel: next.status === "blocked" || next.status === "reported" ? "Simplifier le bloc" : "Démarrer",
       secondaryLabel: "Réduire",
       detailLabel: "Voir détail",
       reason: next.reason || "Protège une version courte avant que la journée ne bascule.",
@@ -965,7 +1088,10 @@ function applyPrimaryState(primaryAction, state) {
   if (state === "neutral") {
     return {
       ...next,
-      label: "PROCHAIN BLOC",
+      label: "Prochaine action",
+      title: "Démarrer le bloc",
+      description: safeString(next.title) || next.description,
+      primaryLabel: "Démarrer",
       secondaryLabel: "Reporter",
       detailLabel: "Voir détail",
     };
@@ -973,7 +1099,10 @@ function applyPrimaryState(primaryAction, state) {
 
   return {
     ...next,
-    label: "ACTION CRITIQUE",
+    label: "Prochaine action",
+    title: hasAction ? "Démarrer le bloc" : next.title,
+    description: hasAction ? safeString(next.title) || next.description : next.description,
+    primaryLabel: hasAction ? "Démarrer" : next.primaryLabel,
     secondaryLabel: "Reporter",
     detailLabel: "Voir détail",
   };
@@ -1383,6 +1512,13 @@ export function buildTodayData({
     now: nowDate,
     selectedDateKey: safeSelectedDateKey,
   });
+  const trajectory = buildTodayTrajectoryModel({
+    occurrences,
+    sessionHistory,
+    activeSession,
+    selectedDateKey: safeSelectedDateKey,
+    goalsById,
+  });
   const aiInsight = buildAiInsight(manualTodayAnalysis);
   const dataError = safeString(dataLoadError);
   const profileError = safeString(profile?.loadError);
@@ -1436,6 +1572,7 @@ export function buildTodayData({
     totalBlocks: counts.totalBlocks,
     timelineProgressPercent: counts.timelineProgressPercent,
     timelineProgressLabel: counts.timelineProgressLabel,
+    trajectory,
     primaryAction,
     timelineItems,
     aiInsight,

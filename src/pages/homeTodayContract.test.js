@@ -28,7 +28,7 @@ describe("home today cockpit contract", () => {
 
   it("renders only the validated premium cockpit stack", () => {
     const home = readSrc("pages/Home.jsx");
-    const hero = readSrc("components/today/TodayHero.jsx");
+    const trajectory = readSrc("components/today/TodayTrajectoryCard.jsx");
     const primary = readSrc("components/today/PrimaryActionCard.jsx");
     const timeline = readSrc("components/today/TodayTimeline.jsx");
     const ai = readSrc("components/today/AIInsightCard.jsx");
@@ -38,20 +38,31 @@ describe("home today cockpit contract", () => {
     expect(home).toContain('className="todayCockpitShell"');
     expect(home).toContain("<TodayHeader");
     expect(home).toContain("<FloatingWelcomeLine");
-    expect(home).toContain("<TodayHero");
-    expect(home).toContain("<PrimaryActionCard");
-    expect(home).toContain("<TodayTimeline");
+    expect(home).toContain("<TodayTrajectoryCard");
     expect(home).toContain("<AIInsightCard");
-    expect(hero).toContain('data-testid="today-hero-card"');
+    expect(home).toContain("<PrimaryActionCard");
+    expect(home.indexOf("<TodayTrajectoryCard")).toBeLessThan(home.indexOf("<AIInsightCard"));
+    expect(home.indexOf("<AIInsightCard")).toBeLessThan(home.indexOf("<PrimaryActionCard"));
+    expect(home).toContain("<TodayTimeline");
+    expect(home).not.toContain("<TodayHero");
+    expect(trajectory).toContain('data-testid="today-trajectory-card"');
+    expect(trajectory).toContain("Trajectoire du jour");
     expect(primary).toContain('data-testid="today-primary-action-card"');
+    expect(primary).toContain("Prochaine action");
     expect(timeline).toContain('data-testid="today-timeline-card"');
     expect(ai).toContain('data-testid="today-ai-insight-card"');
+    expect(ai).toContain("Analyse IA du jour");
+    expect(ai).toContain("Optimiser aujourd’hui");
     expect(home).not.toContain("<TodayNextActions");
     expect(home).not.toContain("<TodayDailyState");
     expect(home).not.toContain("<TodayValuePulse");
     expect(home).not.toContain("<CalendarCard");
     expect(home).not.toContain("<MicroActionsCard");
     expect(home).not.toContain('data-tour-id="today-notes-card"');
+    expect(trajectory).not.toContain("Discipline score");
+    expect(trajectory).not.toContain("Mode exécution");
+    expect(ai).not.toContain("Insight IA indisponible");
+    expect(primary).not.toContain("Action critique");
   });
 
   it("bridges cockpit actions without the legacy shell model", () => {

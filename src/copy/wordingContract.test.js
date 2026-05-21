@@ -61,7 +61,9 @@ describe("product wording contract", () => {
       "auth/ForgotPassword.jsx",
       "auth/ResetPassword.jsx",
       "auth/VerifyEmail.jsx",
-      "components/today/TodayHero.jsx",
+      "components/today/TodayTrajectoryCard.jsx",
+      "components/today/AIInsightCard.jsx",
+      "components/today/PrimaryActionCard.jsx",
       "pages/Home.jsx",
       "pages/Coach.jsx",
       "pages/Insights.jsx",
@@ -72,7 +74,7 @@ describe("product wording contract", () => {
       "components/PlusExpander.jsx",
     ];
     const legacyPatterns = [
-      /Analyse IA/,
+      /Analyse IA(?! du jour)/,
       /Analyse du coach/,
       /Proposition structurée/,
       /Créer avec le coach/,
@@ -84,6 +86,10 @@ describe("product wording contract", () => {
       /\bCreer\b/,
       /reinitialisation/,
       /Mot de passe oublie/,
+      /Insight IA indisponible/,
+      /Action critique/,
+      /Discipline score/,
+      /Mode exécution/,
     ];
 
     const offenders = files.flatMap((file) => {

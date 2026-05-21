@@ -25,7 +25,7 @@ export default function TodayHeader({
   return (
     <header className="todayCockpitHeader">
       <div className="todayCockpitHeaderText">
-        <h1 className="todayCockpitTitle">Today</h1>
+        <h1 className="todayCockpitTitle">Home</h1>
         {dateLabel ? <p className="todayCockpitDate">{dateLabel}</p> : null}
       </div>
       <button

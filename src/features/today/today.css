@@ -130,11 +130,12 @@
 
 .todayCockpitShell {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .todayCockpitHeader,
 .todayFloatingWelcomeLine,
+.todayTrajectoryCard,
 .todayDiagnosticHero,
 .todayPrimaryActionCard,
 .todaySystemSignalRow,
@@ -157,19 +158,23 @@
   animation-delay: 115ms;
 }
 
-.todayPrimaryActionCard {
-  animation-delay: 155ms;
-}
-
-.todaySystemSignalRow {
-  animation-delay: 175ms;
-}
-
-.todayTimelineCard {
-  animation-delay: 195ms;
+.todayTrajectoryCard {
+  animation-delay: 115ms;
 }
 
 .todayAiInsightCard {
+  animation-delay: 155ms;
+}
+
+.todayPrimaryActionCard {
+  animation-delay: 175ms;
+}
+
+.todaySystemSignalRow {
+  animation-delay: 195ms;
+}
+
+.todayTimelineCard {
   animation-delay: 235ms;
 }
 
@@ -178,6 +183,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 18px;
+  padding-top: 2px;
+  padding-bottom: 2px;
 }
 
 .todayCockpitHeaderText {
@@ -188,16 +195,20 @@
 
 .todayCockpitTitle {
   margin: 0;
-  font-size: 31px;
+  font-size: clamp(40px, 10.6vw, 56px);
   line-height: 1.04;
-  font-weight: 760;
-  color: #fbfbf8;
+  font-weight: 800;
+  color: #b8ffd1;
+  letter-spacing: 0;
+  text-shadow:
+    0 0 18px rgba(53, 240, 109, 0.24),
+    0 0 42px rgba(53, 240, 109, 0.13);
 }
 
 .todayCockpitDate {
   margin: 0;
   color: rgba(234, 236, 232, 0.58);
-  font-size: 16px;
+  font-size: 18px;
   line-height: 1.2;
   text-transform: capitalize;
 }
@@ -265,17 +276,33 @@
 .todayFloatingWelcomeLine {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   min-width: 0;
-  color: rgba(238, 242, 236, 0.78);
+  width: fit-content;
+  max-width: 100%;
+  padding: 8px 13px 8px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012)),
+    rgba(10, 14, 13, 0.68);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 10px 26px rgba(0, 0, 0, 0.2);
+  color: rgba(238, 242, 236, 0.74);
   font-size: 13px;
-  line-height: 1.35;
+  line-height: 1.25;
 }
 
 .todayFloatingWelcomeLine svg {
   flex: 0 0 auto;
-  color: var(--today-green);
-  filter: drop-shadow(0 0 8px rgba(53, 240, 109, 0.45));
+  color: color-mix(in srgb, var(--today-state-accent) 76%, var(--today-green) 24%);
+  filter: drop-shadow(0 0 7px var(--today-state-soft));
+}
+
+.todayFloatingWelcomeLine span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .todayCommandSurface {
@@ -603,6 +630,300 @@
   color: rgba(235, 239, 235, 0.72);
   background: rgba(255, 255, 255, 0.02);
   box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.03);
+}
+
+.todayTrajectoryCard {
+  min-height: 352px;
+  padding: 18px 20px 16px;
+  display: grid;
+  gap: 13px;
+  overflow: hidden;
+  border-color: rgba(53, 240, 109, 0.18);
+  background:
+    radial-gradient(circle at 92% 16%, rgba(53, 240, 109, 0.2), transparent 34%),
+    radial-gradient(circle at 14% 8%, rgba(53, 240, 109, 0.12), transparent 32%),
+    linear-gradient(180deg, rgba(8, 31, 20, 0.9), rgba(3, 8, 7, 0.95));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 22px 52px rgba(0, 0, 0, 0.52),
+    0 0 40px rgba(53, 240, 109, 0.11);
+}
+
+.todayTrajectoryCard::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at center, rgba(120, 255, 157, 0.22) 0 1px, transparent 1px),
+    linear-gradient(90deg, rgba(53, 240, 109, 0.045) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(53, 240, 109, 0.045) 1px, transparent 1px);
+  background-size: 14px 14px, 44px 44px, 44px 44px;
+  opacity: 0.17;
+  mask-image: linear-gradient(180deg, black, transparent 86%);
+}
+
+.todayTrajectoryHeader,
+.todayTrajectoryCopy,
+.todayTrajectoryChart,
+.todayTrajectoryStats {
+  position: relative;
+  z-index: 1;
+}
+
+.todayTrajectoryHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.todayTrajectoryIcon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 15px;
+  color: #8dffb3;
+  background:
+    radial-gradient(circle at 38% 20%, rgba(255, 255, 255, 0.18), transparent 32%),
+    linear-gradient(180deg, rgba(53, 240, 109, 0.24), rgba(53, 240, 109, 0.08));
+  border: 1px solid rgba(53, 240, 109, 0.19);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    0 0 22px rgba(53, 240, 109, 0.18);
+}
+
+.todayTrajectoryTitleBlock {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.todayTrajectoryTitleBlock h2 {
+  margin: 0;
+  color: #fbfbf8;
+  font-size: 24px;
+  line-height: 1.08;
+  font-weight: 790;
+  letter-spacing: 0;
+}
+
+.todayTrajectoryTitleBlock p {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(237, 241, 237, 0.74);
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.todayTrajectoryTitleBlock p span {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--today-green);
+  box-shadow: 0 0 14px rgba(53, 240, 109, 0.74);
+}
+
+.todayTrajectoryCopy {
+  display: grid;
+  gap: 0;
+}
+
+.todayTrajectoryCopy span {
+  color: rgba(236, 241, 237, 0.8);
+  font-size: 18px;
+  line-height: 1.26;
+  font-weight: 620;
+}
+
+.todayTrajectoryChart {
+  min-height: 166px;
+  margin: -2px -4px 0;
+}
+
+.todayTrajectoryChart svg {
+  display: block;
+  width: 100%;
+  height: 166px;
+  overflow: visible;
+}
+
+.todayTrajectoryGridLine text {
+  fill: rgba(232, 238, 233, 0.46);
+  font-size: 10px;
+  font-weight: 570;
+}
+
+.todayTrajectoryGridLine line,
+.todayTrajectoryVerticalGrid {
+  stroke: rgba(53, 240, 109, 0.105);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+
+.todayTrajectoryVerticalGrid {
+  opacity: 0.38;
+}
+
+.todayTrajectoryAxis {
+  stroke: rgba(238, 244, 238, 0.18);
+  stroke-width: 1.2;
+}
+
+.todayTrajectoryFill {
+  fill: url(#todayTrajectoryFill);
+  opacity: 0.62;
+}
+
+.todayTrajectoryPath {
+  fill: none;
+  stroke: url(#todayTrajectoryLine);
+  stroke-width: 2.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: url("#todayTrajectoryGlow");
+}
+
+.todayTrajectoryPathGlow {
+  stroke: rgba(76, 255, 137, 0.22);
+  stroke-width: 8;
+  filter: blur(6px);
+}
+
+.todayTrajectoryPoint {
+  fill: #8cffb4;
+  stroke: rgba(6, 14, 10, 0.86);
+  stroke-width: 2;
+  filter: drop-shadow(0 0 7px rgba(53, 240, 109, 0.42));
+}
+
+.todayTrajectoryPoint.is-current {
+  fill: #d1ffdf;
+  stroke: #35f06d;
+  stroke-width: 2.4;
+}
+
+.todayTrajectoryDayLabel {
+  fill: rgba(235, 241, 235, 0.62);
+  font-size: 10.5px;
+  font-weight: 590;
+  text-anchor: middle;
+}
+
+.todayTrajectoryDayLabel.is-current {
+  fill: #6bff9a;
+  font-weight: 760;
+}
+
+.todayTrajectoryFrictionMarker line {
+  stroke: rgba(255, 137, 20, 0.3);
+  stroke-width: 1;
+  stroke-dasharray: 2 5;
+}
+
+.todayTrajectoryFrictionMarker circle {
+  fill: rgba(255, 137, 20, 0.86);
+  stroke: rgba(12, 8, 3, 0.9);
+  stroke-width: 1.8;
+  filter: drop-shadow(0 0 8px rgba(255, 137, 20, 0.48));
+}
+
+.todayTrajectoryFrictionMarker text {
+  fill: rgba(255, 190, 117, 0.95);
+  font-size: 11px;
+  font-weight: 790;
+  text-anchor: middle;
+  filter: drop-shadow(0 0 6px rgba(255, 137, 20, 0.45));
+}
+
+.todayTrajectoryTodayMarker line {
+  stroke: rgba(53, 240, 109, 0.36);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+
+.todayTrajectoryTodayMarker rect {
+  fill: rgba(7, 18, 12, 0.72);
+  stroke: rgba(140, 255, 174, 0.2);
+}
+
+.todayTrajectoryTodayMarker text {
+  fill: rgba(136, 255, 174, 0.96);
+  font-size: 11px;
+  font-weight: 760;
+  text-anchor: middle;
+}
+
+.todayTrajectoryStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  min-height: 76px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.026)),
+    rgba(4, 9, 9, 0.66);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 16px 34px rgba(0, 0, 0, 0.24);
+  overflow: hidden;
+}
+
+.todayTrajectoryStats span {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  align-content: center;
+  column-gap: 8px;
+  row-gap: 2px;
+  padding: 12px 13px;
+  color: rgba(237, 242, 238, 0.72);
+}
+
+.todayTrajectoryStats span + span {
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.todayTrajectoryStats svg {
+  grid-row: 1 / span 2;
+  align-self: center;
+}
+
+.todayTrajectoryStats span:nth-child(1) svg {
+  color: var(--today-green);
+}
+
+.todayTrajectoryStats span:nth-child(2) svg {
+  color: #ff9b45;
+}
+
+.todayTrajectoryStats span:nth-child(3) svg {
+  color: #5fa8ff;
+}
+
+.todayTrajectoryStats strong {
+  color: #fbfbf8;
+  font-size: 25px;
+  line-height: 1;
+  font-weight: 810;
+  font-variant-numeric: tabular-nums;
+}
+
+.todayTrajectoryStats small {
+  margin-left: 2px;
+  font-size: 11px;
+  font-weight: 640;
+}
+
+.todayTrajectoryStats em {
+  color: rgba(235, 241, 236, 0.7);
+  font-size: 12px;
+  line-height: 1.18;
+  font-style: normal;
 }
 
 .todayPrimaryActionCard {
@@ -1301,17 +1622,26 @@
 }
 
 .todayAiInsightCard {
-  padding: 14px 18px 15px;
+  min-height: 214px;
+  padding: 17px 20px 18px;
+  display: grid;
+  gap: 14px;
+  overflow: hidden;
+  border-color: rgba(139, 92, 246, 0.32);
+  background:
+    radial-gradient(circle at 84% 26%, rgba(139, 92, 246, 0.36), transparent 30%),
+    radial-gradient(circle at 16% 8%, rgba(139, 92, 246, 0.16), transparent 34%),
+    linear-gradient(180deg, rgba(27, 10, 62, 0.92), rgba(10, 5, 18, 0.96));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.055),
     0 22px 50px rgba(0, 0, 0, 0.48),
-    0 0 38px rgba(139, 92, 246, 0.14);
+    0 0 44px rgba(139, 92, 246, 0.24);
 }
 
 .todayAiSignal {
   position: absolute;
-  inset: 10px -54px auto 30%;
-  height: 108px;
+  inset: -8px -70px auto 34%;
+  height: 142px;
   pointer-events: none;
   overflow: visible;
   background:
@@ -1320,7 +1650,7 @@
     linear-gradient(105deg, transparent 0 20%, rgba(185, 137, 255, 0.25) 43%, transparent 66% 100%);
   background-size: 100% 100%, 390px 140px, 220% 100%;
   background-position: center, 50% 50%, 120% 0;
-  opacity: 0.48;
+  opacity: 0.56;
   transform: rotate(-8deg);
   transition:
     opacity var(--today-motion-standard) var(--today-ease-out),
@@ -1368,92 +1698,184 @@
   animation-duration: 6.8s;
 }
 
-.todayAiInsightCard.is-ai-unavailable .todayAiSignal,
-.todayAiInsightCard.is-ai-error .todayAiSignal,
-.todayAiInsightCard.is-ai-hidden .todayAiSignal {
-  opacity: 0.28;
-  filter: saturate(0.72) brightness(0.84);
-  animation: none;
-}
-
-.todayAiInsightCard.is-ai-unavailable .todayAiSignal::before,
-.todayAiInsightCard.is-ai-error .todayAiSignal::before,
-.todayAiInsightCard.is-ai-hidden .todayAiSignal::before,
-.todayAiInsightCard.is-ai-unavailable .todayAiSignal::after,
-.todayAiInsightCard.is-ai-error .todayAiSignal::after,
-.todayAiInsightCard.is-ai-hidden .todayAiSignal::after {
-  animation: none;
-  opacity: 0.22;
-}
-
-.todayAiEyebrow {
-  color: var(--today-ai);
-}
-
-.todayAiCoachButton {
-  appearance: none;
-  border: 1px solid rgba(139, 92, 246, 0.28);
-  border-radius: 999px;
-  background: rgba(139, 92, 246, 0.16);
-  color: #c8a7ff;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 26px;
-  padding: 0 9px;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  transition:
-    border-color var(--today-motion-fast) var(--today-ease-press),
-    background-color var(--today-motion-fast) var(--today-ease-press),
-    box-shadow var(--today-motion-fast) var(--today-ease-press),
-    transform var(--today-motion-fast) var(--today-ease-press);
-  transform-origin: center;
-}
-
-.todayAiCoachButton:hover,
-.todayAiCoachButton:focus-visible {
-  border-color: rgba(139, 92, 246, 0.42);
-  background: rgba(139, 92, 246, 0.22);
-  box-shadow: 0 0 16px rgba(139, 92, 246, 0.18);
-}
-
-.todayAiCoachButton:active {
-  transform: translateY(1px) scale(0.99);
-}
-
 .todayAiBody {
   position: relative;
   z-index: 1;
   display: grid;
-  gap: 4px;
-  margin-top: 12px;
+  gap: 15px;
+  padding-right: min(34%, 164px);
+}
+
+.todayAiTitleRow {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.todayAiTitleCopy {
+  min-width: 0;
+}
+
+.todayAiHeadlineRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.todayAiBadgeIcon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  color: #f0dcff;
+  background:
+    radial-gradient(circle at 38% 22%, rgba(255, 255, 255, 0.28), transparent 30%),
+    linear-gradient(180deg, rgba(157, 91, 255, 0.74), rgba(95, 37, 196, 0.74));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 0 24px rgba(139, 92, 246, 0.4);
 }
 
 .todayAiBody h2 {
-  font-size: 18px;
-  line-height: 1.2;
+  margin: 0;
+  min-width: 0;
+  color: #fbf7ff;
+  font-size: 24px;
+  line-height: 1.05;
+  font-weight: 790;
+  letter-spacing: 0;
 }
 
-.todayAiRecommendation {
-  color: #b989ff;
-  font-weight: 680;
+.todayAiBody p {
+  margin: 7px 0 0;
+  color: rgba(237, 225, 255, 0.78);
+  font-size: 15px;
+  line-height: 1.32;
 }
 
-.todayAiReason {
-  max-width: 42rem;
+.todayAiNewBadge {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  min-height: 25px;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: #f6eaff;
+  background: rgba(139, 92, 246, 0.42);
+  border: 1px solid rgba(204, 168, 255, 0.2);
+  font-size: 11px;
+  font-weight: 780;
+  box-shadow: 0 0 18px rgba(139, 92, 246, 0.24);
+}
+
+.todayAiChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-right: calc(-1 * min(34%, 164px));
+}
+
+.todayAiChips span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 33px;
+  padding: 0 12px;
+  border-radius: 999px;
+  color: rgba(244, 235, 255, 0.88);
+  border: 1px solid rgba(177, 129, 255, 0.26);
+  background: rgba(80, 31, 154, 0.28);
   font-size: 13px;
+  line-height: 1;
+}
+
+.todayAiChips svg {
+  color: #bb8cff;
+}
+
+.todayAiVisual {
+  position: absolute;
+  right: 20px;
+  top: 31px;
+  z-index: 1;
+  width: 132px;
+  height: 112px;
+  pointer-events: none;
+  display: grid;
+  place-items: center;
+}
+
+.todayAiBrainCore {
+  position: relative;
+  width: 72px;
+  height: 62px;
+  border-radius: 45% 45% 48% 48%;
+  background:
+    radial-gradient(circle at 36% 34%, transparent 0 9px, rgba(239, 215, 255, 0.95) 10px 12px, transparent 13px),
+    radial-gradient(circle at 62% 35%, transparent 0 9px, rgba(239, 215, 255, 0.95) 10px 12px, transparent 13px),
+    radial-gradient(circle at 36% 62%, transparent 0 9px, rgba(239, 215, 255, 0.88) 10px 12px, transparent 13px),
+    radial-gradient(circle at 62% 62%, transparent 0 9px, rgba(239, 215, 255, 0.88) 10px 12px, transparent 13px),
+    radial-gradient(circle at 50% 50%, rgba(187, 140, 255, 0.3), rgba(94, 37, 196, 0.22) 58%, transparent 70%);
+  border: 2px solid rgba(229, 202, 255, 0.86);
+  box-shadow:
+    0 0 20px rgba(187, 140, 255, 0.68),
+    inset 0 0 18px rgba(255, 255, 255, 0.14);
+  filter: drop-shadow(0 10px 18px rgba(37, 9, 74, 0.42));
+}
+
+.todayAiBrainCore::before,
+.todayAiBrainCore::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+}
+
+.todayAiBrainCore::before {
+  width: 2px;
+  height: 47px;
+  border-radius: 999px;
+  background: rgba(239, 215, 255, 0.62);
+  box-shadow: 0 0 10px rgba(187, 140, 255, 0.7);
+}
+
+.todayAiBrainCore::after {
+  width: 92px;
+  height: 34px;
+  border-radius: 999px;
+  border: 2px solid rgba(157, 91, 255, 0.66);
+  transform: rotate(-18deg);
+  filter: drop-shadow(0 0 10px rgba(139, 92, 246, 0.62));
+}
+
+.todayAiBrainOrbit {
+  position: absolute;
+  border-radius: 999px;
+  border: 1px solid rgba(187, 140, 255, 0.26);
+}
+
+.todayAiBrainOrbit--one {
+  inset: 4px 4px 8px;
+}
+
+.todayAiBrainOrbit--two {
+  inset: 18px 18px 22px;
+  transform: rotate(28deg);
 }
 
 .todayAiActions {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
-  margin-top: 12px;
+  margin-top: 0;
 }
 
 .todayAiActions button {
@@ -1474,17 +1896,24 @@
   transform-origin: center;
 }
 
-.todayAiApplyButton {
+.todayAiActions .todayAiApplyButton {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
+  min-height: 52px;
+  padding: 0 16px;
   overflow: hidden;
   border: 0;
-  background: linear-gradient(180deg, #8f50ff, #7025e8);
+  background: linear-gradient(135deg, #b06dff 0%, #7c2aff 54%, #6218d8 100%);
   color: #fbf7ff;
-  box-shadow: 0 0 22px rgba(139, 92, 246, 0.34);
+  font-size: 17px;
+  font-weight: 760;
+  text-transform: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 0 26px rgba(139, 92, 246, 0.38);
 }
 
 .todayAiApplyButton::after {
@@ -1497,7 +1926,7 @@
   transform: scale(0.88);
 }
 
-.todayAiInsightCard.is-ai-applicable .todayAiApplyButton:not(:disabled):active::after {
+.todayAiInsightCard.is-ai-entry .todayAiApplyButton:not(:disabled):active::after {
   animation: todayAiApplyConfirm 520ms ease-out both;
 }
 
@@ -1510,19 +1939,6 @@
 .todayAiApplyButton:not(:disabled):hover,
 .todayAiApplyButton:not(:disabled):focus-visible {
   box-shadow: 0 0 28px rgba(139, 92, 246, 0.42);
-}
-
-.todayAiWhyButton {
-  border: 1px solid rgba(139, 92, 246, 0.22);
-  background: rgba(9, 6, 16, 0.72);
-  color: #c8a7ff;
-}
-
-.todayAiWhyButton:hover,
-.todayAiWhyButton:focus-visible {
-  border-color: rgba(139, 92, 246, 0.38);
-  color: #d9c4ff;
-  box-shadow: 0 0 18px rgba(139, 92, 246, 0.12);
 }
 
 .todayProfileMenuActions,
@@ -1733,7 +2149,7 @@
   }
 
   .todayCockpitTitle {
-    font-size: 30px;
+    font-size: clamp(42px, 13vw, 56px);
   }
 
   .todayCockpitAvatar {
@@ -1744,6 +2160,33 @@
   .todayDiagnosticHero {
     min-height: 220px;
     padding: 13px 17px 13px;
+  }
+
+  .todayTrajectoryCard {
+    padding: 17px 17px 15px;
+    min-height: 352px;
+  }
+
+  .todayTrajectoryTitleBlock h2,
+  .todayAiBody h2 {
+    font-size: 22px;
+  }
+
+  .todayTrajectoryCopy span {
+    font-size: 16px;
+  }
+
+  .todayTrajectoryStats span {
+    padding: 11px 10px;
+    column-gap: 7px;
+  }
+
+  .todayTrajectoryStats strong {
+    font-size: 23px;
+  }
+
+  .todayTrajectoryStats em {
+    font-size: 11px;
   }
 
   .todayHeroScore {
@@ -1764,8 +2207,56 @@
     line-height: 1.08;
   }
 
+  .todayAiInsightCard {
+    padding: 16px 17px 17px;
+  }
+
+  .todayAiTitleRow {
+    grid-template-columns: 44px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .todayAiBody {
+    gap: 12px;
+    padding-right: 82px;
+  }
+
+  .todayAiBody h2 {
+    max-width: 11.5em;
+    font-size: 20px;
+  }
+
+  .todayAiBody p {
+    max-width: 18em;
+    font-size: 14px;
+  }
+
+  .todayAiVisual {
+    width: 104px;
+    right: 4px;
+    top: 28px;
+    transform: scale(0.82);
+  }
+
+  .todayAiChips {
+    margin-right: -82px;
+    padding-right: 0;
+    gap: 7px;
+  }
+
+  .todayAiChips span {
+    min-height: 30px;
+    padding: 0 10px;
+    font-size: 12px;
+  }
+
   .todayAiActions {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .todayAiActions .todayAiApplyButton {
+    min-height: 48px;
+    font-size: 16px;
   }
 }
 
@@ -1780,6 +2271,7 @@
 
   .todayCockpitHeader,
   .todayFloatingWelcomeLine,
+  .todayTrajectoryCard,
   .todayDiagnosticHero,
   .todayPrimaryActionCard,
   .todaySystemSignalRow,
@@ -1796,6 +2288,7 @@
 
   .todayDiagnosticHero::before,
   .todayDiagnosticHero::after,
+  .todayTrajectoryCard::before,
   .todayPrimaryActionCard::after,
   .todayPrimaryBeam,
   .todayTimelineTrack::after,

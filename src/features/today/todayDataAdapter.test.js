@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildTodayData, getTodayVisualSmokeModel } from "./todayDataAdapter";
+import { buildTodayData, buildTodayTrajectoryModel, getTodayVisualSmokeModel } from "./todayDataAdapter";
 import { validateTodayAdapterInvariants } from "../../logic/systemInvariants";
 
 const SELECTED_DATE_KEY = "2026-04-28";
@@ -141,7 +141,8 @@ describe("buildTodayData", () => {
     expect(result.timelineProgressLabel).toBe("--%");
     expect(result.hero.scoreLabel).toBe("--%");
     expect(result.primaryAction.status).toBe("empty");
-    expect(result.primaryAction.label).toBe("STRUCTURER LA JOURNÉE");
+    expect(result.primaryAction.label).toBe("Prochaine action");
+    expect(result.primaryAction.title).toBe("Construis ton prochain bloc");
     expect(result.primaryAction.primaryLabel).toContain("Coach IA");
     expect(result.primaryAction.secondaryLabel).toBe("Planning");
     expect(result.primaryAction.detailLabel).toBe("Coach IA");
@@ -250,8 +251,9 @@ describe("buildTodayData", () => {
     expect(result.state).toBe("late");
     expect(result.flags.offline).toBe(true);
     expect(result.canUseLocalActions).toBe(true);
-    expect(result.primaryAction.label).toBe("BLOC EN RETARD");
-    expect(result.primaryAction.primaryLabel).toBe("Rattraper maintenant");
+    expect(result.primaryAction.label).toBe("Prochaine action");
+    expect(result.primaryAction.title).toBe("Récupérer le prochain bloc");
+    expect(result.primaryAction.primaryLabel).toBe("Simplifier le bloc");
     expect(result.primaryAction.secondaryLabel).toBe("Réduire");
     expect(result.primaryAction.detailLabel).toBe("Reporter");
   });
@@ -307,7 +309,7 @@ describe("buildTodayData", () => {
 
     expect(result.state).toBe("first_day");
     expect(result.previousDayDeltaDisplay).toBe("Point de départ");
-    expect(result.primaryAction.primaryLabel).toBe("Verrouiller 20 min");
+    expect(result.primaryAction.primaryLabel).toBe("Démarrer");
   });
 
   it("maps returning_after_absence from older history without recent signal", () => {
@@ -321,7 +323,7 @@ describe("buildTodayData", () => {
     });
 
     expect(result.state).toBe("returning_after_absence");
-    expect(result.primaryAction.primaryLabel).toBe("Reprendre simple");
+    expect(result.primaryAction.primaryLabel).toBe("Simplifier le bloc");
   });
 
   it("maps locked without faking a discipline score", () => {
@@ -379,8 +381,9 @@ describe("buildTodayData", () => {
 
     expect(result.primaryAction).toMatchObject({
       status: "blocked",
-      label: "BLOC BLOQUÉ",
-      primaryLabel: "Reprendre simple",
+      label: "Prochaine action",
+      title: "Récupérer le prochain bloc",
+      primaryLabel: "Simplifier le bloc",
       secondaryLabel: "Ajuster",
       reason: "Ce bloc a rencontré une friction. Repars court, ou ajuste-le.",
     });
@@ -409,8 +412,9 @@ describe("buildTodayData", () => {
 
     expect(result.primaryAction).toMatchObject({
       status: "reported",
-      label: "BLOC SIGNALÉ",
-      primaryLabel: "Lancer une version simple",
+      label: "Prochaine action",
+      title: "Récupérer le prochain bloc",
+      primaryLabel: "Simplifier le bloc",
       secondaryLabel: "Changer l’heure",
       reason: "Tu as signalé une friction. Choisis une version faisable.",
     });
@@ -460,7 +464,7 @@ describe("buildTodayData", () => {
 
     expect(result.state).toBe("risk");
     expect(result.tone).toBe("risk");
-    expect(result.primaryAction.primaryLabel).toBe("Verrouiller 15 min");
+    expect(result.primaryAction.primaryLabel).toBe("Démarrer");
   });
 
   it("maps control when execution progress exists", () => {
@@ -475,7 +479,9 @@ describe("buildTodayData", () => {
 
     expect(result.state).toBe("control");
     expect(result.welcomeLine).toBe("Bon retour — aujourd’hui, on avance bloc par bloc.");
-    expect(result.primaryAction.label).toBe("ACTION CRITIQUE");
+    expect(result.primaryAction.label).toBe("Prochaine action");
+    expect(result.primaryAction.title).toBe("Démarrer le bloc");
+    expect(result.primaryAction.primaryLabel).toBe("Démarrer");
     expect(result.primaryAction.secondaryLabel).toBe("Reporter");
     expect(result.primaryAction.detailLabel).toBe("Voir détail");
   });
@@ -491,10 +497,37 @@ describe("buildTodayData", () => {
     });
 
     expect(result.state).toBe("neutral");
-    expect(result.primaryAction.label).toBe("PROCHAIN BLOC");
-    expect(result.primaryAction.primaryLabel).toBe("Verrouiller le bloc");
+    expect(result.primaryAction.label).toBe("Prochaine action");
+    expect(result.primaryAction.title).toBe("Démarrer le bloc");
+    expect(result.primaryAction.primaryLabel).toBe("Démarrer");
     expect(result.primaryAction.secondaryLabel).toBe("Reporter");
     expect(result.primaryAction.detailLabel).toBe("Voir détail");
+  });
+
+  it("builds a seven-day trajectory without exposing a fake score", () => {
+    const result = build({
+      data: {
+        occurrences: [
+          { id: "done", goalId: "goal-deep", date: SELECTED_DATE_KEY, start: "07:00", durationMinutes: 30, status: "done" },
+          { id: "missed", goalId: "goal-deep", date: SELECTED_DATE_KEY, start: "08:00", durationMinutes: 25, status: "missed" },
+          { id: "planned", goalId: "goal-deep", date: SELECTED_DATE_KEY, start: "13:00", durationMinutes: 25, status: "planned" },
+          { id: "previous", goalId: "goal-deep", date: "2026-04-24", start: "09:00", durationMinutes: 30, status: "planned" },
+        ],
+      },
+    });
+
+    expect(result.trajectory.days).toHaveLength(7);
+    expect(result.trajectory.currentDayIndex).toBe(6);
+    expect(result.trajectory.completedBlocks).toBe(1);
+    expect(result.trajectory.todayFrictionCount).toBe(1);
+    expect(result.trajectory.remainingMinutesToday).toBe(25);
+    expect(result.trajectory.days[6]).toMatchObject({
+      isCurrent: true,
+      completionPercent: 33,
+      hasFriction: true,
+    });
+    expect(result.trajectory.days[0].completionPercent).toBe(0);
+    expect(result.trajectory).not.toHaveProperty("scoreDisplay");
   });
 
   it("keeps DEV smoke fixture values coherent by state", () => {
@@ -599,5 +632,31 @@ describe("buildTodayData", () => {
     expect(production.scoreDisplay).toBe("--%");
     expect(production.primaryAction.title).not.toBe("Deep work");
     expect(getTodayVisualSmokeModel()).toBeNull();
+  });
+});
+
+describe("buildTodayTrajectoryModel", () => {
+  it("marks current day, friction, empty days, and remaining minutes", () => {
+    const goalsById = new Map([["goal-deep", { id: "goal-deep", durationMinutes: 30 }]]);
+    const result = buildTodayTrajectoryModel({
+      selectedDateKey: SELECTED_DATE_KEY,
+      goalsById,
+      occurrences: [
+        { id: "old-done", goalId: "goal-deep", date: "2026-04-25", status: "done" },
+        { id: "today-done", goalId: "goal-deep", date: SELECTED_DATE_KEY, status: "done" },
+        { id: "today-blocked", goalId: "goal-deep", date: SELECTED_DATE_KEY, status: "planned", durationMinutes: 25 },
+      ],
+      sessionHistory: [
+        { id: "blocked-history", occurrenceId: "today-blocked", dateKey: SELECTED_DATE_KEY, state: "ended", endedReason: "blocked" },
+      ],
+    });
+
+    expect(result.days).toHaveLength(7);
+    expect(result.days[6].isCurrent).toBe(true);
+    expect(result.days[6].completedCount).toBe(1);
+    expect(result.days[6].frictionCount).toBe(1);
+    expect(result.days[6].completionPercent).toBe(50);
+    expect(result.days[0].isEmpty).toBe(true);
+    expect(result.remainingMinutesToday).toBe(25);
   });
 });

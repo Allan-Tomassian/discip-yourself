@@ -29,7 +29,7 @@ describe("main section container contract", () => {
 
   it("uses the Lovable shell grammar across the five main tabs", () => {
     const home = readSrc("pages/Home.jsx");
-    const todayHero = readSrc("components/today/TodayHero.jsx");
+    const todayTrajectory = readSrc("components/today/TodayTrajectoryCard.jsx");
     const primaryAction = readSrc("components/today/PrimaryActionCard.jsx");
     const todayTimeline = readSrc("components/today/TodayTimeline.jsx");
     const aiInsight = readSrc("components/today/AIInsightCard.jsx");
@@ -39,12 +39,13 @@ describe("main section container contract", () => {
     const coach = readSrc("pages/Coach.jsx");
 
     expect(home).toContain("todayCockpitScreen");
-    expect(home).toContain("<TodayHero");
+    expect(home).toContain("<TodayTrajectoryCard");
+    expect(home).not.toContain("<TodayHero");
     expect(home).toContain("<PrimaryActionCard");
     expect(home).toContain("<TodayTimeline");
     expect(home).toContain("<AIInsightCard");
     expect(home).not.toContain("lovableTodayInsight");
-    expect(todayHero).toContain("todayDiagnosticHero");
+    expect(todayTrajectory).toContain("todayTrajectoryCard");
     expect(primaryAction).toContain("todayPrimaryActionCard");
     expect(todayTimeline).toContain("todayTimelineCard");
     expect(aiInsight).toContain("todayAiInsightCard");

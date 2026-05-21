@@ -7,7 +7,7 @@ import { backfillMissedOccurrences, ensureWindowFromScheduleRules } from "../log
 import { resolveRuntimeSessionGate } from "../logic/sessionRuntime";
 import TodayHeader from "../components/today/TodayHeader";
 import FloatingWelcomeLine from "../components/today/FloatingWelcomeLine";
-import TodayHero from "../components/today/TodayHero";
+import TodayTrajectoryCard from "../components/today/TodayTrajectoryCard";
 import PrimaryActionCard from "../components/today/PrimaryActionCard";
 import TodaySystemSignalRow from "../components/today/TodaySystemSignalRow";
 import TodayTimeline from "../components/today/TodayTimeline";
@@ -470,18 +470,22 @@ export default function Home({
             {todayData.welcomeLine}
           </FloatingWelcomeLine>
 
-          <TodayHero
+          <TodayTrajectoryCard
             state={todayData.state}
             tone={todayData.tone}
             motionIntensity={todayData.motionIntensity}
-            modeLabel={todayData.hero.modeLabel}
-            dateLabel={todayData.hero.dateLabel}
-            scoreLabel={todayData.hero.scoreLabel}
-            deltaLabel={todayData.hero.deltaLabel}
-            statusTitle={todayData.hero.statusTitle}
-            statusDetail={todayData.hero.statusDetail}
-            doneBlocksCount={todayData.completedBlocks}
-            plannedBlocksCount={todayData.totalBlocks}
+            trajectory={todayData.trajectory}
+          />
+
+          <AIInsightCard
+            state={todayData.state}
+            tone={todayData.tone}
+            motionIntensity={todayData.motionIntensity}
+            aiMode={todayData.aiMode}
+            status={todayData.aiInsight.status}
+            canApply
+            onOptimize={() => openCoachInsight("Optimise ma journée : propose une réduction, un déplacement ou un bloc utile sans appliquer automatiquement.")}
+            onOpenCoach={() => openCoachInsight("Optimise ma journée : propose une réduction, un déplacement ou un bloc utile sans appliquer automatiquement.")}
           />
 
           <PrimaryActionCard
@@ -521,21 +525,6 @@ export default function Home({
             items={todayData.timelineItems}
             progressLabel={todayData.timelineProgressLabel}
             onSelectItem={openPlanningForToday}
-          />
-
-          <AIInsightCard
-            state={todayData.state}
-            tone={todayData.tone}
-            motionIntensity={todayData.motionIntensity}
-            aiMode={todayData.aiMode}
-            headline={todayData.aiInsight.headline}
-            recommendation={todayData.aiInsight.recommendation}
-            reason={todayData.aiInsight.reason}
-            status={todayData.aiInsight.status}
-            canApply={todayData.aiInsight.canApply}
-            onApply={runPrimaryCockpitAction}
-            onWhy={() => openCoachInsight()}
-            onOpenCoach={() => openCoachInsight("Aide-moi à ajuster la journée depuis l’insight IA.")}
           />
         </div>
       </AppScreen>

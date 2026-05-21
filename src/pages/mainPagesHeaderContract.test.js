@@ -20,7 +20,8 @@ describe("main pages header contract", () => {
     expect(home).toContain('pageId="today"');
     expect(home).toContain("<TodayHeader");
     expect(home).toContain("<FloatingWelcomeLine");
-    expect(home).toContain("<TodayHero");
+    expect(home).toContain("<TodayTrajectoryCard");
+    expect(home).not.toContain("<TodayHero");
 
     expect(objectives).toContain('pageId="objectives"');
     expect(objectives).toContain("headerTitle={OBJECTIVES_SCREEN_COPY.title}");

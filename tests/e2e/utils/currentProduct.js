@@ -199,7 +199,9 @@ export async function openMainTab(page, name) {
 }
 
 export async function expectTodayReady(page) {
-  await expect(page.locator(".todayCockpitTitle")).toHaveText("Today");
+  await expect(page.locator(".todayCockpitTitle")).toHaveText("Home");
+  await expect(page.getByTestId("today-trajectory-card")).toBeVisible();
+  await expect(page.getByTestId("today-ai-insight-card")).toBeVisible();
   await expect(page.getByTestId("today-primary-action-card")).toBeVisible();
 }
 

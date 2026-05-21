@@ -1,5 +1,5 @@
 import React from "react";
-import { BrainCircuit, Sparkles } from "lucide-react";
+import { ArrowDown, ArrowRight, ChevronRight, Plus, Sparkles } from "lucide-react";
 import CommandSurface from "./CommandSurface";
 
 export default function AIInsightCard({
@@ -7,56 +7,67 @@ export default function AIInsightCard({
   tone = "neutral",
   motionIntensity = "normal",
   aiMode = "",
-  headline = "Insight disponible.",
-  recommendation = "Protège le prochain bloc avant de renégocier.",
-  reason = "",
   status = "available",
   canApply = true,
   onApply,
-  onWhy,
   onOpenCoach,
+  onOptimize,
 }) {
   const resolvedAiMode = aiMode || status;
-  const applyEnabled = canApply && resolvedAiMode === "available";
   const statusClass = resolvedAiMode ? ` is-ai-${String(resolvedAiMode).replace(/_/g, "-")}` : "";
-  const applyClass = applyEnabled ? " is-ai-applicable" : "";
+  const applyClass = canApply ? " is-ai-entry" : "";
   const stateClass = state ? ` today-state-${state}` : "";
   const toneClass = tone ? ` today-tone-${tone}` : "";
   const motionClass = motionIntensity ? ` today-motion-${motionIntensity}` : "";
+  const handleOptimize = () => {
+    if (typeof onOptimize === "function") {
+      onOptimize();
+      return;
+    }
+    if (typeof onOpenCoach === "function") {
+      onOpenCoach();
+      return;
+    }
+    if (typeof onApply === "function") onApply();
+  };
 
   return (
     <CommandSurface className={`todayAiInsightCard${statusClass}${applyClass}${stateClass}${toneClass}${motionClass}`} tone="ai" data-testid="today-ai-insight-card" data-tour-id="today-ai-insight-card">
       <div className="todayAiSignal" aria-hidden="true" />
-      <div className="todayAiHeader">
-        <span className="todayAiEyebrow">
-          <BrainCircuit size={18} strokeWidth={1.8} aria-hidden="true" />
-          Insight IA
-        </span>
-        <button type="button" className="todayAiCoachButton" onClick={() => onOpenCoach?.()}>
-          <Sparkles size={14} strokeWidth={1.9} aria-hidden="true" />
-          Coach IA
-        </button>
+      <div className="todayAiVisual" aria-hidden="true">
+        <span className="todayAiBrainCore" />
+        <span className="todayAiBrainOrbit todayAiBrainOrbit--one" />
+        <span className="todayAiBrainOrbit todayAiBrainOrbit--two" />
       </div>
-
       <div className="todayAiBody">
-        <h2>{headline}</h2>
-        {recommendation ? <p className="todayAiRecommendation">{recommendation}</p> : null}
-        {reason ? <p className="todayAiReason">{reason}</p> : null}
+        <div className="todayAiTitleRow">
+          <span className="todayAiBadgeIcon" aria-hidden="true">
+            <Sparkles size={24} strokeWidth={2.1} />
+          </span>
+          <div className="todayAiTitleCopy">
+            <div className="todayAiHeadlineRow">
+              <h2>Analyse IA du jour</h2>
+              <span className="todayAiNewBadge">NOUVEAU</span>
+            </div>
+            <p>L’IA analyse ta journée et propose des ajustements ciblés.</p>
+          </div>
+        </div>
+        <div className="todayAiChips" aria-label="Actions d’optimisation proposées">
+          <span><ArrowDown size={15} strokeWidth={2} aria-hidden="true" />Réduire un bloc</span>
+          <span><ArrowRight size={15} strokeWidth={2} aria-hidden="true" />Déplacer</span>
+          <span><Plus size={15} strokeWidth={2} aria-hidden="true" />Ajouter un bloc</span>
+        </div>
       </div>
 
       <div className="todayAiActions">
         <button
           type="button"
           className="todayAiApplyButton"
-          onClick={() => onApply?.()}
-          disabled={!applyEnabled}
-          aria-disabled={!applyEnabled}
+          onClick={handleOptimize}
         >
           <Sparkles size={15} strokeWidth={2} aria-hidden="true" />
-          Appliquer
-        </button>
-        <button type="button" className="todayAiWhyButton" onClick={() => onWhy?.()}>
-          Voir pourquoi
+          Optimiser aujourd’hui
+          <ChevronRight size={18} strokeWidth={2.3} aria-hidden="true" />
         </button>
       </div>
     </CommandSurface>

@@ -20,7 +20,10 @@ test("daily execution: Today → Session → finish → feedback → surfaces up
   await seedCurrentUser(page, state);
 
   await page.goto("/");
-  await expect(page.getByTestId("today-primary-action-card")).toContainText("Bloc d’exécution client");
+  await expect(page.locator(".todayCockpitTitle")).toHaveText("Home");
+  await expect(page.getByTestId("today-trajectory-card")).toBeVisible();
+  await expect(page.getByTestId("today-ai-insight-card")).toBeVisible();
+  await expect(page.getByTestId("today-primary-action-card")).toContainText("Prochaine action");
   await page.locator(".todayCommitmentButton").click();
 
   await expect(page.getByText("Protège ce bloc.")).toBeVisible();
