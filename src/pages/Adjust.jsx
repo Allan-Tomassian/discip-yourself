@@ -12,8 +12,7 @@ import {
 } from "lucide-react";
 import { AppScreen } from "../shared/ui/app";
 import SystemAnalysisEntryButton from "../components/system-analysis/SystemAnalysisEntryButton";
-import SystemAnalysisCorrectionReview from "../components/system-analysis/SystemAnalysisCorrectionReview";
-import SystemAnalysisResultPreview from "../components/system-analysis/SystemAnalysisResultPreview";
+import SystemAnalysisCommandSheet from "../components/system-analysis/SystemAnalysisCommandSheet";
 import { useAuth } from "../auth/useAuth";
 import {
   CommandAIBlock,
@@ -164,11 +163,9 @@ function resolveSystemAnalysisStatus(result) {
 function resolveSystemAnalysisAvailabilityState({ requestState, fallbackState }) {
   if (requestState?.status === "loading") return "running";
   if (requestState?.errorCode === "QUOTA_EXCEEDED") return "quota_exhausted";
+  if (requestState?.errorCode === "SYSTEM_ANALYSIS_QUOTA_EXCEEDED") return "quota_exhausted";
   return fallbackState;
 }
-
-const SYSTEM_ANALYSIS_INELIGIBLE_MESSAGE =
-  "Continue à exécuter tes blocs pendant quelques jours. L’analyse devient utile quand elle peut lire ton vrai comportement.";
 
 function TrendSnapshot({ trendSnapshot }) {
   const series = Array.isArray(trendSnapshot?.series) ? trendSnapshot.series : [];
@@ -282,7 +279,7 @@ export default function Adjust({
 }) {
   const { session } = useAuth();
   const [systemAnalysisRequestState, setSystemAnalysisRequestState] = useState(createInitialSystemAnalysisState);
-  const [showSystemAnalysisReview, setShowSystemAnalysisReview] = useState(false);
+  const [systemAnalysisSheetOpen, setSystemAnalysisSheetOpen] = useState(false);
   const [selectedSystemAnalysisCorrectionIds, setSelectedSystemAnalysisCorrectionIds] = useState([]);
   const [systemAnalysisConfirmationOpen, setSystemAnalysisConfirmationOpen] = useState(false);
   const [preparedSystemAnalysisApplicationPreview, setPreparedSystemAnalysisApplicationPreview] = useState(null);
@@ -424,21 +421,69 @@ export default function Adjust({
     systemAnalysisAbortRef.current?.abort();
   }, []);
 
-  const handleSystemAnalysisEntry = useCallback(async () => {
+  const resetSystemAnalysisReviewState = useCallback(() => {
+    setSelectedSystemAnalysisCorrectionIds([]);
+    setSystemAnalysisConfirmationOpen(false);
+    setPreparedSystemAnalysisApplicationPreview(null);
+    setSystemAnalysisApplicationState(createInitialSystemAnalysisApplicationState());
+  }, []);
+
+  const handleSystemAnalysisEntry = useCallback(() => {
     onSystemAnalysisEntry?.({
       status: systemAnalysisEntryModel.state,
       eligibility: systemAnalysisEligibility,
       snapshot: systemAnalysisSnapshot,
     });
+    setSystemAnalysisSheetOpen(true);
 
     if (systemAnalysisRequestState.status === "loading") return;
 
     if (systemAnalysisEntryModel.state === "quota_exhausted") {
-      setShowSystemAnalysisReview(false);
-      setSelectedSystemAnalysisCorrectionIds([]);
-      setSystemAnalysisConfirmationOpen(false);
-      setPreparedSystemAnalysisApplicationPreview(null);
-      setSystemAnalysisApplicationState(createInitialSystemAnalysisApplicationState());
+      resetSystemAnalysisReviewState();
+      setSystemAnalysisRequestState({
+        status: "error",
+        result: null,
+        analysisId: null,
+        errorCode: "QUOTA_EXCEEDED",
+        message: "Quota mensuel utilisé.",
+        missingRequirements: [],
+        requestId: null,
+      });
+      return;
+    }
+
+    const reusableRecord = findReusableSystemAnalysisRecord(systemAnalysisHistory, {
+      snapshotHash: systemAnalysisSnapshot?.snapshotHash,
+      period: systemAnalysisSnapshot?.period,
+    });
+    if (reusableRecord) {
+      resetSystemAnalysisReviewState();
+      setSystemAnalysisRequestState({
+        status: "success",
+        result: reusableRecord.result,
+        analysisId: reusableRecord.id,
+        errorCode: "",
+        message: "",
+        missingRequirements: [],
+        requestId: reusableRecord.modelMeta?.requestId || null,
+      });
+    }
+  }, [
+    onSystemAnalysisEntry,
+    resetSystemAnalysisReviewState,
+    systemAnalysisEligibility,
+    systemAnalysisEntryModel.state,
+    systemAnalysisHistory,
+    systemAnalysisRequestState.status,
+    systemAnalysisSnapshot,
+  ]);
+
+  const handleLaunchSystemAnalysis = useCallback(async () => {
+    if (systemAnalysisRequestState.status === "loading") return;
+    setSystemAnalysisSheetOpen(true);
+
+    if (systemAnalysisEntryModel.state === "quota_exhausted") {
+      resetSystemAnalysisReviewState();
       setSystemAnalysisRequestState({
         status: "error",
         result: null,
@@ -452,22 +497,8 @@ export default function Adjust({
     }
 
     if (!systemAnalysisEligibility?.eligible) {
-      setShowSystemAnalysisReview(false);
-      setSelectedSystemAnalysisCorrectionIds([]);
-      setSystemAnalysisConfirmationOpen(false);
-      setPreparedSystemAnalysisApplicationPreview(null);
-      setSystemAnalysisApplicationState(createInitialSystemAnalysisApplicationState());
-      setSystemAnalysisRequestState({
-        status: "ineligible",
-        result: null,
-        analysisId: null,
-        errorCode: "SYSTEM_ANALYSIS_INELIGIBLE",
-        message: SYSTEM_ANALYSIS_INELIGIBLE_MESSAGE,
-        missingRequirements: Array.isArray(systemAnalysisEligibility?.missingRequirements)
-          ? systemAnalysisEligibility.missingRequirements
-          : [],
-        requestId: null,
-      });
+      resetSystemAnalysisReviewState();
+      setSystemAnalysisRequestState(createInitialSystemAnalysisState());
       return;
     }
 
@@ -476,11 +507,7 @@ export default function Adjust({
       period: systemAnalysisSnapshot?.period,
     });
     if (reusableRecord) {
-      setShowSystemAnalysisReview(false);
-      setSelectedSystemAnalysisCorrectionIds([]);
-      setSystemAnalysisConfirmationOpen(false);
-      setPreparedSystemAnalysisApplicationPreview(null);
-      setSystemAnalysisApplicationState(createInitialSystemAnalysisApplicationState());
+      resetSystemAnalysisReviewState();
       setSystemAnalysisRequestState({
         status: "success",
         result: reusableRecord.result,
@@ -496,11 +523,7 @@ export default function Adjust({
     systemAnalysisAbortRef.current?.abort();
     const controller = new AbortController();
     systemAnalysisAbortRef.current = controller;
-    setShowSystemAnalysisReview(false);
-    setSelectedSystemAnalysisCorrectionIds([]);
-    setSystemAnalysisConfirmationOpen(false);
-    setPreparedSystemAnalysisApplicationPreview(null);
-    setSystemAnalysisApplicationState(createInitialSystemAnalysisApplicationState());
+    resetSystemAnalysisReviewState();
     setSystemAnalysisRequestState({
       status: "loading",
       result: null,
@@ -530,11 +553,7 @@ export default function Adjust({
         state: safeData,
       });
       if (!validation.ok) {
-        setShowSystemAnalysisReview(false);
-        setSelectedSystemAnalysisCorrectionIds([]);
-        setSystemAnalysisConfirmationOpen(false);
-        setPreparedSystemAnalysisApplicationPreview(null);
-        setSystemAnalysisApplicationState(createInitialSystemAnalysisApplicationState());
+        resetSystemAnalysisReviewState();
         setSystemAnalysisRequestState({
           status: "error",
           result: null,
@@ -554,11 +573,7 @@ export default function Adjust({
         now: buildSystemAnalysisReferenceNow(activeDateKey),
       });
       if (!recordResult.ok) {
-        setShowSystemAnalysisReview(false);
-        setSelectedSystemAnalysisCorrectionIds([]);
-        setSystemAnalysisConfirmationOpen(false);
-        setPreparedSystemAnalysisApplicationPreview(null);
-        setSystemAnalysisApplicationState(createInitialSystemAnalysisApplicationState());
+        resetSystemAnalysisReviewState();
         setSystemAnalysisRequestState({
           status: "error",
           result: null,
@@ -579,11 +594,7 @@ export default function Adjust({
           ),
         }));
       }
-      setShowSystemAnalysisReview(false);
-      setSelectedSystemAnalysisCorrectionIds([]);
-      setSystemAnalysisConfirmationOpen(false);
-      setPreparedSystemAnalysisApplicationPreview(null);
-      setSystemAnalysisApplicationState(createInitialSystemAnalysisApplicationState());
+      resetSystemAnalysisReviewState();
       setSystemAnalysisRequestState({
         status: "success",
         result: validation.normalized,
@@ -596,11 +607,7 @@ export default function Adjust({
       return;
     }
 
-    setShowSystemAnalysisReview(false);
-    setSelectedSystemAnalysisCorrectionIds([]);
-    setSystemAnalysisConfirmationOpen(false);
-    setPreparedSystemAnalysisApplicationPreview(null);
-    setSystemAnalysisApplicationState(createInitialSystemAnalysisApplicationState());
+    resetSystemAnalysisReviewState();
     setSystemAnalysisRequestState({
       status: resolveSystemAnalysisStatus(result),
       result: null,
@@ -614,7 +621,7 @@ export default function Adjust({
     });
   }, [
     activeDateKey,
-    onSystemAnalysisEntry,
+    resetSystemAnalysisReviewState,
     safeData,
     session?.access_token,
     setData,
@@ -624,14 +631,6 @@ export default function Adjust({
     systemAnalysisRequestState.status,
     systemAnalysisSnapshot,
   ]);
-
-  const handleOpenSystemAnalysisCorrections = useCallback(() => {
-    if (!displayedSystemAnalysisResult) return;
-    setShowSystemAnalysisReview(true);
-    setSystemAnalysisConfirmationOpen(false);
-    setPreparedSystemAnalysisApplicationPreview(null);
-    setSystemAnalysisApplicationState(createInitialSystemAnalysisApplicationState());
-  }, [displayedSystemAnalysisResult]);
 
   const handleToggleSystemAnalysisCorrection = useCallback((id, selected) => {
     const safeId = typeof id === "string" ? id.trim() : "";
@@ -727,6 +726,58 @@ export default function Adjust({
     systemAnalysisCorrectionReview,
   ]);
 
+  const handleBackToSystemAnalysisCorrections = useCallback(() => {
+    setSystemAnalysisConfirmationOpen(false);
+    setSystemAnalysisApplicationState(createInitialSystemAnalysisApplicationState());
+  }, []);
+
+  const handleCloseSystemAnalysisSheet = useCallback(() => {
+    if (systemAnalysisRequestState.status === "loading") {
+      systemAnalysisAbortRef.current?.abort();
+      systemAnalysisAbortRef.current = null;
+      setSystemAnalysisRequestState(createInitialSystemAnalysisState());
+    }
+    setSystemAnalysisSheetOpen(false);
+    if (systemAnalysisApplicationState.status === "success") {
+      resetSystemAnalysisReviewState();
+    }
+  }, [resetSystemAnalysisReviewState, systemAnalysisApplicationState.status, systemAnalysisRequestState.status]);
+
+  const systemAnalysisSheetState = useMemo(() => {
+    if (systemAnalysisApplicationState.status === "success") return "applied_success";
+    if (systemAnalysisConfirmationOpen) return "final_confirmation";
+    const status = String(displayedSystemAnalysisPreviewState.status || "idle");
+    const errorCode = String(displayedSystemAnalysisPreviewState.errorCode || "").toUpperCase();
+    if (status === "loading") return "loading";
+    if (status === "ineligible" || errorCode === "SYSTEM_ANALYSIS_INELIGIBLE") return "data_limited";
+    if (status === "premium_required" || errorCode === "PREMIUM_REQUIRED") return "premium_required";
+    if (
+      status === "quota_exhausted" ||
+      errorCode === "QUOTA_EXCEEDED" ||
+      errorCode === "SYSTEM_ANALYSIS_QUOTA_EXCEEDED"
+    ) {
+      return "quota_exhausted";
+    }
+    if (status === "timeout" || errorCode === "SYSTEM_ANALYSIS_PROVIDER_TIMEOUT") return "timeout";
+    if (status === "error") return "error";
+    if (displayedSystemAnalysisResult) {
+      return systemAnalysisRequestState.status === "idle" && systemAnalysisHistoryDisplay.visible
+        ? "latest_analysis"
+        : "result_review";
+    }
+    if (!systemAnalysisEligibility?.eligible) return "data_limited";
+    return "intro";
+  }, [
+    displayedSystemAnalysisPreviewState.errorCode,
+    displayedSystemAnalysisPreviewState.status,
+    displayedSystemAnalysisResult,
+    systemAnalysisApplicationState.status,
+    systemAnalysisConfirmationOpen,
+    systemAnalysisEligibility?.eligible,
+    systemAnalysisHistoryDisplay.visible,
+    systemAnalysisRequestState.status,
+  ]);
+
   const systemAnalysisHeaderAction = (
     <SystemAnalysisEntryButton
       className="adjustSystemAnalysisEntryButton"
@@ -819,30 +870,6 @@ export default function Adjust({
           ) : null}
           <p className="adjustHonestNote">Aucune modification n’est appliquée sans passer par l’action choisie.</p>
         </CommandCard>
-
-        <SystemAnalysisResultPreview
-          status={displayedSystemAnalysisPreviewState.status}
-          result={displayedSystemAnalysisPreviewState.result}
-          errorCode={displayedSystemAnalysisPreviewState.errorCode}
-          message={displayedSystemAnalysisPreviewState.message}
-          missingRequirements={displayedSystemAnalysisPreviewState.missingRequirements}
-          title={displayedSystemAnalysisPreviewState.title}
-          staleNote={displayedSystemAnalysisPreviewState.staleNote}
-          onRetry={handleSystemAnalysisEntry}
-          onOpenCorrections={handleOpenSystemAnalysisCorrections}
-        />
-
-        {showSystemAnalysisReview && systemAnalysisCorrectionReview ? (
-          <SystemAnalysisCorrectionReview
-            review={systemAnalysisCorrectionReview}
-            applicationPreview={systemAnalysisApplicationPreview}
-            applicationResult={systemAnalysisApplicationState}
-            onSelectChange={handleToggleSystemAnalysisCorrection}
-            onConfirmSelection={handleConfirmSystemAnalysisCorrections}
-            onApplySelectedCorrections={handleApplySystemAnalysisCorrections}
-            confirmationOpen={systemAnalysisConfirmationOpen}
-          />
-        ) : null}
 
         {nextBlock ? (
           <CommandCard tone="execution" className="adjustNextBlockCard" density="compact">
@@ -952,6 +979,23 @@ export default function Adjust({
         </CommandAIBlock>
 
       </div>
+      <SystemAnalysisCommandSheet
+        open={systemAnalysisSheetOpen}
+        state={systemAnalysisSheetState}
+        result={displayedSystemAnalysisResult}
+        errorCode={displayedSystemAnalysisPreviewState.errorCode}
+        message={displayedSystemAnalysisPreviewState.message}
+        staleNote={displayedSystemAnalysisPreviewState.staleNote}
+        review={systemAnalysisCorrectionReview}
+        applicationPreview={systemAnalysisApplicationPreview}
+        applicationResult={systemAnalysisApplicationState}
+        onClose={handleCloseSystemAnalysisSheet}
+        onLaunchAnalysis={handleLaunchSystemAnalysis}
+        onSelectChange={handleToggleSystemAnalysisCorrection}
+        onConfirmSelection={handleConfirmSystemAnalysisCorrections}
+        onBackToCorrections={handleBackToSystemAnalysisCorrections}
+        onApplySelectedCorrections={handleApplySystemAnalysisCorrections}
+      />
     </AppScreen>
   );
 }

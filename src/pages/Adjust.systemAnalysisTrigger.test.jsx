@@ -129,8 +129,7 @@ describe("Adjust system analysis trigger contract", () => {
     const requestIndex = source.indexOf("requestAiSystemAnalysis({");
 
     expect(source).toContain("requestAiSystemAnalysis");
-    expect(source).toContain("SystemAnalysisResultPreview");
-    expect(source).toContain("SystemAnalysisCorrectionReview");
+    expect(source).toContain("SystemAnalysisCommandSheet");
     expect(source).toContain("buildSystemAnalysisCorrectionReview");
     expect(source).toContain("buildSystemAnalysisApplicationPreview");
     expect(source).toContain("applySystemAnalysisSelectedCorrections");
@@ -142,10 +141,9 @@ describe("Adjust system analysis trigger contract", () => {
     expect(source).toContain("systemAnalysisEligibility?.eligible");
     expect(source).toContain('status: "loading"');
     expect(source).toContain('status: "success"');
-    expect(source).toContain('status: "ineligible"');
     expect(source).toContain("AbortController");
-    expect(source).toContain("SYSTEM_ANALYSIS_INELIGIBLE_MESSAGE");
-    expect(source).toContain("showSystemAnalysisReview");
+    expect(source).toContain("systemAnalysisSheetOpen");
+    expect(source).toContain('return "data_limited"');
     expect(source).toContain("selectedSystemAnalysisCorrectionIds");
     expect(source).toContain("preparedSystemAnalysisApplicationPreview");
     expect(source).toContain("systemAnalysisApplicationState");
@@ -165,14 +163,11 @@ describe("Adjust system analysis trigger contract", () => {
 
   it("requires final confirmation before the application helper commits data", () => {
     const source = readSrc("pages/Adjust.jsx");
-    const previewIndex = source.indexOf("<SystemAnalysisResultPreview");
-    const reviewIndex = source.indexOf("<SystemAnalysisCorrectionReview");
     const prepareIndex = source.indexOf("handleConfirmSystemAnalysisCorrections");
     const applyIndex = source.indexOf("handleApplySystemAnalysisCorrections");
     const setDataIndex = source.indexOf("setData((current) =>", applyIndex);
     const applyHandlerSource = source.slice(applyIndex, source.indexOf("const systemAnalysisHeaderAction"));
 
-    expect(source).toContain("handleOpenSystemAnalysisCorrections");
     expect(source).toContain("handleToggleSystemAnalysisCorrection");
     expect(source).toContain("handleConfirmSystemAnalysisCorrections");
     expect(source).toContain("handleApplySystemAnalysisCorrections");
@@ -181,9 +176,8 @@ describe("Adjust system analysis trigger contract", () => {
     expect(source).toContain("setData((current) =>");
     expect(source).toContain("markSystemAnalysisRecordApplied");
     expect(source).toContain("onApplySelectedCorrections={handleApplySystemAnalysisCorrections}");
-    expect(previewIndex).toBeGreaterThan(-1);
-    expect(reviewIndex).toBeGreaterThan(-1);
-    expect(previewIndex).toBeLessThan(reviewIndex);
+    expect(source).toContain('return "final_confirmation"');
+    expect(source).toContain('return "applied_success"');
     expect(prepareIndex).toBeGreaterThan(-1);
     expect(applyIndex).toBeGreaterThan(prepareIndex);
     expect(setDataIndex).toBeGreaterThan(applyIndex);
@@ -205,27 +199,28 @@ describe("Adjust system analysis trigger contract", () => {
     expect(source).toContain("validateSystemAnalysisResult(result.result");
   });
 
-  it("shows latest persisted analysis through the compact preview model", () => {
+  it("routes latest persisted analysis through the command sheet instead of inline preview", () => {
     const source = readSrc("pages/Adjust.jsx");
     const recommendationIndex = source.indexOf("adjustRecommendationCard adjustRecommendationCard--primary");
-    const previewIndex = source.indexOf("<SystemAnalysisResultPreview");
+    const sheetIndex = source.indexOf("<SystemAnalysisCommandSheet");
 
     expect(source).toContain("buildSystemAnalysisHistoryDisplayModel");
     expect(source).toContain("displayedSystemAnalysisPreviewState");
-    expect(source).toContain("title={displayedSystemAnalysisPreviewState.title}");
+    expect(source).toContain('"latest_analysis"');
     expect(source).toContain("staleNote={displayedSystemAnalysisPreviewState.staleNote}");
+    expect(source).not.toContain("<SystemAnalysisResultPreview");
+    expect(source).not.toContain('data-system-analysis-preview-anchor="true"');
     expect(recommendationIndex).toBeGreaterThan(-1);
-    expect(previewIndex).toBeGreaterThan(-1);
-    expect(recommendationIndex).toBeLessThan(previewIndex);
+    expect(sheetIndex).toBeGreaterThan(recommendationIndex);
   });
 
-  it("renders a reload-shaped latest analysis record after the deterministic recommendation", () => {
+  it("does not render a reload-shaped latest analysis inline in the Ajuster stack", () => {
     const html = renderToStaticMarkup(<Adjust data={dataWithLatestAnalysis()} />);
 
-    expect(html).toContain("Dernière analyse");
-    expect(html).toContain("Le dernier audit reste disponible après rechargement.");
-    expect(html).toContain("Ton système a changé depuis cette analyse.");
-    expect(html.indexOf("RECOMMANDATION")).toBeLessThan(html.indexOf("Dernière analyse"));
+    expect(html).toContain("Analyser le système");
+    expect(html).toContain("RECOMMANDATION");
+    expect(html).not.toContain("Dernière analyse");
+    expect(html).not.toContain("Le dernier audit reste disponible après rechargement.");
   });
 
   it("renders the running header state while a request is in progress", () => {
@@ -247,13 +242,34 @@ describe("Adjust system analysis trigger contract", () => {
     expect(html).not.toContain("disabled=\"\"");
   });
 
-  it("keeps the deterministic recommendation before any analysis preview surface", () => {
+  it("removes entry-triggered scroll and inline preview surfaces from Ajuster", () => {
+    const source = readSrc("pages/Adjust.jsx");
+
+    expect(source).not.toContain("systemAnalysisPreviewRef");
+    expect(source).not.toContain("systemAnalysisFeedbackOrigin");
+    expect(source).not.toContain("SYSTEM_ANALYSIS_ENTRY_FEEDBACK_STATUSES");
+    expect(source).not.toContain("scrollIntoView");
+    expect(source).not.toContain("(prefers-reduced-motion: reduce)");
+    expect(source).toContain('"loading"');
+    expect(source).toContain('"premium_required"');
+    expect(source).toContain('"quota_exhausted"');
+    expect(source).toContain('"timeout"');
+    expect(source).toContain('"error"');
+    expect(source).toContain('"success"');
+  });
+
+  it("keeps the deterministic recommendation before the command sheet mount point", () => {
     const source = readSrc("pages/Adjust.jsx");
     const recommendationIndex = source.indexOf("adjustRecommendationCard adjustRecommendationCard--primary");
-    const previewIndex = source.indexOf("<SystemAnalysisResultPreview");
+    const sheetIndex = source.indexOf("<SystemAnalysisCommandSheet");
+    const ajusterStack = source.slice(
+      source.indexOf('<div className="adjustCommandPage'),
+      sheetIndex
+    );
 
     expect(recommendationIndex).toBeGreaterThan(-1);
-    expect(previewIndex).toBeGreaterThan(-1);
-    expect(recommendationIndex).toBeLessThan(previewIndex);
+    expect(sheetIndex).toBeGreaterThan(recommendationIndex);
+    expect(ajusterStack).not.toContain("SystemAnalysisResultPreview");
+    expect(ajusterStack).not.toContain("SystemAnalysisCorrectionReview");
   });
 });

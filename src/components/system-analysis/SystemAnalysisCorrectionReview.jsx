@@ -22,12 +22,12 @@ function statusCopy(status, selected) {
     return { label: "Déjà appliquée", tone: "execution", Icon: CheckCircle2 };
   }
   if (status === SYSTEM_ANALYSIS_CORRECTION_REVIEW_STATUS.VALID) {
-    return { label: selected ? "Sélectionnée" : "Applicable", tone: "execution", Icon: CheckCircle2 };
+    return { label: selected ? "SÉLECTIONNÉE" : "APPLICABLE", tone: "execution", Icon: CheckCircle2 };
   }
   if (status === SYSTEM_ANALYSIS_CORRECTION_REVIEW_STATUS.NEEDS_REVIEW) {
-    return { label: "À revoir", tone: "attention", Icon: AlertTriangle };
+    return { label: "À REVOIR", tone: "attention", Icon: AlertTriangle };
   }
-  return { label: "À revoir", tone: "attention", Icon: AlertTriangle };
+  return { label: "À REVOIR", tone: "attention", Icon: AlertTriangle };
 }
 
 function formatReadyCount(count) {
@@ -111,6 +111,8 @@ export default function SystemAnalysisCorrectionReview({
   onConfirmSelection,
   onApplySelectedCorrections,
   confirmationOpen = false,
+  showHeader = true,
+  honestNote = "Aucune modification n’est appliquée sans validation.",
 }) {
   if (!review || !safeArray(review.items).length) return null;
   const selectedCount = Number(review.validSelectedCount || 0);
@@ -130,15 +132,15 @@ export default function SystemAnalysisCorrectionReview({
     >
       <Sparkles size={18} strokeWidth={2} aria-hidden="true" />
       <div className="systemAnalysisCorrectionReview__body">
-        <CommandSectionHeader
-          label="ANALYSE SYSTÈME"
-          title="Corrections proposées"
-          subtitle="Inspecte les changements proposés avant toute validation."
-          tone="ai"
-        />
-        <p className="systemAnalysisCorrectionReview__honestNote">
-          Aucune modification n’est appliquée sans validation.
-        </p>
+        {showHeader ? (
+          <CommandSectionHeader
+            label="ANALYSE SYSTÈME"
+            title="Corrections proposées"
+            subtitle="Inspecte les changements proposés avant toute validation."
+            tone="ai"
+          />
+        ) : null}
+        {honestNote ? <p className="systemAnalysisCorrectionReview__honestNote">{honestNote}</p> : null}
 
         <div className="systemAnalysisCorrectionReview__groups">
           {review.groups.map((group) => (

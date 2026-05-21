@@ -78,7 +78,7 @@ describe("SystemAnalysisCorrectionReview", () => {
     expect(html).toContain("Corrections proposées");
     expect(html).toContain("Aucune modification n’est appliquée sans validation.");
     expect(html).toContain("Réduire la durée");
-    expect(html).toContain("Applicable");
+    expect(html).toContain("APPLICABLE");
     expect(html).toContain("1 correction prête");
     expect(html).toContain("Sélectionner");
     expect(html).toContain("Ignorer");
@@ -91,7 +91,7 @@ describe("SystemAnalysisCorrectionReview", () => {
   it("renders selected valid corrections and enables the confirmation CTA", () => {
     const html = renderToStaticMarkup(<SystemAnalysisCorrectionReview review={reviewFixture({ selected: true })} />);
 
-    expect(html).toContain("Sélectionnée");
+    expect(html).toContain("SÉLECTIONNÉE");
     expect(html).toContain("1 sélectionnée");
     expect(html).toContain("data-system-analysis-confirm=\"true\"");
     expect(html).not.toContain("Acceptée");
@@ -100,7 +100,7 @@ describe("SystemAnalysisCorrectionReview", () => {
   it("renders unsupported corrections with explanatory copy and no accept button for that item", () => {
     const html = renderToStaticMarkup(<SystemAnalysisCorrectionReview review={reviewFixture({ unsupported: true })} />);
 
-    expect(html).toContain("À revoir");
+    expect(html).toContain("À REVOIR");
     expect(html).toContain("Protect corrections are display-only.");
     expect(html).toContain("Revue manuelle requise");
   });

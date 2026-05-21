@@ -2,6 +2,7 @@ import { test, expect, devices } from "@playwright/test";
 import { getState } from "./utils/seed.js";
 import {
   addDaysKey,
+  buildCanonicalExecutionState,
   buildEligibleSystemAnalysisState,
   E2E_USER_ID,
   seedCurrentUser,
@@ -143,16 +144,18 @@ test("System Analysis: preview, review, final apply and local history metadata",
   await expect(page.getByRole("button", { name: /Analyser le système/i })).toBeVisible();
   await page.getByRole("button", { name: /Analyser le système/i }).click();
 
+  await expect(page.getByRole("dialog").getByText("Analyse système", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Ce que l’analyse va lire")).toBeVisible();
+  await page.getByRole("button", { name: "Lancer l’analyse" }).click();
   await expect(page.getByText("Analyse du système en cours…")).toBeVisible();
-  await expect(page.getByText("Diagnostic profond terminé")).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText("Aucune modification n’a été appliquée.")).toBeVisible();
+  await expect(page.getByText("Corrections proposées")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("Rien n’est appliqué sans validation finale.").first()).toBeVisible();
 
   const beforeReview = await getState(page);
   expect(beforeReview.occurrences.find((occ) => occ.id === "occ_today")?.date).toBe(today);
 
-  await page.getByRole("button", { name: "Voir les corrections proposées" }).click();
-  await expect(page.locator(".systemAnalysisCorrectionReview").getByText("Corrections proposées", { exact: true })).toBeVisible();
-  await expect(page.getByText("Réduire le bloc client à 20 minutes")).toBeVisible();
+  await expect(page.getByText("Réduire la durée")).toBeVisible();
+  await expect(page.getByText("Réduire à 20 min.")).toBeVisible();
   await expect(page.getByText("Objectif moteur à conserver.")).toBeVisible();
   await page.getByRole("button", { name: "Sélectionner" }).first().click();
 
@@ -160,7 +163,8 @@ test("System Analysis: preview, review, final apply and local history metadata",
   expect(beforeApply.occurrences.find((occ) => occ.id === "occ_today")?.date).toBe(today);
 
   await page.getByRole("button", { name: "Préparer la validation" }).click();
-  await expect(page.getByText("Prochaine étape : validation finale")).toBeVisible();
+  await expect(page.getByText("Validation finale")).toBeVisible();
+  await expect(page.getByText("Ces corrections vont modifier ton planning. Tu gardes le contrôle.")).toBeVisible();
   await expect(page.getByText("Aucune correction n’a encore été appliquée.")).toBeVisible();
   await page.getByRole("button", { name: "Appliquer les corrections" }).click();
 
@@ -188,11 +192,49 @@ test("System Analysis: preview, review, final apply and local history metadata",
       0
     );
   }, E2E_USER_ID)).toBe(1);
+  await page.getByRole("button", { name: "Retour à Ajuster" }).click();
+  await expect(page.getByText("RECOMMANDATION")).toBeVisible();
 
   await page.reload({ waitUntil: "networkidle" });
+  await page.getByRole("button", { name: /Analyser le système/i }).click();
   await expect(page.getByText("Dernière analyse")).toBeVisible();
   await expect(page.getByText("Ton système avance, mais le bloc principal gagne à être raccourci.")).toBeVisible();
-  await page.getByRole("button", { name: "Voir les corrections proposées" }).click();
   await expect(page.getByText("Déjà appliquée").first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Sélectionner" })).toHaveCount(0);
+});
+
+test("System Analysis: thin data opens command sheet without backend call", async ({ page }) => {
+  await page.addInitScript(() => {
+    globalThis.process = globalThis.process || {};
+    globalThis.process.env = {
+      ...(globalThis.process.env || {}),
+      VITE_AI_BACKEND_URL: globalThis.location.origin,
+    };
+  });
+  let systemAnalysisRequests = 0;
+  await page.route("**/ai/system-analysis", async (route) => {
+    systemAnalysisRequests += 1;
+    await route.fulfill({
+      status: 500,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "unexpected" }),
+    });
+  });
+  const state = buildCanonicalExecutionState({ premium: true, withHistory: false });
+  state.occurrences = state.occurrences.slice(0, 1);
+  state.sessionHistory = [];
+  await seedCurrentUser(page, state, {
+    appMetadata: { plan_tier: "premium" },
+  });
+
+  await page.goto("/adjust");
+  await page.getByRole("button", { name: /Analyse système|Analyser le système/i }).click();
+
+  await expect(page.getByRole("dialog").getByText("Données encore limitées.")).toBeVisible();
+  await expect(page.getByText("L’analyse sera plus précise après quelques jours d’exécution.")).toBeVisible();
+  await expect(page.getByText("Structure du planning")).toBeVisible();
+  await expect(page.getByText("Créneaux libres")).toBeVisible();
+  await page.getByRole("button", { name: "Compris" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  expect(systemAnalysisRequests).toBe(0);
 });
