@@ -41,7 +41,7 @@ function resolveErrorCopy({ status, errorCode, message }) {
       title: "Analyse système",
       subtitle:
         safeString(message) ||
-        "Continue à exécuter tes blocs pendant quelques jours. L’analyse devient utile quand elle peut lire ton vrai comportement.",
+        "Crée ou valide d’abord un système avec au moins un objectif, une action ou un bloc.",
     };
   }
 

@@ -49,6 +49,16 @@ function thinData() {
   };
 }
 
+function emptyData() {
+  return {
+    categories: [],
+    goals: [],
+    occurrences: [],
+    sessionHistory: [],
+    ui: { selectedDateKey: ACTIVE_DATE },
+  };
+}
+
 describe("Adjust system analysis entry", () => {
   it("renders an enabled premium header entry when eligible", () => {
     const html = renderToStaticMarkup(<Adjust data={eligibleData()} />);
@@ -61,8 +71,18 @@ describe("Adjust system analysis entry", () => {
     expect(html).not.toContain("systemAnalysisCard");
   });
 
-  it("renders a locked compact header entry for thin data", () => {
+  it("renders an enabled compact header entry for thin planned data", () => {
     const html = renderToStaticMarkup(<Adjust data={thinData()} />);
+
+    expect(html).toContain("Analyser le système");
+    expect(html).toContain('data-system-analysis-state="available"');
+    expect(html).toContain('data-system-analysis-tone="ai"');
+    expect(html).not.toContain('data-system-analysis-explanatory="true"');
+    expect(html).not.toContain("disabled=\"\"");
+  });
+
+  it("renders an explanatory locked entry when no usable system exists", () => {
+    const html = renderToStaticMarkup(<Adjust data={emptyData()} />);
 
     expect(html).toContain("Analyse système");
     expect(html).toContain('data-system-analysis-state="locked"');

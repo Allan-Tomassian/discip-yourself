@@ -1,5 +1,6 @@
 import {
   buildSystemAnalysisSnapshot,
+  SYSTEM_ANALYSIS_MODE,
 } from "./systemAnalysisSnapshot";
 import {
   normalizeLocalDateKey,
@@ -15,7 +16,7 @@ export const SYSTEM_ANALYSIS_ELIGIBILITY_REQUIREMENTS = Object.freeze({
 });
 
 export const SYSTEM_ANALYSIS_LOCKED_COPY =
-  "Continue à exécuter tes blocs pendant quelques jours. L’analyse système devient utile quand elle peut lire ton vrai comportement.";
+  "Crée ou valide d’abord un système avec au moins un objectif, une action ou un bloc.";
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -89,6 +90,33 @@ function addMissing(missingRequirements, code, label, progress) {
   });
 }
 
+function getNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function hasMeaningfulPlannedSystem(state, snapshot) {
+  const goalCount = Math.max(
+    getNumber(snapshot?.goalsSummary?.totalCount),
+    safeArray(state?.goals).length
+  );
+  const actionCount = Math.max(
+    getNumber(snapshot?.actionsSummary?.totalCount),
+    getNumber(snapshot?.goalsSummary?.processActionCount)
+  );
+  const occurrenceCount = Math.max(
+    getNumber(snapshot?.sourceCounts?.occurrences),
+    getNumber(snapshot?.executionStats?.expectedCount),
+    safeArray(state?.occurrences).length
+  );
+  return goalCount > 0 || actionCount > 0 || occurrenceCount > 0;
+}
+
+function resolveAnalysisMode(snapshot) {
+  const mode = String(snapshot?.analysisModeRecommendation || "").trim();
+  return Object.values(SYSTEM_ANALYSIS_MODE).includes(mode) ? mode : null;
+}
+
 export function buildSystemAnalysisEligibility({
   state,
   snapshot,
@@ -118,9 +146,9 @@ export function buildSystemAnalysisEligibility({
     ),
   };
 
-  const missingRequirements = [];
+  const behavioralMissingRequirements = [];
   if (!activation.dateKey) {
-    addMissing(missingRequirements, "activation_date_missing", "Date d’activation manquante", {
+    addMissing(behavioralMissingRequirements, "activation_date_missing", "Date d’activation manquante", {
       current: 0,
       target: 1,
       remaining: 1,
@@ -128,34 +156,76 @@ export function buildSystemAnalysisEligibility({
     });
   }
   if (!progressToUnlock.daysSinceActivation.complete) {
-    addMissing(missingRequirements, "activation_too_recent", "Activation trop récente", progressToUnlock.daysSinceActivation);
+    addMissing(behavioralMissingRequirements, "activation_too_recent", "Activation trop récente", progressToUnlock.daysSinceActivation);
   }
   if (!progressToUnlock.plannedBlocks.complete) {
-    addMissing(missingRequirements, "not_enough_planned_blocks", "Pas assez de blocs planifiés", progressToUnlock.plannedBlocks);
+    addMissing(behavioralMissingRequirements, "not_enough_planned_blocks", "Pas assez de blocs planifiés", progressToUnlock.plannedBlocks);
   }
   if (!progressToUnlock.executionOutcomes.complete) {
-    addMissing(missingRequirements, "not_enough_execution_outcomes", "Pas assez de résultats d’exécution", progressToUnlock.executionOutcomes);
+    addMissing(behavioralMissingRequirements, "not_enough_execution_outcomes", "Pas assez de résultats d’exécution", progressToUnlock.executionOutcomes);
   }
   if (!progressToUnlock.activeDays.complete) {
-    addMissing(missingRequirements, "not_enough_active_days", "Pas assez de jours actifs", progressToUnlock.activeDays);
+    addMissing(behavioralMissingRequirements, "not_enough_active_days", "Pas assez de jours actifs", progressToUnlock.activeDays);
   }
   if (!progressToUnlock.completionOrFrictionSignals.complete) {
     addMissing(
-      missingRequirements,
+      behavioralMissingRequirements,
       "not_enough_completion_or_friction",
       "Pas assez de signal de completion ou de friction",
       progressToUnlock.completionOrFrictionSignals
     );
   }
 
-  const eligible = missingRequirements.length === 0;
+  const analysisMode = resolveAnalysisMode(safeSnapshot);
+  const meaningfulPlannedSystem = hasMeaningfulPlannedSystem(safeState, safeSnapshot);
+  const hasPlannedSystem = isPlainObject(safeSnapshot.plannedSystem) && Boolean(analysisMode);
+  const hasUsableSystem = hasPlannedSystem && meaningfulPlannedSystem;
+  const behavioralEligible = behavioralMissingRequirements.length === 0;
+  const structuralAnalysisAllowed =
+    hasUsableSystem &&
+    (analysisMode === SYSTEM_ANALYSIS_MODE.INITIAL || analysisMode === SYSTEM_ANALYSIS_MODE.HYBRID);
+  const eligible = behavioralEligible || structuralAnalysisAllowed;
+  const missingRequirements = [];
+  if (!eligible) {
+    if (!hasPlannedSystem) {
+      addMissing(missingRequirements, "planned_system_missing", "Système planifié manquant", {
+        current: 0,
+        target: 1,
+        remaining: 1,
+        complete: false,
+      });
+    }
+    if (!meaningfulPlannedSystem) {
+      addMissing(missingRequirements, "usable_system_missing", "Aucun système exploitable", {
+        current: 0,
+        target: 1,
+        remaining: 1,
+        complete: false,
+      });
+    }
+    if (!missingRequirements.length) {
+      missingRequirements.push(...behavioralMissingRequirements);
+    }
+  }
+
+  const eligibleReason =
+    analysisMode === SYSTEM_ANALYSIS_MODE.BEHAVIORAL && behavioralEligible
+      ? "enough_real_usage_data"
+      : analysisMode === SYSTEM_ANALYSIS_MODE.HYBRID
+        ? "hybrid_analysis_available"
+        : "initial_structure_analysis_available";
+
   return {
     eligible,
     reasons: eligible
-      ? ["enough_real_usage_data"]
+      ? [eligibleReason]
       : missingRequirements.map((requirement) => requirement.code),
     missingRequirements,
+    behavioralMissingRequirements,
     unlockCopy: eligible ? "" : SYSTEM_ANALYSIS_LOCKED_COPY,
+    analysisMode,
+    behavioralEligible,
+    hasUsableSystem,
     progressToUnlock,
     activation: {
       dateKey: activation.dateKey || null,

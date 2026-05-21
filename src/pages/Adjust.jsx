@@ -785,6 +785,8 @@ export default function Adjust({
       onClick={handleSystemAnalysisEntry}
     />
   );
+  const systemAnalysisIntroLimited =
+    systemAnalysisEligibility?.eligible === true && systemAnalysisEligibility?.behavioralEligible !== true;
 
   return (
     <AppScreen
@@ -995,6 +997,7 @@ export default function Adjust({
         onConfirmSelection={handleConfirmSystemAnalysisCorrections}
         onBackToCorrections={handleBackToSystemAnalysisCorrections}
         onApplySelectedCorrections={handleApplySystemAnalysisCorrections}
+        limited={systemAnalysisIntroLimited}
       />
     </AppScreen>
   );

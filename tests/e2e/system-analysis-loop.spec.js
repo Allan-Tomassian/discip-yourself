@@ -3,7 +3,6 @@ import { getState } from "./utils/seed.js";
 import {
   addDaysKey,
   buildCanonicalExecutionState,
-  buildEligibleSystemAnalysisState,
   E2E_USER_ID,
   seedCurrentUser,
 } from "./utils/currentProduct.js";
@@ -37,6 +36,7 @@ async function installSystemAnalysisMock(page) {
 
   await page.route("**/ai/system-analysis", async (route) => {
     const request = route.request().postDataJSON();
+    expect(request.snapshot.analysisModeRecommendation).toBe("initial_analysis");
     const period = request.snapshot.period;
     const referenceDateKey = request.referenceDateKey || period.endDateKey;
     const tomorrow = addDaysKey(referenceDateKey, 1);
@@ -46,7 +46,7 @@ async function installSystemAnalysisMock(page) {
       body: JSON.stringify({
         version: 2,
         period,
-        analysisMode: "behavioral_analysis",
+        analysisMode: "initial_analysis",
         diagnosisSummary: {
           primaryFinding: "Le bloc principal est trop lourd.",
           risk: "La charge augmente la friction avant l’exécution.",
@@ -278,8 +278,17 @@ async function installSystemAnalysisMock(page) {
 
 test("System Analysis: preview, review, final apply and local history metadata", async ({ page }) => {
   await installSystemAnalysisMock(page);
-  const state = buildEligibleSystemAnalysisState();
+  const state = buildCanonicalExecutionState({ premium: true, withHistory: false });
   const today = state.ui.selectedDate;
+  state.occurrences.unshift({
+    id: "occ_activation",
+    goalId: "goal_action",
+    date: addDaysKey(today, -12),
+    start: "09:00",
+    slotKey: "09:00",
+    durationMinutes: 20,
+    status: "planned",
+  });
   await seedCurrentUser(page, state, {
     appMetadata: { plan_tier: "premium" },
   });
@@ -317,7 +326,7 @@ test("System Analysis: preview, review, final apply and local history metadata",
   const source = afterApply.occurrences.find((occ) => occ.id === "occ_today");
   expect(source?.status).toBe("planned");
   expect(source?.durationMinutes).toBe(20);
-  expect((afterApply.occurrences || []).filter((occ) => occ.goalId === "goal_action" && occ.date === addDaysKey(today, 1))).toHaveLength(1);
+  expect(afterApply.goals.find((goal) => goal.id === "goal_action")).toBeTruthy();
   expect(afterApply.system_analysis_v1?.analyses?.[0]?.appliedCorrectionIds?.length).toBe(1);
   await expect.poll(async () => page.evaluate((userId) => {
     const raw = localStorage.getItem(`e2e.supabase.user_data.${userId}`);
@@ -347,7 +356,7 @@ test("System Analysis: preview, review, final apply and local history metadata",
   await expect(page.getByRole("button", { name: "Sélectionner" })).toHaveCount(0);
 });
 
-test("System Analysis: thin data opens command sheet without backend call", async ({ page }) => {
+test("System Analysis: empty system opens command sheet without backend call", async ({ page }) => {
   await page.addInitScript(() => {
     globalThis.process = globalThis.process || {};
     globalThis.process.env = {
@@ -365,7 +374,9 @@ test("System Analysis: thin data opens command sheet without backend call", asyn
     });
   });
   const state = buildCanonicalExecutionState({ premium: true, withHistory: false });
-  state.occurrences = state.occurrences.slice(0, 1);
+  state.categories = [];
+  state.goals = [];
+  state.occurrences = [];
   state.sessionHistory = [];
   await seedCurrentUser(page, state, {
     appMetadata: { plan_tier: "premium" },

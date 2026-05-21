@@ -100,8 +100,8 @@ describe("SystemAnalysisCommandSheet", () => {
 
     expect(html).toContain("Données encore limitées.");
     expect(html).toContain("L’analyse sera plus précise après quelques jours d’exécution.");
-    expect(html).toContain("Elle peut déjà vérifier la structure de ton système.");
-    expect(html).toContain("L’analyse complète n’est pas lancée tant que les signaux sont trop fins.");
+    expect(html).toContain("L’analyse sera structurelle : elle vérifiera ton planning, tes objectifs et les blocs manquants.");
+    expect(html).not.toContain("L’analyse complète n’est pas lancée tant que les signaux sont trop fins.");
     expect(html).toContain("Structure du planning");
     expect(html).toContain("Créneaux libres");
     expect(html).toContain("Objectifs sans blocs");

@@ -86,7 +86,7 @@ describe("SystemAnalysisResultPreview", () => {
     expect(premium).toContain("Analyse système premium");
     expect(premium).toContain("Cette analyse avancée est réservée au plan Premium.");
     expect(ineligible).toContain("Analyse système");
-    expect(ineligible).toContain("Continue à exécuter tes blocs pendant quelques jours");
+    expect(ineligible).toContain("Crée ou valide d’abord un système");
     expect(timeout).toContain("L’analyse prend trop de temps. Réessaie plus tard.");
     expect(invalid).toContain("L’analyse n’a pas pu être validée.");
   });

@@ -321,6 +321,31 @@ function resolveSystemAnalysisActivationDateKey(snapshot, serverState) {
   return [...occurrenceDates, ...historyDates].sort()[0] || "";
 }
 
+function getSystemAnalysisCount(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function hasUsableSystemAnalysisPlannedSystem(snapshot, serverState) {
+  const plannedSystem = snapshot?.plannedSystem;
+  if (!plannedSystem || typeof plannedSystem !== "object" || Array.isArray(plannedSystem)) return false;
+
+  const goalCount = Math.max(
+    getSystemAnalysisCount(snapshot?.goalsSummary?.totalCount),
+    Array.isArray(serverState?.goals) ? serverState.goals.length : 0
+  );
+  const actionCount = Math.max(
+    getSystemAnalysisCount(snapshot?.actionsSummary?.totalCount),
+    getSystemAnalysisCount(snapshot?.goalsSummary?.processActionCount)
+  );
+  const occurrenceCount = Math.max(
+    getSystemAnalysisCount(snapshot?.sourceCounts?.occurrences),
+    getSystemAnalysisCount(snapshot?.executionStats?.expectedCount),
+    Array.isArray(serverState?.occurrences) ? serverState.occurrences.length : 0
+  );
+  return goalCount > 0 || actionCount > 0 || occurrenceCount > 0;
+}
+
 function buildSystemAnalysisThinDataCheck(snapshot, serverState) {
   const activationDateKey = resolveSystemAnalysisActivationDateKey(snapshot, serverState);
   const referenceDateKey = normalizeDateKey(snapshot?.referenceDateKey || snapshot?.period?.endDateKey);
@@ -351,9 +376,15 @@ function buildSystemAnalysisThinDataCheck(snapshot, serverState) {
   if (completionOrFrictionSignals < 1) {
     addMissing("not_enough_completion_or_friction", completionOrFrictionSignals, 1);
   }
+  const analysisModeRecommendation = String(snapshot?.analysisModeRecommendation || "").trim();
+  const structuralModeAllowed =
+    (analysisModeRecommendation === "initial_analysis" || analysisModeRecommendation === "hybrid_analysis") &&
+    hasUsableSystemAnalysisPlannedSystem(snapshot, serverState);
   return {
-    eligible: missingRequirements.length === 0,
+    eligible: missingRequirements.length === 0 || structuralModeAllowed,
     missingRequirements,
+    analysisModeRecommendation: analysisModeRecommendation || null,
+    structuralModeAllowed,
     activationDateKey: activationDateKey || null,
     daysSinceActivation: Number.isFinite(daysSinceActivation) ? daysSinceActivation : 0,
   };

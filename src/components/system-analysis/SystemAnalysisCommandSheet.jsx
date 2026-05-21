@@ -190,7 +190,7 @@ function IntroView({ limited = false, onClose, onLaunchAnalysis }) {
             <CommandCard tone="attention" density="compact" className="systemAnalysisCommandSheet__limitedNote">
               <AlertTriangle size={16} strokeWidth={2} aria-hidden="true" />
               <p>
-                Données encore limitées : le rapport sera plus précis après quelques jours, mais l’IA peut déjà vérifier la structure du système.
+                L’analyse sera structurelle : elle vérifiera ton planning, tes objectifs et les blocs manquants. La précision augmentera après quelques jours d’exécution.
               </p>
             </CommandCard>
             <section className="systemAnalysisCommandSheet__detectBlock">
@@ -231,7 +231,7 @@ function DataLimitedView({ onClose }) {
         <CommandCard tone="attention" density="compact" className="systemAnalysisCommandSheet__limitedNote">
           <AlertTriangle size={16} strokeWidth={2} aria-hidden="true" />
           <p>
-            L’analyse complète n’est pas lancée tant que les signaux sont trop fins. Le diagnostic gratuit reste disponible.
+            L’analyse sera structurelle : elle vérifiera ton planning, tes objectifs et les blocs manquants. La précision augmentera après quelques jours d’exécution.
           </p>
         </CommandCard>
         <section className="systemAnalysisCommandSheet__detectBlock">
@@ -493,6 +493,7 @@ export default function SystemAnalysisCommandSheet({
   onConfirmSelection,
   onBackToCorrections,
   onApplySelectedCorrections,
+  limited = false,
 } = {}) {
   if (!open) return null;
 
@@ -541,7 +542,7 @@ export default function SystemAnalysisCommandSheet({
       />
     );
   } else {
-    content = <IntroView onClose={onClose} onLaunchAnalysis={onLaunchAnalysis} />;
+    content = <IntroView limited={limited} onClose={onClose} onLaunchAnalysis={onLaunchAnalysis} />;
   }
 
   return (

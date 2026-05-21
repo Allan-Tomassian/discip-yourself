@@ -49,6 +49,16 @@ function thinData() {
   };
 }
 
+function emptyData() {
+  return {
+    categories: [],
+    goals: [],
+    occurrences: [],
+    sessionHistory: [],
+    ui: { selectedDateKey: ACTIVE_DATE },
+  };
+}
+
 function latestAnalysisResult() {
   return {
     version: 1,
@@ -233,8 +243,17 @@ describe("Adjust system analysis trigger contract", () => {
     expect(html).toContain("disabled");
   });
 
-  it("keeps thin-data entry locked but explanatory so the local guard handles taps", () => {
+  it("allows thin planned data to open the initial-analysis entry path", () => {
     const html = renderToStaticMarkup(<Adjust data={thinData()} />);
+
+    expect(html).toContain("Analyser le système");
+    expect(html).toContain('data-system-analysis-state="available"');
+    expect(html).not.toContain('data-system-analysis-explanatory="true"');
+    expect(html).not.toContain("disabled=\"\"");
+  });
+
+  it("keeps empty-system entry explanatory so the local guard avoids backend calls", () => {
+    const html = renderToStaticMarkup(<Adjust data={emptyData()} />);
 
     expect(html).toContain("Analyse système");
     expect(html).toContain('data-system-analysis-state="locked"');

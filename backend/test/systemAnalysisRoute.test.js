@@ -329,6 +329,7 @@ function createValidResult(overrides = {}) {
 
 async function createSystemAnalysisApp({
   config = TEST_CONFIG_WITH_OPENAI,
+  userData,
   entitlement,
   dailyCount,
   monthlyCount,
@@ -344,6 +345,7 @@ async function createSystemAnalysisApp({
     verifyAccessToken: async () => authUser || ({ id: `user-system-analysis-${authUserIndex}` }),
   });
   app.supabase = createFakeSupabase({
+    userData,
     entitlement,
     dailyCount,
     monthlyCount,
@@ -420,6 +422,72 @@ test("POST /ai/system-analysis rejects thin data unless test bypass is enabled",
   assert.equal(response.json().error, "SYSTEM_ANALYSIS_INELIGIBLE");
   assert.equal(insertedLogs[0]?.feature_id, "system_analysis");
   assert.equal(insertedLogs[0]?.counts_for_quota, false);
+  await app.close();
+});
+
+test("POST /ai/system-analysis allows thin initial analysis snapshots with a usable planned system", async () => {
+  let providerCalled = false;
+  const app = await createSystemAnalysisApp({
+    userData: { categories: [], goals: [], occurrences: [], sessionHistory: [], ui: {} },
+    openAiParse: async () => {
+      providerCalled = true;
+      return { choices: [{ message: { parsed: createValidResult({ analysisMode: "initial_analysis" }) } }] };
+    },
+  });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/system-analysis",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.102" },
+    payload: createRequest({
+      snapshot: createSnapshot({
+        firstRunSummary: { commitStatus: "applied", appliedAt: "2026-05-19" },
+        executionStats: { expectedCount: 2, outcomeCount: 0, completedCount: 0, frictionCount: 0, activeDayCount: 0 },
+        sessionStats: { endedCount: 0, frictionCount: 0 },
+        behaviorSystem: { completedCount: 0, missedCount: 0, reportedCount: 0, blockedCount: 0, activeDays: 0 },
+        analysisModeRecommendation: "initial_analysis",
+      }),
+    }),
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.json().analysisMode, "initial_analysis");
+  assert.equal(providerCalled, true);
+  await app.close();
+});
+
+test("POST /ai/system-analysis rejects empty initial analysis snapshots before provider call", async () => {
+  let providerCalled = false;
+  const app = await createSystemAnalysisApp({
+    userData: { categories: [], goals: [], occurrences: [], sessionHistory: [], ui: {} },
+    openAiParse: async () => {
+      providerCalled = true;
+      return { choices: [{ message: { parsed: createValidResult({ analysisMode: "initial_analysis" }) } }] };
+    },
+  });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/ai/system-analysis",
+    headers: { authorization: "Bearer token", "x-forwarded-for": "198.51.100.103" },
+    payload: createRequest({
+      snapshot: createSnapshot({
+        firstRunSummary: { commitStatus: null, appliedAt: null },
+        goalsSummary: { totalCount: 0, outcomeCount: 0, processActionCount: 0 },
+        actionsSummary: { totalCount: 0, tooManyActions: false },
+        executionStats: { expectedCount: 0, outcomeCount: 0, completedCount: 0, frictionCount: 0, activeDayCount: 0 },
+        sessionStats: { endedCount: 0, frictionCount: 0 },
+        sourceCounts: { categories: 0, goals: 0, occurrences: 0, sessionHistory: 0 },
+        plannedSystem: {},
+        behaviorSystem: { completedCount: 0, missedCount: 0, reportedCount: 0, blockedCount: 0, activeDays: 0 },
+        analysisModeRecommendation: "initial_analysis",
+      }),
+    }),
+  });
+
+  assert.equal(response.statusCode, 422);
+  assert.equal(response.json().error, "SYSTEM_ANALYSIS_INELIGIBLE");
+  assert.equal(providerCalled, false);
   await app.close();
 });
 
