@@ -690,7 +690,7 @@ function buildPrimaryAction({ occurrencesForDay, goalsById, categoriesById, acti
       timingLabel: "À planifier",
       categoryLabel: "",
       priorityLabel: "",
-      reason: "Passe par Coach IA, Ajuster ou Planning pour structurer la journée.",
+      reason: "",
       primaryLabel: "Créer le bloc avec le Coach IA",
       secondaryLabel: "Planning",
       detailLabel: "Coach IA",
@@ -708,20 +708,18 @@ function buildPrimaryAction({ occurrencesForDay, goalsById, categoriesById, acti
     status === "in_progress"
       ? "Reprendre"
       : status === "late"
-        ? "Rattraper maintenant"
+        ? "Simplifier le bloc"
         : status === "blocked"
-          ? "Reprendre simple"
+          ? "Simplifier le bloc"
           : status === "reported"
-            ? "Lancer une version simple"
-          : durationLabel
-            ? `Verrouiller ${durationLabel}`
-            : "Verrouiller le bloc";
+            ? "Simplifier le bloc"
+          : "Démarrer";
   const label =
     status === "in_progress" ? "BLOC EN COURS"
       : status === "late" ? "BLOC EN RETARD"
         : status === "blocked" ? "BLOC BLOQUÉ"
           : status === "reported" ? "BLOC SIGNALÉ"
-            : "ACTION CRITIQUE";
+            : "Prochaine action";
   const description =
     status === "in_progress"
       ? "Termine le bloc en cours avant d’ajuster la suite."
@@ -867,7 +865,7 @@ function resolveTodayState({
 function applyPrimaryState(primaryAction, state) {
   const next = {
     ...primaryAction,
-    label: primaryAction?.label || "ACTION CRITIQUE",
+    label: primaryAction?.label || "Prochaine action",
     secondaryLabel: primaryAction?.secondaryLabel || "Reporter",
     detailLabel: primaryAction?.detailLabel || "Voir détail",
     canPrimary: primaryAction?.canPrimary !== false,
@@ -952,7 +950,7 @@ function applyPrimaryState(primaryAction, state) {
       label: "Prochaine action",
       title: "Construis ton prochain bloc",
       description: "Ta journée a un espace libre, mais aucun bloc clair.",
-      reason: "Passe par Coach IA, Ajuster ou Planning pour structurer la journée.",
+      reason: "",
       primaryLabel: "Créer le bloc avec le Coach IA",
       secondaryLabel: "Planning",
       detailLabel: "Coach IA",
@@ -1308,7 +1306,7 @@ export function getTodayVisualSmokeModel() {
       categoryLabel: "Travail",
       priorityLabel: "Priorité haute",
       reason: "C’est le bloc qui débloque ta journée.",
-      ctaLabel: "Verrouiller 30 min",
+      ctaLabel: "Démarrer",
     },
     timelineItems: [
       { id: "smoke-routine", timeLabel: "07:00", title: "Routine", status: "done" },
@@ -1331,14 +1329,14 @@ export function getTodayVisualSmokeModel() {
       plannedBlocksCount: 0,
       timelineProgressLabel: "--%",
       primaryAction: {
-        title: "Construire le prochain bloc",
-        description: "Aucun bloc structuré pour aujourd’hui.",
+        title: "Construis ton prochain bloc",
+        description: "Ta journée a un espace libre, mais aucun bloc clair.",
         durationLabel: "",
         timingLabel: "À planifier",
         categoryLabel: "",
         priorityLabel: "",
-        reason: "Passe par Coach IA, Ajuster ou Planning pour structurer la journée.",
-        ctaLabel: "Construire avec le Coach IA",
+        reason: "",
+        ctaLabel: "Créer le bloc avec le Coach IA",
       },
       timelineItems: [],
       ai: {
@@ -1358,7 +1356,7 @@ export function getTodayVisualSmokeModel() {
       doneBlocksCount: 1,
       plannedBlocksCount: 3,
       timelineProgressLabel: "33%",
-      primaryAction: { ctaLabel: "Verrouiller 15 min" },
+      primaryAction: { ctaLabel: "Démarrer" },
       timelineItems: [
         { id: "smoke-routine", timeLabel: "07:00", title: "Routine", status: "done" },
         { id: "smoke-deep", timeLabel: "13:00", title: "Deep work", status: "in_progress" },
@@ -1371,7 +1369,7 @@ export function getTodayVisualSmokeModel() {
       doneBlocksCount: 0,
       plannedBlocksCount: 3,
       timelineProgressLabel: "0%",
-      primaryAction: { ctaLabel: "Rattraper maintenant" },
+      primaryAction: { ctaLabel: "Simplifier le bloc" },
       timelineItems: [
         { id: "smoke-late", timeLabel: "09:30", title: "Deep work", status: "late" },
         { id: "smoke-learning", timeLabel: "16:00", title: "Apprentissage", status: "upcoming" },

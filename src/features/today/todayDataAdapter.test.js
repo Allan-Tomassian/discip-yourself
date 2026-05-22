@@ -143,6 +143,7 @@ describe("buildTodayData", () => {
     expect(result.primaryAction.status).toBe("empty");
     expect(result.primaryAction.label).toBe("Prochaine action");
     expect(result.primaryAction.title).toBe("Construis ton prochain bloc");
+    expect(result.primaryAction.reason).toBe("");
     expect(result.primaryAction.primaryLabel).toContain("Coach IA");
     expect(result.primaryAction.secondaryLabel).toBe("Planning");
     expect(result.primaryAction.detailLabel).toBe("Coach IA");
@@ -603,7 +604,7 @@ describe("buildTodayData", () => {
         categoryLabel: "Travail",
         priorityLabel: "Priorité haute",
         reason: "C’est le bloc qui débloque ta journée.",
-        ctaLabel: "Verrouiller 30 min",
+        ctaLabel: "Démarrer",
       },
       timelineItems: [
         { id: "smoke-routine", timeLabel: "07:00", title: "Routine", status: "done" },
@@ -624,7 +625,7 @@ describe("buildTodayData", () => {
     expect(smoked.totalBlocks).toBe(3);
     expect(smoked.timelineProgressPercent).toBe(67);
     expect(smoked.primaryAction.title).toBe("Deep work");
-    expect(smoked.primaryAction.primaryLabel).toBe("Verrouiller 30 min");
+    expect(smoked.primaryAction.primaryLabel).toBe("Démarrer");
     expect(smoked.timelineItems[2].status).toBe("in_progress");
     expect(smoked.aiInsight.recommendation).toBe("Garde ce bloc à 30 min.");
 

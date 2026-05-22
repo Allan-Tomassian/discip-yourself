@@ -42,6 +42,7 @@ export default function PrimaryActionCard({
 
   return (
     <CommandSurface className={`todayPrimaryActionCard${statusClass}${stateClass}${toneClass}${motionClass}`} tone="execution" data-testid="today-primary-action-card" data-tour-id="today-primary-action-card">
+      <div className="todayPrimaryBackdrop" aria-hidden="true" />
       <div className="todayPrimaryBeam" aria-hidden="true" />
       <div className="todaySurfaceTopline">
         <span className="todaySurfaceEyebrow">

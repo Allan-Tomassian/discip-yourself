@@ -33,12 +33,7 @@ export default function AIInsightCard({
 
   return (
     <CommandSurface className={`todayAiInsightCard${statusClass}${applyClass}${stateClass}${toneClass}${motionClass}`} tone="ai" data-testid="today-ai-insight-card" data-tour-id="today-ai-insight-card">
-      <div className="todayAiSignal" aria-hidden="true" />
-      <div className="todayAiVisual" aria-hidden="true">
-        <span className="todayAiBrainCore" />
-        <span className="todayAiBrainOrbit todayAiBrainOrbit--one" />
-        <span className="todayAiBrainOrbit todayAiBrainOrbit--two" />
-      </div>
+      <div className="todayAiBackdrop" aria-hidden="true" />
       <div className="todayAiBody">
         <div className="todayAiTitleRow">
           <span className="todayAiBadgeIcon" aria-hidden="true">

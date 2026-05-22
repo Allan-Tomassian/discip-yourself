@@ -14,6 +14,8 @@ describe("AIInsightCard", () => {
     expect(html).toContain("Déplacer");
     expect(html).toContain("Ajouter un bloc");
     expect(html).toContain("Optimiser aujourd’hui");
+    expect(html).toContain("todayAiBackdrop");
+    expect(html).not.toContain("todayAiBrainAsset");
     expect(html).not.toContain("Insight IA indisponible");
     expect(html).not.toContain(">Appliquer<");
   });
