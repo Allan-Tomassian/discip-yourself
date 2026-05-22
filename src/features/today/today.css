@@ -1332,15 +1332,62 @@
 }
 
 .todayTimelineCard {
-  padding: 14px 16px 12px;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 178px;
+  padding: 15px 17px 14px;
+  border-color: rgba(53, 240, 109, 0.2);
+  background: #04110d;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.055),
     0 18px 40px rgba(0, 0, 0, 0.45),
-    0 0 28px rgba(53, 240, 109, 0.04);
+    0 0 34px rgba(53, 240, 109, 0.08);
+}
+
+.todayTimelineBackdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: url("../../assets/today/timeline-card-bg.webp");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+  opacity: 0.74;
+  filter: brightness(1.12) saturate(1.12) contrast(1.04);
+  transform: scale(1.01);
+}
+
+.todayTimelineCard::before,
+.todayTimelineCard::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.todayTimelineCard::before {
+  background:
+    linear-gradient(180deg, rgba(3, 9, 7, 0.68) 0%, rgba(3, 9, 7, 0.28) 45%, rgba(3, 9, 7, 0.7) 100%),
+    linear-gradient(90deg, rgba(3, 9, 7, 0.62) 0%, rgba(3, 9, 7, 0.18) 52%, rgba(3, 9, 7, 0.36) 100%);
+}
+
+.todayTimelineCard::after {
+  background:
+    radial-gradient(circle at 76% 70%, rgba(53, 240, 109, 0.12), transparent 44%),
+    linear-gradient(90deg, transparent 0 58%, rgba(53, 240, 109, 0.06) 84%, transparent 100%);
+  opacity: 0.76;
 }
 
 .todayTimelineHeader {
-  justify-content: flex-start;
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .todayTimelineHeader span {
@@ -1350,11 +1397,24 @@
   text-transform: uppercase;
 }
 
+.todayTimelineHeader em {
+  padding: 5px 8px;
+  border: 1px solid rgba(53, 240, 109, 0.16);
+  border-radius: 999px;
+  background: rgba(5, 18, 12, 0.54);
+  color: rgba(98, 255, 153, 0.88);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 760;
+  line-height: 1;
+  white-space: nowrap;
+}
+
 .todayTimelineViewport {
   position: relative;
-  z-index: 1;
-  margin: 0 -8px;
-  padding: 12px 26px 2px 24px;
+  z-index: 2;
+  margin: 0 -10px;
+  padding: 19px 12px 0;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
@@ -1383,32 +1443,36 @@
 .todayTimelineTrack {
   position: relative;
   display: flex;
-  align-items: flex-start;
-  gap: 18px;
+  align-items: stretch;
+  gap: 10px;
   width: max-content;
-  min-width: max(100%, 320px);
-  padding: 0 20px 1px 0;
+  min-width: max(100%, 324px);
+  min-height: 107px;
+  padding: 0 13px 3px;
 }
 
-.todayTimelineTrack::before {
+.todayTimelineRail {
   content: "";
   position: absolute;
-  left: 34px;
-  right: 76px;
-  bottom: 8px;
+  left: 44px;
+  right: 44px;
+  top: 54px;
   height: 2px;
   z-index: 0;
-  background: linear-gradient(90deg, var(--today-green), rgba(255, 255, 255, 0.18));
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, rgba(53, 240, 109, 0.56), rgba(53, 240, 109, 0.22), rgba(255, 255, 255, 0.15)),
+    rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 0 18px rgba(53, 240, 109, 0.18),
+    0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
-.todayTimelineTrack::after {
+.todayTimelineRail::after {
   content: "";
   position: absolute;
-  left: 34px;
-  right: 76px;
-  bottom: 8px;
+  inset: 0;
   height: 2px;
-  z-index: 0;
   pointer-events: none;
   background: linear-gradient(
     90deg,
@@ -1418,8 +1482,8 @@
     rgba(53, 240, 109, 0.08) 76%,
     transparent 100%
   );
-  background-size: 170px 100%;
-  opacity: 0.26;
+  background-size: 190px 100%;
+  opacity: 0.42;
   animation: todayTimelineRailSheen 8s linear infinite;
   will-change: background-position, opacity;
 }
@@ -1429,12 +1493,13 @@
   position: relative;
   z-index: 1;
   display: grid;
+  grid-template-rows: minmax(34px, auto) 22px auto;
   justify-items: center;
-  gap: 4px;
+  gap: 6px;
   flex: 0 0 92px;
   min-width: 92px;
-  min-height: 58px;
-  padding: 0 4px 16px;
+  min-height: 100px;
+  padding: 0 3px;
   border: 0;
   background: transparent;
   color: rgba(235, 239, 235, 0.62);
@@ -1461,15 +1526,30 @@
   transform: translateY(1px) scale(0.985);
 }
 
+.todayTimelinePointText {
+  display: grid;
+  gap: 3px;
+  justify-items: center;
+  min-width: 0;
+  max-width: 88px;
+}
+
 .todayTimelinePointTime {
+  width: fit-content;
+  padding: 4px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  background: rgba(2, 10, 7, 0.58);
+  color: rgba(235, 239, 235, 0.66);
   font-size: 11px;
   line-height: 1.15;
+  font-variant-numeric: tabular-nums;
 }
 
 .todayTimelinePointTitle {
-  max-width: none;
-  overflow: visible;
-  text-overflow: clip;
+  max-width: 88px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
   color: rgba(245, 248, 244, 0.78);
   font-size: 11px;
@@ -1477,17 +1557,18 @@
 }
 
 .todayTimelinePointMarker {
-  position: absolute;
-  left: 50%;
-  bottom: 2px;
+  position: relative;
   display: grid;
   place-items: center;
-  width: 12px;
-  height: 12px;
+  width: 22px;
+  height: 22px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: #15181a;
-  transform: translateX(-50%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(9, 16, 13, 0.88);
+  color: rgba(235, 239, 235, 0.62);
+  box-shadow:
+    0 0 0 4px rgba(2, 10, 7, 0.58),
+    0 0 14px rgba(53, 240, 109, 0.08);
   transition:
     background var(--today-motion-fast) var(--today-ease-press),
     border-color var(--today-motion-fast) var(--today-ease-press),
@@ -1509,6 +1590,17 @@
   pointer-events: none;
 }
 
+.todayTimelinePoint.is-current .todayTimelinePointMarker::before {
+  content: "";
+  position: absolute;
+  inset: -11px;
+  border-radius: inherit;
+  border: 1px solid rgba(53, 240, 109, 0.22);
+  background: radial-gradient(circle, rgba(53, 240, 109, 0.16), transparent 66%);
+  animation: todayTimelineActiveGlow 7.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
 .todayTimelinePoint:not(:disabled):hover .todayTimelinePointMarker::after,
 .todayTimelinePoint:not(:disabled):focus-visible .todayTimelinePointMarker::after,
 .todayTimelinePoint:not(:disabled):active .todayTimelinePointMarker::after {
@@ -1517,46 +1609,75 @@
 }
 
 .todayTimelinePoint:not(:disabled):active .todayTimelinePointMarker {
-  transform: translateX(-50%) scale(0.94);
+  transform: scale(0.94);
 }
 
 .todayTimelinePoint.is-done,
-.todayTimelinePoint.is-active {
+.todayTimelinePoint.is-active,
+.todayTimelinePoint.is-upcoming {
   color: var(--today-green);
 }
 
-.todayTimelinePoint.is-done .todayTimelinePointMarker,
-.todayTimelinePoint.is-active .todayTimelinePointMarker {
+.todayTimelinePoint.is-done .todayTimelinePointMarker {
   border-color: var(--today-green);
   background: var(--today-green);
   color: #061008;
   box-shadow: 0 0 14px rgba(53, 240, 109, 0.52);
 }
 
-.todayTimelinePoint.is-late {
+.todayTimelinePoint.is-active .todayTimelinePointMarker {
+  border-color: var(--today-green);
+  background: rgba(53, 240, 109, 0.18);
+  color: var(--today-green);
+  box-shadow:
+    0 0 0 4px rgba(2, 10, 7, 0.58),
+    0 0 18px rgba(53, 240, 109, 0.38);
+}
+
+.todayTimelinePoint.is-upcoming .todayTimelinePointMarker {
+  border-color: rgba(53, 240, 109, 0.45);
+  background: rgba(4, 18, 11, 0.9);
+  box-shadow:
+    0 0 0 4px rgba(2, 10, 7, 0.58),
+    0 0 12px rgba(53, 240, 109, 0.12);
+}
+
+.todayTimelinePoint.is-risk {
   color: var(--today-danger);
 }
 
-.todayTimelinePoint.is-late .todayTimelinePointMarker {
-  border-color: rgba(255, 77, 77, 0.7);
-  background: #261213;
-  color: #ffd6d6;
-  box-shadow: 0 0 12px rgba(255, 77, 77, 0.32);
+.todayTimelinePoint.is-risk .todayTimelinePointMarker {
+  border-color: rgba(255, 130, 77, 0.7);
+  background: rgba(40, 17, 10, 0.92);
+  color: #ffd0ba;
+  box-shadow:
+    0 0 0 4px rgba(2, 10, 7, 0.58),
+    0 0 12px rgba(255, 122, 69, 0.26);
 }
 
-.todayTimelinePoint.is-postponed {
+.todayTimelinePoint.is-terminal,
+.todayTimelinePoint.is-muted {
   color: #ffad66;
 }
 
-.todayTimelinePoint.is-postponed .todayTimelinePointMarker {
+.todayTimelinePoint.is-terminal .todayTimelinePointMarker,
+.todayTimelinePoint.is-muted .todayTimelinePointMarker {
   border-color: rgba(255, 155, 69, 0.7);
   background: rgba(255, 155, 69, 0.16);
-  box-shadow: 0 0 12px rgba(255, 155, 69, 0.18);
+  color: #ffd5ad;
+  box-shadow:
+    0 0 0 4px rgba(2, 10, 7, 0.58),
+    0 0 12px rgba(255, 155, 69, 0.18);
+}
+
+.todayTimelinePoint.is-done .todayTimelinePointMarker {
+  border-color: var(--today-green);
+  background: var(--today-green);
+  color: #061008;
+  box-shadow: 0 0 14px rgba(53, 240, 109, 0.52);
 }
 
 .todayTimelinePoint.is-active .todayTimelinePointTime {
-  padding: 4px 7px;
-  border-radius: 8px;
   background: rgba(53, 240, 109, 0.16);
   color: var(--today-green);
 }
@@ -1568,12 +1689,39 @@
 .todayTimelinePoint.is-active .todayTimelinePointMarker::after {
   opacity: 0.56;
   transform: scale(1);
-  animation: todayTimelineActiveGlow 7.2s ease-in-out infinite;
   will-change: opacity, transform;
 }
 
-.todayTimelinePoint.is-empty .todayTimelinePointTitle {
-  white-space: normal;
+.todayTimelinePointStatus {
+  padding: 3px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 999px;
+  background: rgba(1, 9, 6, 0.46);
+  color: rgba(235, 239, 235, 0.52);
+  font-size: 10px;
+  font-weight: 740;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.todayTimelinePoint.is-current .todayTimelinePointStatus {
+  border-color: rgba(53, 240, 109, 0.24);
+  background: rgba(53, 240, 109, 0.12);
+  color: rgba(109, 255, 168, 0.96);
+}
+
+.todayTimelinePoint.is-risk .todayTimelinePointStatus,
+.todayTimelinePoint.is-terminal .todayTimelinePointStatus,
+.todayTimelinePoint.is-muted .todayTimelinePointStatus {
+  border-color: rgba(255, 155, 69, 0.18);
+  background: rgba(255, 155, 69, 0.08);
+  color: rgba(255, 193, 132, 0.9);
+}
+
+.todayTimelinePoint.is-done .todayTimelinePointStatus {
+  border-color: rgba(53, 240, 109, 0.18);
+  background: rgba(53, 240, 109, 0.1);
+  color: rgba(109, 255, 168, 0.88);
 }
 
 .todayTimelineCard.has-placeholder-timeline .todayTimelineTrack {
@@ -1587,57 +1735,33 @@
   min-width: 128px;
 }
 
-.todayTimelineCard.is-timeline-disabled .todayTimelineTrack::before,
-.todayTimelineCard.is-timeline-disabled .todayTimelineTrack::after,
-.todayTimelineCard.is-timeline-empty .todayTimelineTrack::before,
-.todayTimelineCard.is-timeline-empty .todayTimelineTrack::after {
-  background: rgba(255, 255, 255, 0.12);
-  animation: none;
+.todayTimelinePlaceholder {
+  min-height: 88px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 14px 15px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  background: rgba(2, 9, 7, 0.46);
+  color: rgba(235, 239, 235, 0.68);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.todayTimelinePlaceholderIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(53, 240, 109, 0.1);
+  color: rgba(98, 255, 153, 0.82);
 }
 
 .todayTimelineCard.has-placeholder-timeline .todayTimelineProgressEnd {
   color: rgba(235, 239, 235, 0.5);
-  text-shadow: none;
-}
-
-.todayTimelineProgressEnd {
-  position: relative;
-  z-index: 1;
-  align-self: end;
-  flex: 0 0 48px;
-  min-width: 48px;
-  margin-left: auto;
-  padding: 0 0 4px 14px;
-  color: var(--today-green);
-  font-size: 13px;
-  font-weight: 760;
-  line-height: 1;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-  text-shadow: 0 0 14px rgba(53, 240, 109, 0.22);
-}
-
-.todayTimelineCard.today-tone-neutral .todayTimelineProgressEnd {
-  color: color-mix(in srgb, var(--today-green) 64%, rgba(235, 239, 235, 0.72) 36%);
-  text-shadow: 0 0 10px rgba(53, 240, 109, 0.12);
-}
-
-.todayTimelineCard.today-tone-risk .todayTimelineProgressEnd,
-.todayTimelineCard.today-state-postponed .todayTimelineProgressEnd {
-  color: #ff9b45;
-  text-shadow: 0 0 12px rgba(255, 155, 69, 0.16);
-}
-
-.todayTimelineCard.today-tone-late .todayTimelineProgressEnd {
-  color: var(--today-danger);
-  text-shadow: 0 0 12px rgba(255, 77, 77, 0.16);
-}
-
-.todayTimelineCard.today-tone-error .todayTimelineProgressEnd,
-.todayTimelineCard.today-tone-offline .todayTimelineProgressEnd,
-.todayTimelineCard.is-timeline-disabled .todayTimelineProgressEnd,
-.todayTimelineCard.is-timeline-empty .todayTimelineProgressEnd {
-  color: rgba(235, 239, 235, 0.46);
   text-shadow: none;
 }
 

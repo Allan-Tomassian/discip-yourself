@@ -43,7 +43,10 @@ describe("home today cockpit contract", () => {
     expect(home).toContain("<PrimaryActionCard");
     expect(home.indexOf("<TodayTrajectoryCard")).toBeLessThan(home.indexOf("<AIInsightCard"));
     expect(home.indexOf("<AIInsightCard")).toBeLessThan(home.indexOf("<PrimaryActionCard"));
+    expect(home.indexOf("<PrimaryActionCard")).toBeLessThan(home.indexOf("<TodayTimeline"));
     expect(home).toContain("<TodayTimeline");
+    expect(home).not.toContain("<TodaySystemSignalRow");
+    expect(home).not.toContain("buildTodaySystemSignalSurface");
     expect(home).not.toContain("<TodayHero");
     expect(trajectory).toContain('data-testid="today-trajectory-card"');
     expect(trajectory).toContain("Trajectoire du jour");
@@ -63,6 +66,8 @@ describe("home today cockpit contract", () => {
     expect(trajectory).not.toContain("Mode exécution");
     expect(ai).not.toContain("Insight IA indisponible");
     expect(primary).not.toContain("Action critique");
+    expect(home).not.toContain("Signal système");
+    expect(home).not.toContain("Friction détectée");
   });
 
   it("bridges cockpit actions without the legacy shell model", () => {
