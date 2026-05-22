@@ -41,6 +41,7 @@ import Session from "./pages/Session";
 import Privacy from "./pages/Privacy";
 import Support from "./pages/Support";
 import BottomNavigation from "./components/navigation/BottomNavigation";
+import InAppNudge from "./components/notifications/InAppNudge";
 import { applyThemeTokens, BRAND_ACCENT, DEFAULT_THEME } from "./theme/themeTokens";
 import { todayLocalKey } from "./utils/dateKey";
 import { normalizePriorities } from "./logic/priority";
@@ -54,6 +55,7 @@ import PaywallModal from "./components/PaywallModal";
 import { getSafeBackTarget, useAppNavigation } from "./hooks/useAppNavigation";
 import { useEntitlementsPaywall } from "./hooks/useEntitlementsPaywall";
 import { useRemindersLoop } from "./hooks/useRemindersLoop";
+import { useNotificationEngine } from "./hooks/useNotificationEngine";
 import { useSessionRuntimeLoop } from "./hooks/useSessionRuntimeLoop";
 import { useCreateFlowOrchestration } from "./hooks/useCreateFlowOrchestration";
 import { useCategorySelectionSync } from "./hooks/useCategorySelectionSync";
@@ -188,6 +190,14 @@ export default function App() {
   } = useEntitlementsPaywall({ safeData, setData });
   const firstRunDone = isFirstRunDone(safeData.ui);
   const showPlanStep = Boolean(safeData.ui?.showPlanStep);
+  const notificationEngine = useNotificationEngine({
+    data: safeData,
+    setData,
+    tab,
+    setTab,
+    activeReminder,
+    enabled: firstRunDone && !dataLoading && !showPlanStep,
+  });
   const bottomRailRef = useRef(null);
   const handleSecondaryBack = useCallback(() => {
     setTab(getSafeBackTarget({ currentTab: tab, lastMainTab }));
@@ -1254,6 +1264,14 @@ export default function App() {
         onOpenTerms={() => setTab("legal")}
         onOpenPrivacy={() => setTab("privacy")}
       />
+      {notificationEngine.nudge && !activeReminder && !paywallOpen && !hideNavigationChrome ? (
+        <InAppNudge
+          nudge={notificationEngine.nudge}
+          onDismiss={notificationEngine.dismissNudge}
+          onAction={notificationEngine.clickNudge}
+          placement={tab === "today" ? "home" : "top"}
+        />
+      ) : null}
       {showBottomRail ? (
         <BottomNavigation
           ref={bottomRailRef}

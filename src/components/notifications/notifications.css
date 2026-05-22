@@ -1,0 +1,120 @@
+.inAppNudgeViewport {
+  position: fixed;
+  inset: max(env(safe-area-inset-top, 0px), 10px) 16px auto 16px;
+  z-index: var(--z-popover, 1210);
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.inAppNudgeViewport.is-home {
+  inset-block-start: max(calc(env(safe-area-inset-top, 0px) + 118px), 118px);
+}
+
+.inAppNudge {
+  pointer-events: auto;
+  width: min(100%, 360px);
+  min-height: 62px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px 8px 10px;
+  border: 1px solid rgba(54, 255, 139, 0.22);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 12% 50%, rgba(54, 255, 139, 0.12), transparent 38%),
+    linear-gradient(135deg, rgba(7, 17, 14, 0.92), rgba(7, 12, 17, 0.84)),
+    rgba(6, 14, 12, 0.88);
+  color: rgba(255, 255, 255, 0.94);
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.28),
+    0 0 18px rgba(54, 255, 139, 0.1);
+  backdrop-filter: blur(14px);
+  animation: inAppNudgeEnter 180ms ease-out both;
+}
+
+.inAppNudge__icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(54, 255, 139, 0.14);
+  color: rgba(73, 255, 151, 0.96);
+  box-shadow: inset 0 0 0 1px rgba(54, 255, 139, 0.18);
+}
+
+.inAppNudge__copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.inAppNudge__title,
+.inAppNudge__body {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inAppNudge__title {
+  font-size: 0.84rem;
+  line-height: 1.12;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.inAppNudge__body {
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 0.74rem;
+  line-height: 1.1;
+}
+
+.inAppNudge__action,
+.inAppNudge__dismiss {
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.inAppNudge__action {
+  min-height: 30px;
+  padding: 0 11px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: rgba(7, 14, 12, 0.96);
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.inAppNudge__dismiss {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.74);
+}
+
+@keyframes inAppNudgeEnter {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .inAppNudge {
+    animation: none;
+  }
+}

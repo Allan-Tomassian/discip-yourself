@@ -4,6 +4,8 @@ import { resolveGoalType } from "../../domain/goalType";
 import { ensureManualAiAnalysisState } from "../../features/manualAi/manualAiAnalysis";
 import { ensureCoachConversationsState } from "../../features/coach/coachStorage";
 import { ensureSystemAnalysisHistoryState } from "../../features/system-analysis/systemAnalysisHistory";
+import { buildDefaultNotificationPreferences } from "../../features/notifications/notificationPreferences";
+import { ensureNotificationHistory } from "../../features/notifications/notificationHistory";
 import { createInitialFirstRunState } from "../../features/first-run/firstRunModel";
 import { normalizeTimeFields } from "../timeFields";
 import { BLOCKS_SCHEMA_VERSION, getDefaultBlocksByPage } from "../blocks/registry";
@@ -606,6 +608,8 @@ export function initialData() {
     microChecks: {},
     coach_conversations_v1: ensureCoachConversationsState(null),
     system_analysis_v1: ensureSystemAnalysisHistoryState(null),
+    notification_preferences_v1: buildDefaultNotificationPreferences(),
+    notification_history_v1: ensureNotificationHistory(null),
     category_profiles_v1: createEmptyCategoryProfilesState(),
     user_ai_profile: createDefaultUserAiProfile(),
   };
@@ -758,6 +762,8 @@ export function demoData() {
     microChecks: {},
     coach_conversations_v1: ensureCoachConversationsState(null),
     system_analysis_v1: ensureSystemAnalysisHistoryState(null),
+    notification_preferences_v1: buildDefaultNotificationPreferences(),
+    notification_history_v1: ensureNotificationHistory(null),
     category_profiles_v1: createEmptyCategoryProfilesState(),
     user_ai_profile: createDefaultUserAiProfile(),
   };

@@ -212,6 +212,71 @@ describe("system_analysis_v1", () => {
   });
 });
 
+describe("notification engine state", () => {
+  it("initialData seeds notification preferences and history", () => {
+    const state = initialData();
+
+    expect(state.notification_preferences_v1).toMatchObject({
+      enabled: true,
+      blockReminders: true,
+      recoveryNudges: true,
+      dayPlanningNudges: true,
+      maxPerDay: 3,
+      channels: {
+        in_app: true,
+        push: false,
+        ios_local: false,
+        ios_remote: false,
+      },
+    });
+    expect(state.notification_history_v1).toEqual({
+      delivered: [],
+      dismissed: [],
+      clicked: [],
+      cooldowns: {},
+    });
+  });
+
+  it("migrate normalizes malformed notification preferences and history", () => {
+    const base = buildBaseState();
+    base.notification_preferences_v1 = {
+      enabled: false,
+      blockReminders: "bad",
+      quietHours: { enabled: true, start: "bad", end: "7:05" },
+      maxPerDay: 99,
+      channels: { in_app: false, push: true },
+    };
+    base.notification_history_v1 = {
+      delivered: [{ id: "legacy-notification", deliveredAt: "2026-05-22T08:00:00.000Z" }],
+      cooldowns: {
+        "block_start_now:occ-1": { lastAt: "2026-05-22T08:00:00.000Z", count: 2 },
+      },
+    };
+
+    const migrated = migrate(base);
+
+    expect(migrated.notification_preferences_v1).toMatchObject({
+      enabled: false,
+      blockReminders: true,
+      maxPerDay: 10,
+      channels: {
+        in_app: false,
+        push: true,
+      },
+    });
+    expect(migrated.notification_preferences_v1.quietHours).toEqual({
+      enabled: true,
+      start: "22:00",
+      end: "07:05",
+    });
+    expect(migrated.notification_history_v1.delivered[0].notificationId).toBe("legacy-notification");
+    expect(migrated.notification_history_v1.cooldowns["block_start_now:occ-1"]).toEqual({
+      lastAt: "2026-05-22T08:00:00.000Z",
+      count: 2,
+    });
+  });
+});
+
 describe("locked theme normalization", () => {
   it("does not reintroduce legacy page theme values during migrate", () => {
     const base = buildBaseState();
