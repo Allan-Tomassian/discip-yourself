@@ -124,7 +124,7 @@
 .todayCockpitScreen .container {
   max-width: 665px;
   padding-top: calc(14px + var(--safe-top));
-  padding-bottom: calc(var(--main-tab-bottom-clearance, 112px) + 10px);
+  padding-bottom: var(--main-tab-bottom-padding, calc(var(--main-tab-bottom-clearance, 112px) + 32px));
   min-height: auto;
 }
 
@@ -211,6 +211,66 @@
   font-size: 18px;
   line-height: 1.2;
   text-transform: capitalize;
+}
+
+.todayCockpitHeaderActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.todayCockpitNotificationButton {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(54, 255, 139, 0.12), transparent 40%),
+    rgba(255, 255, 255, 0.045);
+  color: rgba(245, 247, 242, 0.72);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.025),
+    0 10px 24px rgba(0, 0, 0, 0.16);
+  cursor: pointer;
+  transition:
+    color var(--today-motion-fast) var(--today-ease-press),
+    border-color var(--today-motion-fast) var(--today-ease-press),
+    transform var(--today-motion-fast) var(--today-ease-press);
+}
+
+.todayCockpitNotificationButton:hover,
+.todayCockpitNotificationButton:focus-visible {
+  color: rgba(245, 247, 242, 0.94);
+  border-color: rgba(54, 255, 139, 0.24);
+}
+
+.todayCockpitNotificationButton:active {
+  transform: translateY(1px) scale(0.985);
+}
+
+.todayCockpitNotificationBadge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #050607;
+  background: var(--today-green);
+  color: #04100a;
+  font-size: 0.62rem;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 0 14px rgba(53, 240, 109, 0.74);
 }
 
 .todayCockpitAvatarButton {

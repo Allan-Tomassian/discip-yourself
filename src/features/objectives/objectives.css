@@ -1,7 +1,7 @@
 [data-page-id="objectives"] .container {
   max-width: 665px;
   padding-top: calc(14px + var(--safe-top));
-  padding-bottom: calc(var(--main-tab-bottom-clearance, 112px) + 10px);
+  padding-bottom: var(--main-tab-bottom-padding, calc(var(--main-tab-bottom-clearance, 112px) + 32px));
 }
 
 .objectivesCommandPage {

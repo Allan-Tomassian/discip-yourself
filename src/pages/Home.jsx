@@ -52,6 +52,7 @@ export default function Home({
   onOpenAdjust,
   onOpenPlanning,
   onOpenSession,
+  notificationCenter = null,
 }) {
   const safeData = useMemo(() => (data && typeof data === "object" ? data : {}), [data]);
   const legacyPendingDateKey = safeData.ui?.pendingDateKey;
@@ -447,6 +448,8 @@ export default function Home({
             avatarLabel={todayData.header.avatarLabel}
             avatarUrl={todayData.header.avatarUrl}
             onOpenProfile={() => setProfileSheetOpen(true)}
+            notificationUnreadCount={notificationCenter?.unreadCount || 0}
+            onOpenNotifications={notificationCenter?.onOpen}
           />
 
           <FloatingWelcomeLine

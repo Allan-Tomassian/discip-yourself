@@ -1,7 +1,7 @@
 [data-page-id="adjust"] .container {
   max-width: 665px;
   padding-top: calc(12px + var(--safe-top));
-  padding-bottom: calc(var(--main-tab-bottom-clearance, 132px) + 18px);
+  padding-bottom: var(--main-tab-bottom-padding, calc(var(--main-tab-bottom-clearance, 132px) + 32px));
 }
 
 [data-page-id="adjust"] .pageHeaderRight {

@@ -23,6 +23,7 @@ describe("mobile viewport contract", () => {
     expect(indexCss).toContain("--topbar-bottom: calc(var(--safe-top) + 24px);");
     expect(indexCss).toContain("--bottom-fixed-stack-space: 0px;");
     expect(indexCss).toContain("--main-tab-bottom-clearance");
+    expect(indexCss).toContain("--main-tab-bottom-buffer: 32px;");
     expect(indexCss).toContain("--main-tab-bottom-padding");
     expect(indexCss).toContain(".appViewportFill{");
     expect(indexCss).toContain("padding-bottom:var(--main-tab-bottom-padding");

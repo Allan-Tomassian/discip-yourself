@@ -6,7 +6,14 @@ function safeString(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-export default function InAppNudge({ nudge, onDismiss, onAction, placement = "top" }) {
+export default function InAppNudge({
+  nudge,
+  onDismiss,
+  onAction,
+  onPauseAutoDismiss,
+  onResumeAutoDismiss,
+  placement = "top",
+}) {
   const title = safeString(nudge?.title);
   const body = safeString(nudge?.body);
   if (!title && !body) return null;
@@ -14,7 +21,14 @@ export default function InAppNudge({ nudge, onDismiss, onAction, placement = "to
 
   return (
     <div className={`inAppNudgeViewport${placementClass}`} aria-live="polite" aria-atomic="true" data-testid="in-app-nudge">
-      <aside className="inAppNudge" role="status">
+      <aside
+        className="inAppNudge"
+        role="status"
+        onMouseEnter={onPauseAutoDismiss}
+        onMouseLeave={onResumeAutoDismiss}
+        onFocus={onPauseAutoDismiss}
+        onBlur={onResumeAutoDismiss}
+      >
         <span className="inAppNudge__icon" aria-hidden="true">
           <Bell size={17} strokeWidth={2} />
         </span>

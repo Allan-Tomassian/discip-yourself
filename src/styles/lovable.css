@@ -237,12 +237,16 @@
   right: 0;
   bottom: 0;
   z-index: 80;
+  --dock-shell-pad-x: max(10px, calc(var(--safe-left) + 10px));
+  --dock-shell-pad-right: max(10px, calc(var(--safe-right) + 10px));
+  --dock-shell-bottom: max(6px, calc(var(--safe-bottom) + 5px));
   padding:
-    0
-    calc(var(--page-pad) + var(--safe-right))
-    calc(8px + var(--safe-bottom))
-    calc(var(--page-pad) + var(--safe-left));
+    7px
+    var(--dock-shell-pad-right)
+    var(--dock-shell-bottom)
+    var(--dock-shell-pad-x);
   pointer-events: none;
+  background: transparent;
 }
 
 html[data-active-tab="today"] .lovableTabBarWrap {
@@ -259,23 +263,43 @@ html[data-active-tab="coach"][data-coach-composer-menu-open="true"] .lovableTabB
 }
 
 .lovableTabBar {
+  position: relative;
   pointer-events: auto;
   width: 100%;
   max-width: var(--layout-max, 540px);
   margin: 0 auto;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 3px;
-  padding: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 20px;
+  gap: 2px;
+  padding: 7px 8px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  border-bottom-color: rgba(255, 255, 255, 0.035);
+  border-radius: 24px 24px 18px 18px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.01)),
-    var(--command-surface, rgba(7, 8, 11, 0.94));
+    radial-gradient(ellipse at 50% -16%, color-mix(in srgb, var(--command-execution, #35f06d) 11%, transparent), transparent 58%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.014) 42%, rgba(0, 0, 0, 0.12)),
+    color-mix(in srgb, var(--command-surface, rgba(7, 8, 11, 0.94)) 94%, #030706);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 18px 40px rgba(0, 0, 0, 0.44);
-  backdrop-filter: blur(18px);
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.025),
+    0 -1px 0 rgba(53, 240, 109, 0.1),
+    0 16px 40px rgba(0, 0, 0, 0.46),
+    0 0 28px rgba(53, 240, 109, 0.055);
+  backdrop-filter: blur(22px) saturate(1.16);
+  -webkit-backdrop-filter: blur(22px) saturate(1.16);
+}
+
+.lovableTabBar::before {
+  content: "";
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  top: 0;
+  height: 1px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(53, 240, 109, 0.32), rgba(255, 255, 255, 0.12), transparent);
+  opacity: 0.86;
+  pointer-events: none;
 }
 
 .lovableTabButton {
@@ -284,9 +308,11 @@ html[data-active-tab="coach"][data-coach-composer-menu-open="true"] .lovableTabB
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  min-height: 50px;
-  border-radius: 13px;
+  gap: 4px;
+  min-height: 46px;
+  padding: 4px 2px;
+  border: 1px solid transparent;
+  border-radius: 15px;
   color: color-mix(in srgb, var(--command-neutral, #b9bec4) 72%, transparent);
   cursor: pointer;
   transition:
@@ -301,7 +327,7 @@ html[data-active-tab="coach"][data-coach-composer-menu-open="true"] .lovableTabB
 .lovableTabButton:hover,
 .lovableTabButton:focus-visible {
   color: color-mix(in srgb, var(--command-neutral, #b9bec4) 88%, #ffffff);
-  background: rgba(255, 255, 255, 0.035);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .lovableTabButton:active {
@@ -309,8 +335,8 @@ html[data-active-tab="coach"][data-coach-composer-menu-open="true"] .lovableTabB
 }
 
 .lovableTabButton svg {
-  width: 20px;
-  height: 20px;
+  width: 19px;
+  height: 19px;
   stroke: currentColor;
 }
 
@@ -343,14 +369,16 @@ html[data-active-tab="coach"][data-coach-composer-menu-open="true"] .lovableTabB
 }
 
 .lovableTabButtonLabel {
-  font-size: 10px;
-  font-weight: 500;
+  font-size: 9.5px;
+  font-weight: 560;
   letter-spacing: 0;
+  line-height: 1.1;
+  white-space: nowrap;
 }
 
 .lovableTabButton.is-active {
   color: rgba(246, 248, 244, 0.94);
-  background: rgba(255, 255, 255, 0.045);
+  background: rgba(255, 255, 255, 0.032);
 }
 
 .lovableTabButton.is-active svg {
@@ -362,14 +390,31 @@ html[data-active-tab="coach"][data-coach-composer-menu-open="true"] .lovableTabB
 }
 
 .lovableTabButton.is-home.is-active {
-  border: 1px solid color-mix(in srgb, var(--command-execution, #35f06d) 28%, transparent);
+  border-color: color-mix(in srgb, var(--command-execution, #35f06d) 32%, transparent);
+  border-radius: 19px;
   background:
-    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--command-execution, #35f06d) 34%, transparent), transparent 66%),
-    color-mix(in srgb, var(--command-execution, #35f06d) 12%, transparent);
+    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--command-execution, #35f06d) 28%, transparent), transparent 64%),
+    linear-gradient(180deg, color-mix(in srgb, var(--command-execution, #35f06d) 15%, transparent), rgba(255, 255, 255, 0.018)),
+    color-mix(in srgb, var(--command-execution, #35f06d) 9%, transparent);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 0 24px color-mix(in srgb, var(--command-execution, #35f06d) 28%, transparent);
+    inset 0 1px 0 rgba(255, 255, 255, 0.11),
+    inset 0 -1px 0 color-mix(in srgb, var(--command-execution, #35f06d) 11%, transparent),
+    0 0 22px color-mix(in srgb, var(--command-execution, #35f06d) 22%, transparent);
   animation: lovableHomeActivePulse 520ms cubic-bezier(0.2, 0.82, 0.2, 1) both;
+}
+
+.lovableTabButton.is-home.is-active::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 3px;
+  width: 18px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--command-execution, #35f06d);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--command-execution, #35f06d) 52%, transparent);
+  transform: translateX(-50%);
+  pointer-events: none;
 }
 
 .lovableTabButton.is-home svg {
@@ -381,9 +426,11 @@ html[data-active-tab="coach"][data-coach-composer-menu-open="true"] .lovableTabB
 }
 
 .lovableTabButton.is-ai.is-active {
-  border: 1px solid color-mix(in srgb, var(--command-ai, #a977ff) 22%, transparent);
-  background: color-mix(in srgb, var(--command-ai, #a977ff) 10%, transparent);
-  box-shadow: 0 0 18px color-mix(in srgb, var(--command-ai, #a977ff) 16%, transparent);
+  border-color: color-mix(in srgb, var(--command-ai, #a977ff) 18%, transparent);
+  background:
+    radial-gradient(circle at 50% 20%, color-mix(in srgb, var(--command-ai, #a977ff) 16%, transparent), transparent 68%),
+    color-mix(in srgb, var(--command-ai, #a977ff) 7%, transparent);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--command-ai, #a977ff) 13%, transparent);
   animation: lovableAiActivePulse 520ms cubic-bezier(0.2, 0.82, 0.2, 1) both;
 }
 

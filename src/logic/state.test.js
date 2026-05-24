@@ -233,6 +233,7 @@ describe("notification engine state", () => {
       delivered: [],
       dismissed: [],
       clicked: [],
+      read: [],
       cooldowns: {},
     });
   });
@@ -270,6 +271,7 @@ describe("notification engine state", () => {
       end: "07:05",
     });
     expect(migrated.notification_history_v1.delivered[0].notificationId).toBe("legacy-notification");
+    expect(migrated.notification_history_v1.read).toEqual([]);
     expect(migrated.notification_history_v1.cooldowns["block_start_now:occ-1"]).toEqual({
       lastAt: "2026-05-22T08:00:00.000Z",
       count: 2,

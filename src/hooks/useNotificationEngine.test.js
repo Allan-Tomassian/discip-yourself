@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   buildInAppNudgeModel,
   createNotificationEngineModel,
+  NOTIFICATION_TOAST_AUTO_DISMISS_MS,
+  NOTIFICATION_TOAST_DELAY_MS,
   resolveNotificationTargetNavigation,
 } from "./useNotificationEngine";
 import { NOTIFICATION_CHANNEL, NOTIFICATION_TYPE } from "../features/notifications/notificationTypes";
@@ -34,7 +36,7 @@ function data(overrides = {}) {
       maxPerDay: 3,
       channels: { in_app: true, push: false, ios_local: false, ios_remote: false },
     },
-    notification_history_v1: { delivered: [], dismissed: [], clicked: [], cooldowns: {} },
+    notification_history_v1: { delivered: [], dismissed: [], clicked: [], read: [], cooldowns: {} },
     ...overrides,
   };
 }
@@ -87,6 +89,7 @@ describe("useNotificationEngine pure model", () => {
           ],
           dismissed: [],
           clicked: [],
+          read: [],
           cooldowns: {},
         },
       }),
@@ -201,6 +204,11 @@ describe("useNotificationEngine pure model", () => {
     expect(buildInAppNudgeModel({ candidate: { id: "3", type: NOTIFICATION_TYPE.MISSED_BLOCK_RECOVERY } }).ctaLabel).toBe(
       "Ajuster",
     );
+  });
+
+  it("publishes toast timing constants for the hook presentation layer", () => {
+    expect(NOTIFICATION_TOAST_DELAY_MS).toBe(1200);
+    expect(NOTIFICATION_TOAST_AUTO_DISMISS_MS).toBe(5000);
   });
 
   it("compacts displayed copy without changing candidate payloads", () => {

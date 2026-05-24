@@ -10,7 +10,8 @@
   --topbar-bottom: calc(var(--safe-top) + 24px);
   --bottom-fixed-stack-space: 0px;
   --main-tab-bottom-clearance: max(var(--bottom-fixed-stack-space, 0px), calc(104px + var(--safe-bottom, 0px)));
-  --main-tab-bottom-padding: calc(var(--main-tab-bottom-clearance) + 16px);
+  --main-tab-bottom-buffer: 32px;
+  --main-tab-bottom-padding: calc(var(--main-tab-bottom-clearance) + var(--main-tab-bottom-buffer));
   --comfort-motion-fast: 120ms;
   --comfort-motion-standard: 180ms;
   --comfort-motion-ease: cubic-bezier(0.22, 1, 0.36, 1);

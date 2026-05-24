@@ -42,6 +42,7 @@ import Privacy from "./pages/Privacy";
 import Support from "./pages/Support";
 import BottomNavigation from "./components/navigation/BottomNavigation";
 import InAppNudge from "./components/notifications/InAppNudge";
+import NotificationCenter from "./components/notifications/NotificationCenter";
 import { applyThemeTokens, BRAND_ACCENT, DEFAULT_THEME } from "./theme/themeTokens";
 import { todayLocalKey } from "./utils/dateKey";
 import { normalizePriorities } from "./logic/priority";
@@ -190,13 +191,20 @@ export default function App() {
   } = useEntitlementsPaywall({ safeData, setData });
   const firstRunDone = isFirstRunDone(safeData.ui);
   const showPlanStep = Boolean(safeData.ui?.showPlanStep);
+  const hideNavigationChrome =
+    Boolean(showPlanStep) ||
+    tab === "create-item" ||
+    tab === "edit-item" ||
+    tab === "session" ||
+    tab === "onboarding";
+  const [notificationCenterOpen, setNotificationCenterOpen] = useState(false);
   const notificationEngine = useNotificationEngine({
     data: safeData,
     setData,
     tab,
     setTab,
     activeReminder,
-    enabled: firstRunDone && !dataLoading && !showPlanStep,
+    enabled: firstRunDone && !dataLoading && !showPlanStep && !activeReminder && !paywallOpen && !hideNavigationChrome,
   });
   const bottomRailRef = useRef(null);
   const handleSecondaryBack = useCallback(() => {
@@ -287,12 +295,6 @@ export default function App() {
     [setTab]
   );
 
-  const hideNavigationChrome =
-    Boolean(showPlanStep) ||
-    tab === "create-item" ||
-    tab === "edit-item" ||
-    tab === "session" ||
-    tab === "onboarding";
   const showBottomRail = !hideNavigationChrome && new Set(["today", "objectives", "timeline", "adjust", "coach"]).has(tab);
   const adjustSignalBadge = useMemo(() => buildAdjustSignalBadgeModel(data), [data]);
   const handleBottomNavigationSelect = useCallback(
@@ -937,6 +939,13 @@ export default function App() {
               occurrenceId,
             })
           }
+          notificationCenter={{
+            unreadCount: notificationEngine.unreadCount,
+            onOpen: () => {
+              setNotificationCenterOpen(true);
+              notificationEngine.markNotificationCenterViewed();
+            },
+          }}
           onOpenPaywall={openPaywall}
           isPremiumPlan={isPremiumPlan}
           planLimits={planLimits}
@@ -1269,9 +1278,20 @@ export default function App() {
           nudge={notificationEngine.nudge}
           onDismiss={notificationEngine.dismissNudge}
           onAction={notificationEngine.clickNudge}
+          onPauseAutoDismiss={notificationEngine.pauseToastAutoDismiss}
+          onResumeAutoDismiss={notificationEngine.resumeToastAutoDismiss}
           placement={tab === "today" ? "home" : "top"}
         />
       ) : null}
+      <NotificationCenter
+        open={notificationCenterOpen}
+        items={notificationEngine.centerItems}
+        onClose={() => setNotificationCenterOpen(false)}
+        onAction={(item) => {
+          notificationEngine.clickNotificationCenterItem(item);
+          setNotificationCenterOpen(false);
+        }}
+      />
       {showBottomRail ? (
         <BottomNavigation
           ref={bottomRailRef}

@@ -1,4 +1,5 @@
 import { toLocalDateKey } from "../../utils/datetime";
+import { buildNotificationDisplayCopy } from "./notificationDisplay";
 import { normalizeNotificationChannel } from "./notificationTypes";
 
 function safeArray(value) {
@@ -51,11 +52,12 @@ export function ensureNotificationHistory(raw) {
     delivered: safeArray(source.delivered).map(normalizeHistoryEvent).filter(Boolean),
     dismissed: safeArray(source.dismissed).map(normalizeHistoryEvent).filter(Boolean),
     clicked: safeArray(source.clicked).map(normalizeHistoryEvent).filter(Boolean),
+    read: safeArray(source.read).map(normalizeHistoryEvent).filter(Boolean),
     cooldowns: normalizeCooldowns(source.cooldowns),
   };
 }
 
-export function recordNotificationDelivery({ history, candidate, channel, now }) {
+export function recordNotificationDelivery({ history, candidate, channel, now, display = null }) {
   const normalized = ensureNotificationHistory(history);
   const deliveredAt = now instanceof Date && !Number.isNaN(now.getTime()) ? now.toISOString() : new Date().toISOString();
   const notificationId = safeString(candidate?.id);
@@ -70,6 +72,15 @@ export function recordNotificationDelivery({ history, candidate, channel, now })
     };
   }
 
+  const hasDisplay = Object.keys(safeObject(display)).length > 0;
+  const displayCopy = buildNotificationDisplayCopy(
+    {
+      ...candidate,
+      ...(safeObject(display)),
+    },
+    { preferSourceCopy: hasDisplay },
+  );
+
   return {
     ...normalized,
     delivered: [
@@ -82,6 +93,11 @@ export function recordNotificationDelivery({ history, candidate, channel, now })
         targetRoute: safeString(candidate?.targetRoute),
         targetType: safeString(candidate?.targetType),
         targetId: safeString(candidate?.targetId),
+        title: displayCopy.title,
+        body: displayCopy.body,
+        ctaLabel: displayCopy.ctaLabel,
+        scheduledFor: safeString(candidate?.scheduledFor),
+        createdAt: safeString(candidate?.createdAt),
         sourceSignalIds: safeArray(candidate?.sourceSignalIds).map(safeString).filter(Boolean),
         channel: normalizeNotificationChannel(channel),
         cooldownKey,
@@ -115,3 +131,73 @@ export function clickNotification({ history, notificationId, now }) {
   };
 }
 
+export function markNotificationsRead({ history, notificationIds = [], now } = {}) {
+  const normalized = ensureNotificationHistory(history);
+  const readAt = now instanceof Date && !Number.isNaN(now.getTime()) ? now.toISOString() : new Date().toISOString();
+  const existing = new Set(normalized.read.map((event) => safeString(event.notificationId)).filter(Boolean));
+  const nextRead = [...normalized.read];
+
+  safeArray(notificationIds).forEach((value) => {
+    const id = safeString(value);
+    if (!id || existing.has(id)) return;
+    existing.add(id);
+    nextRead.push({ notificationId: id, readAt });
+  });
+
+  return {
+    ...normalized,
+    read: nextRead,
+  };
+}
+
+function latestEventById(events, timestampKey) {
+  return safeArray(events).reduce((acc, event) => {
+    const id = safeString(event?.notificationId);
+    const timestamp = safeString(event?.[timestampKey]);
+    if (!id || !timestamp) return acc;
+    if (!acc[id] || timestamp > acc[id]) acc[id] = timestamp;
+    return acc;
+  }, {});
+}
+
+function compareDeliveredDesc(left, right) {
+  return safeString(right?.deliveredAt).localeCompare(safeString(left?.deliveredAt));
+}
+
+export function buildNotificationCenterItems({ history, limit = 12 } = {}) {
+  const normalized = ensureNotificationHistory(history);
+  const clickedById = latestEventById(normalized.clicked, "clickedAt");
+  const dismissedById = latestEventById(normalized.dismissed, "dismissedAt");
+  const readById = latestEventById(normalized.read, "readAt");
+
+  return [...normalized.delivered]
+    .sort(compareDeliveredDesc)
+    .slice(0, Math.max(0, Number.isFinite(limit) ? Math.trunc(limit) : 12))
+    .map((event) => {
+      const displayCopy = buildNotificationDisplayCopy(event, { preferSourceCopy: true });
+      const id = safeString(event?.notificationId);
+      const clickedAt = clickedById[id] || "";
+      const dismissedAt = dismissedById[id] || "";
+      const readAt = readById[id] || "";
+      return {
+        id,
+        notificationId: id,
+        type: safeString(event?.type),
+        title: displayCopy.title,
+        body: displayCopy.body,
+        ctaLabel: displayCopy.ctaLabel,
+        deliveredAt: safeString(event?.deliveredAt),
+        targetRoute: safeString(event?.targetRoute),
+        targetType: safeString(event?.targetType),
+        targetId: safeString(event?.targetId),
+        clickedAt,
+        dismissedAt,
+        readAt,
+        status: clickedAt ? "clicked" : dismissedAt ? "dismissed" : readAt ? "read" : "unread",
+      };
+    });
+}
+
+export function getUnreadNotificationCount(history, { limit = 12 } = {}) {
+  return buildNotificationCenterItems({ history, limit }).filter((item) => item.status === "unread").length;
+}

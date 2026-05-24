@@ -40,7 +40,9 @@ describe("InAppNudge", () => {
   it("wires CTA and dismiss callbacks without mutation behavior", () => {
     const onAction = vi.fn();
     const onDismiss = vi.fn();
-    const element = InAppNudge({ nudge, onAction, onDismiss });
+    const onPauseAutoDismiss = vi.fn();
+    const onResumeAutoDismiss = vi.fn();
+    const element = InAppNudge({ nudge, onAction, onDismiss, onPauseAutoDismiss, onResumeAutoDismiss });
     const aside = element.props.children;
     const children = aside.props.children;
     const actionButton = children.find((child) => child?.props?.className === "inAppNudge__action");
@@ -48,8 +50,14 @@ describe("InAppNudge", () => {
 
     actionButton.props.onClick();
     dismissButton.props.onClick();
+    aside.props.onMouseEnter();
+    aside.props.onMouseLeave();
+    aside.props.onFocus();
+    aside.props.onBlur();
 
     expect(onAction).toHaveBeenCalledTimes(1);
     expect(onDismiss).toHaveBeenCalledTimes(1);
+    expect(onPauseAutoDismiss).toHaveBeenCalledTimes(2);
+    expect(onResumeAutoDismiss).toHaveBeenCalledTimes(2);
   });
 });

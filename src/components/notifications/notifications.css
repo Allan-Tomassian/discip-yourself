@@ -1,6 +1,6 @@
 .inAppNudgeViewport {
   position: fixed;
-  inset: max(env(safe-area-inset-top, 0px), 10px) 16px auto 16px;
+  inset: max(calc(env(safe-area-inset-top, 0px) + 12px), 14px) 16px auto 16px;
   z-index: var(--z-popover, 1210);
   display: flex;
   justify-content: center;
@@ -8,7 +8,7 @@
 }
 
 .inAppNudgeViewport.is-home {
-  inset-block-start: max(calc(env(safe-area-inset-top, 0px) + 118px), 118px);
+  inset-block-start: max(calc(env(safe-area-inset-top, 0px) + 12px), 14px);
 }
 
 .inAppNudge {
@@ -32,6 +32,13 @@
     0 0 18px rgba(54, 255, 139, 0.1);
   backdrop-filter: blur(14px);
   animation: inAppNudgeEnter 180ms ease-out both;
+}
+
+.inAppNudge:focus-within {
+  border-color: rgba(54, 255, 139, 0.38);
+  box-shadow:
+    0 14px 34px rgba(0, 0, 0, 0.32),
+    0 0 24px rgba(54, 255, 139, 0.16);
 }
 
 .inAppNudge__icon {
@@ -117,4 +124,117 @@
   .inAppNudge {
     animation: none;
   }
+}
+
+.notificationCenterSheet {
+  max-height: min(620px, calc(100dvh - var(--safe-top, 0px) - var(--safe-bottom, 0px) - 48px));
+}
+
+.notificationCenterBody {
+  display: grid;
+  gap: 12px;
+}
+
+.notificationCenterList {
+  display: grid;
+  gap: 10px;
+}
+
+.notificationCenterItem {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 8% 10%, rgba(54, 255, 139, 0.1), transparent 35%),
+    rgba(255, 255, 255, 0.045);
+}
+
+.notificationCenterItem.is-unread {
+  border-color: rgba(54, 255, 139, 0.24);
+  background:
+    radial-gradient(circle at 8% 10%, rgba(54, 255, 139, 0.16), transparent 36%),
+    rgba(54, 255, 139, 0.055);
+}
+
+.notificationCenterItemIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(73, 255, 151, 0.95);
+  background: rgba(54, 255, 139, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(54, 255, 139, 0.18);
+}
+
+.notificationCenterItemCopy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.notificationCenterItemMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.notificationCenterItemCopy strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 0.9rem;
+  line-height: 1.18;
+}
+
+.notificationCenterItemCopy p {
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.78rem;
+  line-height: 1.2;
+}
+
+.notificationCenterItemAction {
+  min-height: 32px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 12px;
+  background: rgba(255, 255, 255, 0.9);
+  color: rgba(8, 16, 13, 0.96);
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.notificationCenterEmpty {
+  min-height: 118px;
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  padding: 22px;
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  color: rgba(255, 255, 255, 0.58);
+  text-align: center;
+}
+
+.notificationCenterEmpty p {
+  margin: 0;
 }

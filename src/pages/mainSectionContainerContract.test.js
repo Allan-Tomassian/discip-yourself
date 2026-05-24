@@ -81,12 +81,17 @@ describe("main section container contract", () => {
     const commandCss = readSrc("shared/ui/command/command.css");
 
     expect(indexCss).toContain("--main-tab-bottom-clearance");
+    expect(indexCss).toContain("--main-tab-bottom-buffer: 32px;");
     expect(indexCss).toContain("--main-tab-bottom-padding");
     expect(todayCss).toContain("var(--main-tab-bottom-clearance");
+    expect(todayCss).toContain("var(--main-tab-bottom-padding");
     expect(objectivesCss).toContain("var(--main-tab-bottom-clearance");
+    expect(objectivesCss).toContain("var(--main-tab-bottom-padding");
     expect(timelineCss).toContain("var(--main-tab-bottom-clearance");
+    expect(timelineCss).toContain("var(--main-tab-bottom-padding");
     expect(coachCss).toContain("var(--main-tab-bottom-clearance");
     expect(adjustCss).toContain("var(--main-tab-bottom-clearance");
+    expect(adjustCss).toContain("var(--main-tab-bottom-padding");
     expect(commandCss).toContain(".CommandMotionReveal");
     expect(commandCss).toContain(".CommandPressFeedback");
     expect(commandCss).toContain("@media (prefers-reduced-motion: reduce)");

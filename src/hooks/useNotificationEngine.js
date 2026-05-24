@@ -2,15 +2,21 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { buildNotificationCandidates } from "../features/notifications/notificationCandidates";
 import { chooseNotificationChannel } from "../features/notifications/notificationChannels";
 import {
+  buildNotificationCenterItems,
   clickNotification,
   dismissNotification,
+  getUnreadNotificationCount,
+  markNotificationsRead,
   recordNotificationDelivery,
 } from "../features/notifications/notificationHistory";
+import { buildNotificationDisplayCopy } from "../features/notifications/notificationDisplay";
 import { ensureNotificationPreferences } from "../features/notifications/notificationPreferences";
 import { applyNotificationPolicy } from "../features/notifications/notificationPolicy";
 import { NOTIFICATION_CHANNEL, NOTIFICATION_TYPE } from "../features/notifications/notificationTypes";
 
 const DEFAULT_ENGINE_POLL_MS = 60_000;
+export const NOTIFICATION_TOAST_DELAY_MS = 1_200;
+export const NOTIFICATION_TOAST_AUTO_DISMISS_MS = 5_000;
 const ACTIVE_SESSION_PHASES = new Set(["in_progress", "paused"]);
 const LEGACY_REMINDER_DUPLICATE_TYPES = new Set([
   NOTIFICATION_TYPE.BLOCK_START_SOON,
@@ -79,44 +85,7 @@ function filterSuppressedIds(candidates, suppressedIds) {
 export function buildInAppNudgeModel({ candidate, channel = NOTIFICATION_CHANNEL.IN_APP } = {}) {
   if (!candidate || typeof candidate !== "object") return null;
   const type = candidate.type;
-  const minutesUntilStart = (() => {
-    const scheduled = Date.parse(candidate.scheduledFor);
-    const created = Date.parse(candidate.createdAt);
-    if (!Number.isFinite(scheduled) || !Number.isFinite(created)) return null;
-    const minutes = Math.round((scheduled - created) / 60_000);
-    return Number.isFinite(minutes) && minutes > 0 ? minutes : null;
-  })();
-  const displayCopy = {
-    [NOTIFICATION_TYPE.EMPTY_DAY_WITH_AVAILABILITY]: {
-      title: "Prochain bloc",
-      body: "Ta journée a un espace libre.",
-      ctaLabel: "Créer",
-    },
-    [NOTIFICATION_TYPE.BLOCK_START_SOON]: {
-      title: "Bloc bientôt prêt",
-      body: minutesUntilStart ? `Commence dans ${minutesUntilStart} min.` : "Commence bientôt.",
-      ctaLabel: "Voir",
-    },
-    [NOTIFICATION_TYPE.BLOCK_START_NOW]: {
-      title: "C’est le moment",
-      body: "Lance ton bloc.",
-      ctaLabel: "Démarrer",
-    },
-    [NOTIFICATION_TYPE.BLOCK_OVERDUE_RECOVERY]: {
-      title: "Bloc à récupérer",
-      body: "Passe en version courte.",
-      ctaLabel: "Ajuster",
-    },
-    [NOTIFICATION_TYPE.MISSED_BLOCK_RECOVERY]: {
-      title: "Bloc manqué",
-      body: "Reprends sans dette.",
-      ctaLabel: "Ajuster",
-    },
-  }[type] || {
-    title: candidate.title,
-    body: candidate.body,
-    ctaLabel: "Ouvrir",
-  };
+  const displayCopy = buildNotificationDisplayCopy(candidate);
 
   return {
     id: candidate.id,
@@ -225,6 +194,13 @@ function persistNotificationHistory(setData, updater) {
   });
 }
 
+function clearTimer(ref) {
+  if (ref.current && typeof window !== "undefined") {
+    window.clearTimeout(ref.current);
+  }
+  ref.current = null;
+}
+
 export function useNotificationEngine({
   data = {},
   setData,
@@ -243,6 +219,11 @@ export function useNotificationEngine({
   const [activeNudge, setActiveNudge] = useState(null);
   const [suppressedIds, setSuppressedIds] = useState(() => new Set());
   const deliveredKeysRef = useRef(new Set());
+  const pendingToastTimerRef = useRef(null);
+  const pendingToastIdRef = useRef("");
+  const autoDismissTimerRef = useRef(null);
+  const autoDismissStartedAtRef = useRef(0);
+  const autoDismissRemainingMsRef = useRef(NOTIFICATION_TOAST_AUTO_DISMISS_MS);
 
   useEffect(() => {
     if (fixedNow instanceof Date && !Number.isNaN(fixedNow.getTime())) {
@@ -269,6 +250,7 @@ export function useNotificationEngine({
   }, [appVisibilityOverride]);
 
   const currentRoute = tabToCurrentRoute(tab);
+  const notificationHistory = data?.notification_history_v1;
   const model = useMemo(
     () =>
       createNotificationEngineModel({
@@ -284,34 +266,100 @@ export function useNotificationEngine({
     [activeReminder, appVisibility, currentRoute, data, enabled, engineNow, suppressedIds],
   );
 
+  const centerItems = useMemo(
+    () =>
+      buildNotificationCenterItems({ history: notificationHistory }).map((item) => ({
+        ...item,
+        routeable: Boolean(resolveNotificationTargetNavigation(item)),
+      })),
+    [notificationHistory],
+  );
+  const unreadCount = useMemo(() => getUnreadNotificationCount(notificationHistory), [notificationHistory]);
+
+  const hideActiveToast = useCallback((notificationId) => {
+    if (!notificationId) return;
+    setSuppressedIds((previous) => new Set([...previous, notificationId]));
+    setActiveNudge(null);
+  }, []);
+
   useEffect(() => {
     if (!enabled) {
+      clearTimer(pendingToastTimerRef);
+      clearTimer(autoDismissTimerRef);
+      pendingToastIdRef.current = "";
       setActiveNudge(null);
       return;
     }
 
+    if (typeof window === "undefined") return;
     if (activeNudge) return;
     const nudge = model.nudge;
-    if (!nudge?.candidate || model.selectedChannel !== NOTIFICATION_CHANNEL.IN_APP) return;
+    if (!nudge?.candidate || model.selectedChannel !== NOTIFICATION_CHANNEL.IN_APP) {
+      clearTimer(pendingToastTimerRef);
+      pendingToastIdRef.current = "";
+      return;
+    }
+    if (pendingToastIdRef.current === nudge.id) return;
 
     const deliveryKey = `${nudge.id}:${model.selectedChannel}`;
-    setActiveNudge(nudge);
-    if (deliveredKeysRef.current.has(deliveryKey)) return;
-    deliveredKeysRef.current.add(deliveryKey);
-    persistNotificationHistory(setData, (history) =>
-      recordNotificationDelivery({
-        history,
-        candidate: nudge.candidate,
-        channel: model.selectedChannel,
-        now: engineNow,
-      }),
-    );
+    pendingToastIdRef.current = nudge.id;
+    clearTimer(pendingToastTimerRef);
+    pendingToastTimerRef.current = window.setTimeout(() => {
+      pendingToastIdRef.current = "";
+      setActiveNudge(nudge);
+      if (deliveredKeysRef.current.has(deliveryKey)) return;
+      deliveredKeysRef.current.add(deliveryKey);
+      persistNotificationHistory(setData, (history) =>
+        recordNotificationDelivery({
+          history,
+          candidate: nudge.candidate,
+          channel: model.selectedChannel,
+          now: engineNow,
+          display: {
+            title: nudge.title,
+            body: nudge.body,
+            ctaLabel: nudge.ctaLabel,
+          },
+        }),
+      );
+    }, NOTIFICATION_TOAST_DELAY_MS);
+
+    return () => {
+      if (pendingToastIdRef.current === nudge.id) pendingToastIdRef.current = "";
+      clearTimer(pendingToastTimerRef);
+    };
   }, [activeNudge, enabled, engineNow, model.nudge, model.selectedChannel, setData]);
 
-  const visibleNudge = activeNudge || model.nudge;
+  useEffect(() => {
+    clearTimer(autoDismissTimerRef);
+    if (!activeNudge?.id || typeof window === "undefined") return undefined;
+
+    autoDismissRemainingMsRef.current = NOTIFICATION_TOAST_AUTO_DISMISS_MS;
+    autoDismissStartedAtRef.current = Date.now();
+    autoDismissTimerRef.current = window.setTimeout(() => {
+      hideActiveToast(activeNudge.id);
+    }, NOTIFICATION_TOAST_AUTO_DISMISS_MS);
+
+    return () => clearTimer(autoDismissTimerRef);
+  }, [activeNudge, hideActiveToast]);
+
+  const pauseToastAutoDismiss = useCallback(() => {
+    if (!activeNudge?.id || !autoDismissTimerRef.current) return;
+    const elapsed = Date.now() - autoDismissStartedAtRef.current;
+    autoDismissRemainingMsRef.current = Math.max(600, autoDismissRemainingMsRef.current - elapsed);
+    clearTimer(autoDismissTimerRef);
+  }, [activeNudge?.id]);
+
+  const resumeToastAutoDismiss = useCallback(() => {
+    if (!activeNudge?.id || autoDismissTimerRef.current || typeof window === "undefined") return;
+    autoDismissStartedAtRef.current = Date.now();
+    autoDismissTimerRef.current = window.setTimeout(() => {
+      hideActiveToast(activeNudge.id);
+    }, autoDismissRemainingMsRef.current);
+  }, [activeNudge?.id, hideActiveToast]);
 
   const dismissNudge = useCallback(() => {
-    const nudge = activeNudge || model.nudge;
+    const nudge = activeNudge;
     if (!nudge?.id) return;
     setSuppressedIds((previous) => new Set([...previous, nudge.id]));
     setActiveNudge(null);
@@ -322,10 +370,10 @@ export function useNotificationEngine({
         now: engineNow,
       }),
     );
-  }, [activeNudge, engineNow, model.nudge, setData]);
+  }, [activeNudge, engineNow, setData]);
 
   const clickNudge = useCallback(() => {
-    const nudge = activeNudge || model.nudge;
+    const nudge = activeNudge;
     if (!nudge?.id) return;
     setSuppressedIds((previous) => new Set([...previous, nudge.id]));
     setActiveNudge(null);
@@ -341,14 +389,54 @@ export function useNotificationEngine({
     if (target && typeof setTab === "function") {
       setTab(target.tab, target.options);
     }
-  }, [activeNudge, engineNow, model.nudge, setData, setTab]);
+  }, [activeNudge, engineNow, setData, setTab]);
+
+  const markNotificationCenterViewed = useCallback(() => {
+    const unreadIds = centerItems
+      .filter((item) => item.status === "unread")
+      .map((item) => item.notificationId)
+      .filter(Boolean);
+    if (!unreadIds.length) return;
+    persistNotificationHistory(setData, (history) =>
+      markNotificationsRead({
+        history,
+        notificationIds: unreadIds,
+        now: engineNow,
+      }),
+    );
+  }, [centerItems, engineNow, setData]);
+
+  const clickNotificationCenterItem = useCallback(
+    (item) => {
+      if (!item?.notificationId) return;
+      persistNotificationHistory(setData, (history) =>
+        clickNotification({
+          history,
+          notificationId: item.notificationId,
+          now: engineNow,
+        }),
+      );
+
+      const target = resolveNotificationTargetNavigation(item);
+      if (target && typeof setTab === "function") {
+        setTab(target.tab, target.options);
+      }
+    },
+    [engineNow, setData, setTab],
+  );
 
   return {
-    nudge: visibleNudge,
-    selectedCandidate: visibleNudge?.candidate || null,
-    selectedChannel: visibleNudge?.channel || NOTIFICATION_CHANNEL.NONE,
+    nudge: activeNudge,
+    selectedCandidate: activeNudge?.candidate || null,
+    selectedChannel: activeNudge?.channel || NOTIFICATION_CHANNEL.NONE,
     dismissNudge,
     clickNudge,
+    pauseToastAutoDismiss,
+    resumeToastAutoDismiss,
+    centerItems,
+    unreadCount,
+    markNotificationCenterViewed,
+    clickNotificationCenterItem,
     policy: model.policy,
     candidates: model.candidates,
   };
