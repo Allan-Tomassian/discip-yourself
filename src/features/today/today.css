@@ -1097,14 +1097,10 @@
 .todayCockpitScreen.today-motion-none .todayDiagnosticHero::after,
 .todayCockpitScreen.today-motion-none .todayPrimaryActionCard::after,
 .todayCockpitScreen.today-motion-none .todayPrimaryBeam,
-.todayCockpitScreen.today-motion-none .todayTimelineTrack::after,
-.todayCockpitScreen.today-motion-none .todayTimelinePoint.is-active .todayTimelinePointMarker::after,
 .todayCockpitScreen.today-motion-frozen .todayDiagnosticHero::before,
 .todayCockpitScreen.today-motion-frozen .todayDiagnosticHero::after,
 .todayCockpitScreen.today-motion-frozen .todayPrimaryActionCard::after,
-.todayCockpitScreen.today-motion-frozen .todayPrimaryBeam,
-.todayCockpitScreen.today-motion-frozen .todayTimelineTrack::after,
-.todayCockpitScreen.today-motion-frozen .todayTimelinePoint.is-active .todayTimelinePointMarker::after {
+.todayCockpitScreen.today-motion-frozen .todayPrimaryBeam {
   animation: none;
 }
 
@@ -1395,14 +1391,14 @@
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  min-height: 178px;
-  padding: 15px 17px 14px;
-  border-color: rgba(53, 240, 109, 0.2);
-  background: #04110d;
+  min-height: 190px;
+  padding: 15px 17px 13px;
+  border-color: rgba(53, 240, 109, 0.19);
+  background: #03100c;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.055),
     0 18px 40px rgba(0, 0, 0, 0.45),
-    0 0 34px rgba(53, 240, 109, 0.08);
+    0 0 30px rgba(53, 240, 109, 0.07);
 }
 
 .todayTimelineBackdrop {
@@ -1412,10 +1408,10 @@
   pointer-events: none;
   background-image: url("../../assets/today/timeline-card-bg.webp");
   background-repeat: no-repeat;
-  background-position: center;
+  background-position: center bottom;
   background-size: cover;
-  opacity: 0.74;
-  filter: brightness(1.12) saturate(1.12) contrast(1.04);
+  opacity: 0.58;
+  filter: brightness(0.92) saturate(0.96) contrast(1.05);
   transform: scale(1.01);
 }
 
@@ -1430,15 +1426,15 @@
 
 .todayTimelineCard::before {
   background:
-    linear-gradient(180deg, rgba(3, 9, 7, 0.68) 0%, rgba(3, 9, 7, 0.28) 45%, rgba(3, 9, 7, 0.7) 100%),
-    linear-gradient(90deg, rgba(3, 9, 7, 0.62) 0%, rgba(3, 9, 7, 0.18) 52%, rgba(3, 9, 7, 0.36) 100%);
+    linear-gradient(180deg, rgba(3, 9, 7, 0.78) 0%, rgba(3, 9, 7, 0.3) 50%, rgba(3, 9, 7, 0.72) 100%),
+    linear-gradient(90deg, rgba(3, 9, 7, 0.62) 0%, rgba(3, 9, 7, 0.2) 58%, rgba(3, 9, 7, 0.42) 100%);
 }
 
 .todayTimelineCard::after {
   background:
-    radial-gradient(circle at 76% 70%, rgba(53, 240, 109, 0.12), transparent 44%),
-    linear-gradient(90deg, transparent 0 58%, rgba(53, 240, 109, 0.06) 84%, transparent 100%);
-  opacity: 0.76;
+    radial-gradient(circle at 72% 76%, rgba(53, 240, 109, 0.1), transparent 44%),
+    linear-gradient(90deg, transparent 0 62%, rgba(53, 240, 109, 0.055) 86%, transparent 100%);
+  opacity: 0.68;
 }
 
 .todayTimelineHeader {
@@ -1473,79 +1469,59 @@
 .todayTimelineViewport {
   position: relative;
   z-index: 2;
-  margin: 0 -10px;
-  padding: 19px 12px 0;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
-  scroll-behavior: smooth;
-  -webkit-overflow-scrolling: touch;
-  -webkit-mask-image: linear-gradient(
-    90deg,
-    transparent 0,
-    #000 24px,
-    #000 calc(100% - 24px),
-    transparent 100%
-  );
-  mask-image: linear-gradient(
-    90deg,
-    transparent 0,
-    #000 24px,
-    #000 calc(100% - 24px),
-    transparent 100%
-  );
-}
-
-.todayTimelineViewport::-webkit-scrollbar {
-  display: none;
+  margin-top: 12px;
+  overflow: hidden;
 }
 
 .todayTimelineTrack {
   position: relative;
-  display: flex;
-  align-items: stretch;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
   gap: 10px;
-  width: max-content;
-  min-width: max(100%, 324px);
-  min-height: 107px;
-  padding: 0 13px 3px;
+  min-height: 98px;
+  padding: 0 5px 2px;
+}
+
+.todayTimelineTrack[data-visible-count="1"] {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 148px;
+  margin-inline: auto;
+}
+
+.todayTimelineTrack[data-visible-count="2"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .todayTimelineRail {
   content: "";
   position: absolute;
-  left: 44px;
-  right: 44px;
-  top: 54px;
+  left: 30px;
+  right: 30px;
+  top: 52px;
   height: 2px;
   z-index: 0;
   border-radius: 999px;
   background:
-    linear-gradient(90deg, rgba(53, 240, 109, 0.56), rgba(53, 240, 109, 0.22), rgba(255, 255, 255, 0.15)),
+    linear-gradient(90deg, rgba(53, 240, 109, 0.46), rgba(53, 240, 109, 0.26), rgba(255, 255, 255, 0.12)),
     rgba(255, 255, 255, 0.08);
   box-shadow:
-    0 0 18px rgba(53, 240, 109, 0.18),
+    0 0 14px rgba(53, 240, 109, 0.14),
     0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
-.todayTimelineRail::after {
-  content: "";
+.todayTimelineNowTick {
   position: absolute;
-  inset: 0;
-  height: 2px;
+  left: var(--timeline-now-position, 50%);
+  top: 40px;
+  z-index: 0;
+  width: 1px;
+  height: 25px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, transparent, rgba(98, 255, 153, 0.72), transparent);
+  box-shadow: 0 0 10px rgba(53, 240, 109, 0.18);
+  transform: translateX(-50%);
   pointer-events: none;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(53, 240, 109, 0.08) 24%,
-    rgba(53, 240, 109, 0.34) 50%,
-    rgba(53, 240, 109, 0.08) 76%,
-    transparent 100%
-  );
-  background-size: 190px 100%;
-  opacity: 0.42;
-  animation: todayTimelineRailSheen 8s linear infinite;
-  will-change: background-position, opacity;
 }
 
 .todayTimelinePoint {
@@ -1553,13 +1529,13 @@
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-rows: minmax(34px, auto) 22px auto;
+  grid-template-rows: 36px 30px 18px;
   justify-items: center;
-  gap: 6px;
-  flex: 0 0 92px;
-  min-width: 92px;
-  min-height: 100px;
-  padding: 0 3px;
+  align-items: start;
+  gap: 5px;
+  min-width: 0;
+  min-height: 92px;
+  padding: 0 2px;
   border: 0;
   background: transparent;
   color: rgba(235, 239, 235, 0.62);
@@ -1588,15 +1564,16 @@
 
 .todayTimelinePointText {
   display: grid;
-  gap: 3px;
+  gap: 2px;
   justify-items: center;
   min-width: 0;
-  max-width: 88px;
+  max-width: 100%;
 }
 
 .todayTimelinePointTime {
   width: fit-content;
-  padding: 4px 7px;
+  max-width: 100%;
+  padding: 3px 7px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 999px;
   background: rgba(2, 10, 7, 0.58);
@@ -1607,7 +1584,7 @@
 }
 
 .todayTimelinePointTitle {
-  max-width: 88px;
+  max-width: min(92px, 100%);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1620,8 +1597,8 @@
   position: relative;
   display: grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   background: rgba(9, 16, 13, 0.88);
@@ -1634,38 +1611,6 @@
     border-color var(--today-motion-fast) var(--today-ease-press),
     box-shadow var(--today-motion-fast) var(--today-ease-press),
     transform var(--today-motion-fast) var(--today-ease-press);
-}
-
-.todayTimelinePointMarker::after {
-  content: "";
-  position: absolute;
-  inset: -7px;
-  border-radius: inherit;
-  background: radial-gradient(circle, rgba(53, 240, 109, 0.24), transparent 68%);
-  opacity: 0;
-  transform: scale(0.82);
-  transition:
-    opacity var(--today-motion-fast) var(--today-ease-press),
-    transform var(--today-motion-fast) var(--today-ease-press);
-  pointer-events: none;
-}
-
-.todayTimelinePoint.is-current .todayTimelinePointMarker::before {
-  content: "";
-  position: absolute;
-  inset: -11px;
-  border-radius: inherit;
-  border: 1px solid rgba(53, 240, 109, 0.22);
-  background: radial-gradient(circle, rgba(53, 240, 109, 0.16), transparent 66%);
-  animation: todayTimelineActiveGlow 7.2s ease-in-out infinite;
-  pointer-events: none;
-}
-
-.todayTimelinePoint:not(:disabled):hover .todayTimelinePointMarker::after,
-.todayTimelinePoint:not(:disabled):focus-visible .todayTimelinePointMarker::after,
-.todayTimelinePoint:not(:disabled):active .todayTimelinePointMarker::after {
-  opacity: 1;
-  transform: scale(1);
 }
 
 .todayTimelinePoint:not(:disabled):active .todayTimelinePointMarker {
@@ -1687,11 +1632,11 @@
 
 .todayTimelinePoint.is-active .todayTimelinePointMarker {
   border-color: var(--today-green);
-  background: rgba(53, 240, 109, 0.18);
-  color: var(--today-green);
+  background: var(--today-green);
+  color: #061008;
   box-shadow:
     0 0 0 4px rgba(2, 10, 7, 0.58),
-    0 0 18px rgba(53, 240, 109, 0.38);
+    0 0 18px rgba(53, 240, 109, 0.42);
 }
 
 .todayTimelinePoint.is-upcoming .todayTimelinePointMarker {
@@ -1700,6 +1645,13 @@
   box-shadow:
     0 0 0 4px rgba(2, 10, 7, 0.58),
     0 0 12px rgba(53, 240, 109, 0.12);
+}
+
+.todayTimelinePoint.is-anchor .todayTimelinePointMarker {
+  transform: scale(1.08);
+  box-shadow:
+    0 0 0 4px rgba(2, 10, 7, 0.62),
+    0 0 20px rgba(53, 240, 109, 0.24);
 }
 
 .todayTimelinePoint.is-risk {
@@ -1730,6 +1682,10 @@
     0 0 12px rgba(255, 155, 69, 0.18);
 }
 
+.todayTimelinePoint.is-done {
+  color: var(--today-green);
+}
+
 .todayTimelinePoint.is-done .todayTimelinePointMarker {
   border-color: var(--today-green);
   background: var(--today-green);
@@ -1746,13 +1702,8 @@
   color: rgba(245, 248, 244, 0.92);
 }
 
-.todayTimelinePoint.is-active .todayTimelinePointMarker::after {
-  opacity: 0.56;
-  transform: scale(1);
-  will-change: opacity, transform;
-}
-
 .todayTimelinePointStatus {
+  max-width: 100%;
   padding: 3px 7px;
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 999px;
@@ -1762,6 +1713,8 @@
   font-weight: 740;
   line-height: 1;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .todayTimelinePoint.is-current .todayTimelinePointStatus {
@@ -1782,17 +1735,6 @@
   border-color: rgba(53, 240, 109, 0.18);
   background: rgba(53, 240, 109, 0.1);
   color: rgba(109, 255, 168, 0.88);
-}
-
-.todayTimelineCard.has-placeholder-timeline .todayTimelineTrack {
-  justify-content: flex-start;
-  min-width: max(100%, 320px);
-  padding-right: 0;
-}
-
-.todayTimelineCard.has-placeholder-timeline .todayTimelinePoint {
-  flex-basis: 128px;
-  min-width: 128px;
 }
 
 .todayTimelinePlaceholder {
@@ -1823,6 +1765,43 @@
 .todayTimelineCard.has-placeholder-timeline .todayTimelineProgressEnd {
   color: rgba(235, 239, 235, 0.5);
   text-shadow: none;
+}
+
+.todayTimelineSummary {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 28px;
+  margin-top: 7px;
+  padding: 7px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.065);
+  border-radius: 13px;
+  background: rgba(2, 10, 7, 0.42);
+  color: rgba(235, 239, 235, 0.72);
+  font-size: 12px;
+  font-weight: 640;
+}
+
+.todayTimelineSummary span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.todayTimelineSummary em {
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(53, 240, 109, 0.1);
+  color: rgba(109, 255, 168, 0.9);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1;
 }
 
 .todayAiInsightCard {
@@ -2182,27 +2161,6 @@
   }
 }
 
-@keyframes todayTimelineActiveGlow {
-  0%,
-  100% {
-    opacity: 0.38;
-    transform: scale(0.96);
-  }
-  50% {
-    opacity: 0.64;
-    transform: scale(1.08);
-  }
-}
-
-@keyframes todayTimelineRailSheen {
-  from {
-    background-position: -170px 0;
-  }
-  to {
-    background-position: 170px 0;
-  }
-}
-
 @keyframes todayAiApplyConfirm {
   0% {
     opacity: 0;
@@ -2368,8 +2326,6 @@
   .todayTrajectoryCard::before,
   .todayPrimaryActionCard::after,
   .todayPrimaryBeam,
-  .todayTimelineTrack::after,
-  .todayTimelinePoint.is-active .todayTimelinePointMarker::after,
   .todayAiApplyButton::after {
     animation: none !important;
   }

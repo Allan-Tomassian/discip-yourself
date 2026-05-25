@@ -35,6 +35,14 @@ const SUPPORTED_SINGLE_REPAIRS = new Set([
   PLANNING_REPAIR_TYPE.CANCEL_ONCE,
 ]);
 
+const SUPPORTED_RECOVERY_REPAIRS = new Set([
+  PLANNING_REPAIR_TYPE.MOVE_LATER_TODAY,
+  PLANNING_REPAIR_TYPE.MOVE_TOMORROW,
+  PLANNING_REPAIR_TYPE.CHOOSE_TIME,
+  PLANNING_REPAIR_TYPE.REDUCE_DURATION,
+  PLANNING_REPAIR_TYPE.SKIP_ONCE,
+]);
+
 const LOAD_CANDIDATE_STATUSES = new Set([EXECUTION_SURFACE_STATUS.PLANNED]);
 const BUSY_OCCURRENCE_STATUSES = new Set([
   OCCURRENCE_STATUS.PLANNED,
@@ -138,6 +146,36 @@ function validateRepairableOccurrence(state, occurrenceId) {
   const persistedStatus = normalizeOccurrenceStatus(occurrence.status);
   if (persistedStatus !== OCCURRENCE_STATUS.PLANNED) {
     return { ok: false, occurrence, warnings: [`occurrence_final_${persistedStatus}`] };
+  }
+
+  return { ok: true, occurrence, warnings: [] };
+}
+
+function validateRecoveryRepairableOccurrence(state, occurrenceId) {
+  const occurrence = getOccurrenceById(state, occurrenceId);
+  if (!occurrence) {
+    return { ok: false, occurrence: null, warnings: ["occurrence_missing"] };
+  }
+
+  const derived = getSurfaceStatus(state, occurrence);
+  if (derived.status === EXECUTION_SURFACE_STATUS.ACTIVE) {
+    return { ok: false, occurrence, warnings: ["occurrence_active"] };
+  }
+
+  const persistedStatus = normalizeOccurrenceStatus(occurrence.status);
+  if (persistedStatus === OCCURRENCE_STATUS.IN_PROGRESS) {
+    return { ok: false, occurrence, warnings: ["occurrence_active"] };
+  }
+  if (
+    persistedStatus === OCCURRENCE_STATUS.DONE ||
+    persistedStatus === OCCURRENCE_STATUS.SKIPPED ||
+    persistedStatus === OCCURRENCE_STATUS.CANCELED ||
+    persistedStatus === OCCURRENCE_STATUS.RESCHEDULED
+  ) {
+    return { ok: false, occurrence, warnings: [`occurrence_final_${persistedStatus}`] };
+  }
+  if (persistedStatus !== OCCURRENCE_STATUS.PLANNED && persistedStatus !== OCCURRENCE_STATUS.MISSED) {
+    return { ok: false, occurrence, warnings: [`occurrence_not_repairable_${persistedStatus}`] };
   }
 
   return { ok: true, occurrence, warnings: [] };
@@ -551,6 +589,174 @@ function applyStatusRepair({ state, occurrence, repair, now }) {
     repairSummary: `${repairTypeLabel(repair.type)}: ${nextStatus}`,
     changedOccurrenceIds: [occurrence.id],
     confirmation: buildConfirmation(repair.type, occurrence, `Mark this block as ${nextStatus}.`),
+  });
+}
+
+function resolveRecoveryReplacementTarget({ state, occurrence, repair, now }) {
+  if (repair.type !== PLANNING_REPAIR_TYPE.REDUCE_DURATION) {
+    return resolveMoveTarget({ state, occurrence, repair, now });
+  }
+
+  const currentDuration = normalizeDurationMinutes(occurrence.durationMinutes, 30);
+  const durationMinutes = computeReducedDuration(occurrence, repair.durationMinutes);
+  if (!durationMinutes || durationMinutes >= currentDuration) {
+    return { ok: false, warning: "duration_not_reduced" };
+  }
+
+  const sourceDate = getOccurrenceDate(occurrence);
+  const targetDate =
+    normalizeDateKey(repair.dateKey) ||
+    normalizeDateKey(repair.selectedDateKey) ||
+    sourceDate;
+  const targetStart =
+    normalizeStartTime(repair.start) ||
+    resolveLaterTodayStart(occurrence, targetDate, now);
+
+  if (!targetDate || !targetStart) return { ok: false, warning: "target_missing" };
+  if (targetDate === sourceDate && targetStart === getOccurrenceStart(occurrence, "")) {
+    return { ok: false, warning: "target_same_as_source" };
+  }
+
+  const exactTarget = findExactTargetOccurrence(getOccurrences(state), occurrence, targetDate, targetStart);
+  if (exactTarget && !isReusableTargetOccurrence(exactTarget)) {
+    return { ok: false, warning: "target_occurrence_final" };
+  }
+  const resolved = resolveTargetSlot({
+    state,
+    sourceOccurrence: occurrence,
+    targetDate,
+    preferredStart: targetStart,
+    durationMinutes,
+    targetOccurrence: exactTarget,
+  });
+  if (!resolved.ok) return { ok: false, warning: resolved.warning };
+
+  const resolvedTarget = findExactTargetOccurrence(getOccurrences(state), occurrence, targetDate, resolved.start);
+  if (resolvedTarget && !isReusableTargetOccurrence(resolvedTarget)) {
+    return { ok: false, warning: "target_occurrence_final" };
+  }
+
+  return {
+    ok: true,
+    targetDate,
+    targetStart: resolved.start,
+    durationMinutes,
+    targetOccurrence: resolvedTarget,
+    warning: resolved.warning,
+  };
+}
+
+function applyRecoveryReplacementRepair({ state, occurrence, repair, now }) {
+  const target = resolveRecoveryReplacementTarget({ state, occurrence, repair, now });
+  if (!target.ok) {
+    return buildResult({
+      ok: false,
+      state,
+      warnings: [target.warning],
+      confirmation: buildConfirmation(repair.type, occurrence, "Choose a valid target before applying this recovery."),
+    });
+  }
+
+  const appliedAt = resolveAppliedAt(now);
+  const targetId = target.targetOccurrence?.id || uid();
+  const sourceRepairV1 = buildRepairMetadata({
+    type: repair.type,
+    appliedAt,
+    sourceOccurrenceId: occurrence.id,
+    targetOccurrenceId: targetId,
+    reason: repair.reason,
+    sourceOccurrence: occurrence,
+  });
+  const targetRepairV1 = buildRepairMetadata({
+    type: repair.type,
+    appliedAt,
+    sourceOccurrenceId: occurrence.id,
+    targetOccurrenceId: targetId,
+    reason: repair.reason,
+    sourceOccurrence: occurrence,
+  });
+
+  const sourcePatch = {
+    status: OCCURRENCE_STATUS.RESCHEDULED,
+    repairV1: sourceRepairV1,
+    updatedAt: appliedAt,
+  };
+  let targetChanged = false;
+  const occurrences = getOccurrences(state).map((current) => {
+    if (!current || current.id === occurrence.id) {
+      return current && current.id === occurrence.id ? { ...current, ...sourcePatch } : current;
+    }
+    if (target.targetOccurrence && current.id === target.targetOccurrence.id) {
+      targetChanged = true;
+      return {
+        ...current,
+        status: OCCURRENCE_STATUS.PLANNED,
+        durationMinutes: target.durationMinutes,
+        repairV1: targetRepairV1,
+        updatedAt: appliedAt,
+      };
+    }
+    return current;
+  });
+
+  let nextOccurrences = occurrences;
+  if (!targetChanged) {
+    nextOccurrences = [
+      ...occurrences,
+      buildTargetOccurrence({
+        id: targetId,
+        sourceOccurrence: occurrence,
+        targetDate: target.targetDate,
+        targetStart: target.targetStart,
+        durationMinutes: target.durationMinutes,
+        repairV1: targetRepairV1,
+      }),
+    ];
+  }
+
+  return buildResult({
+    ok: true,
+    state,
+    nextState: cloneStateWithOccurrences(state, nextOccurrences),
+    repairSummary: `${repairTypeLabel(repair.type)}: ${target.targetDate} ${target.targetStart}`,
+    changedOccurrenceIds: [occurrence.id, targetId],
+    warnings: [target.warning].filter(Boolean),
+    confirmation: buildConfirmation(
+      repair.type,
+      occurrence,
+      `Recover this block on ${target.targetDate} at ${target.targetStart}.`
+    ),
+  });
+}
+
+export function applyOccurrenceRecoveryRepair({ state, occurrenceId, repair, now } = {}) {
+  const normalizedRepair = normalizeRepair(repair);
+  if (!SUPPORTED_RECOVERY_REPAIRS.has(normalizedRepair.type)) {
+    return buildResult({
+      ok: false,
+      state,
+      warnings: ["recovery_repair_type_unsupported"],
+    });
+  }
+
+  const validation = validateRecoveryRepairableOccurrence(state, occurrenceId || normalizedRepair.occurrenceId);
+  if (!validation.ok) {
+    return buildResult({
+      ok: false,
+      state,
+      warnings: validation.warnings,
+    });
+  }
+
+  if (normalizedRepair.type === PLANNING_REPAIR_TYPE.SKIP_ONCE) {
+    return applyStatusRepair({ state, occurrence: validation.occurrence, repair: normalizedRepair, now });
+  }
+
+  return applyRecoveryReplacementRepair({
+    state,
+    occurrence: validation.occurrence,
+    repair: normalizedRepair,
+    now,
   });
 }
 
