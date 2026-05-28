@@ -1,6 +1,19 @@
-import { addDaysLocal, fromLocalDateKey, getWeekdayShortLabel, normalizeLocalDateKey, todayLocalKey } from "../utils/datetime";
+import {
+  addDaysLocal,
+  fromLocalDateKey,
+  getWeekdayShortLabel,
+  normalizeLocalDateKey,
+  parseTimeToMinutes,
+  todayLocalKey,
+  toLocalDateKey,
+} from "../utils/datetime";
 import { EXECUTION_SURFACE_STATUS, deriveExecutionStatus } from "../logic/executionStatus";
+import { OCCURRENCE_STATUS, normalizeOccurrenceStatus } from "../logic/occurrenceStatus";
 import { TIMELINE_SCREEN_COPY } from "../ui/labels";
+
+export const TIMELINE_RECOVERY_STATUS = Object.freeze({
+  LATE: "late",
+});
 
 function isFixedMidnight({ occurrence = null, goal = null } = {}) {
   if (occurrence?.timeMode === "FIXED" || occurrence?.fixedTime === true || occurrence?.isFixedTime === true) return true;
@@ -11,6 +24,31 @@ function isFixedMidnight({ occurrence = null, goal = null } = {}) {
     ...(Array.isArray(goal?.schedule?.timeSlots) ? goal.schedule.timeSlots : []),
   ].map((slot) => String(slot || "").trim());
   return goalTimeMode === "FIXED" && (goalStart === "00:00" || goalSlots.includes("00:00"));
+}
+
+function safeNow(value) {
+  return value instanceof Date && !Number.isNaN(value.getTime()) ? value : new Date();
+}
+
+function getOccurrenceDuration(occurrence) {
+  const raw = Number(occurrence?.durationMinutes);
+  return Number.isFinite(raw) && raw > 0 ? Math.round(raw) : 0;
+}
+
+function nowMinutes(now) {
+  const current = safeNow(now);
+  return (current.getHours() * 60) + current.getMinutes();
+}
+
+function isTimelineOccurrenceLate({ occurrence = null, dateKey = "", now } = {}) {
+  if (normalizeOccurrenceStatus(occurrence?.status) !== OCCURRENCE_STATUS.PLANNED) return false;
+  const current = safeNow(now);
+  const occurrenceDateKey = normalizeLocalDateKey(dateKey || occurrence?.date);
+  if (!occurrenceDateKey || occurrenceDateKey !== toLocalDateKey(current)) return false;
+  const startMinutes = parseTimeToMinutes(String(occurrence?.start || occurrence?.slotKey || "09:00").trim());
+  if (!Number.isFinite(startMinutes)) return false;
+  const endMinutes = startMinutes + getOccurrenceDuration(occurrence);
+  return endMinutes > 0 ? endMinutes < nowMinutes(current) : startMinutes < nowMinutes(current);
 }
 
 export function getTimelineDisplayTime({ startTime = "", occurrence = null, goal = null } = {}) {
@@ -45,23 +83,32 @@ export function resolveTimelineExecutionStatus({
   activeOccurrenceId = null,
   sessionHistory = [],
   dateKey = "",
+  now = new Date(),
 } = {}) {
   const occurrenceId = typeof occurrence?.id === "string" ? occurrence.id.trim() : "";
   if (activeOccurrenceId && occurrenceId && activeOccurrenceId === occurrenceId) {
     return EXECUTION_SURFACE_STATUS.ACTIVE;
   }
-  return deriveExecutionStatus({
+  const derived = deriveExecutionStatus({
     occurrence,
     activeSession,
     sessionHistory,
     dateKey: dateKey || occurrence?.date,
   }).status;
+  if (
+    derived === EXECUTION_SURFACE_STATUS.PLANNED &&
+    isTimelineOccurrenceLate({ occurrence, dateKey: dateKey || occurrence?.date, now })
+  ) {
+    return TIMELINE_RECOVERY_STATUS.LATE;
+  }
+  return derived;
 }
 
 export function getTimelineStatusLabel(status) {
   if (status === EXECUTION_SURFACE_STATUS.DONE) return TIMELINE_SCREEN_COPY.completed;
   if (status === EXECUTION_SURFACE_STATUS.ACTIVE || status === "in_progress") return "En cours";
   if (status === EXECUTION_SURFACE_STATUS.MISSED) return "Manquée";
+  if (status === TIMELINE_RECOVERY_STATUS.LATE) return "En retard";
   if (status === EXECUTION_SURFACE_STATUS.POSTPONED) return "Reportée";
   if (status === EXECUTION_SURFACE_STATUS.BLOCKED) return "Bloquée";
   if (status === EXECUTION_SURFACE_STATUS.REPORTED) return "Signalée";
@@ -74,6 +121,7 @@ export function resolveTimelineTone(status, { isCurrent = false, isSelectedDay =
   }
   if (
     status === EXECUTION_SURFACE_STATUS.MISSED ||
+    status === TIMELINE_RECOVERY_STATUS.LATE ||
     status === EXECUTION_SURFACE_STATUS.POSTPONED ||
     status === EXECUTION_SURFACE_STATUS.BLOCKED ||
     status === EXECUTION_SURFACE_STATUS.REPORTED

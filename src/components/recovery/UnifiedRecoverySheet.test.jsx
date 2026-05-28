@@ -272,6 +272,19 @@ describe("UnifiedRecoverySheet", () => {
     expect(html).toContain("Retour à Home");
   });
 
+  it("success state can render a source-specific CTA label", () => {
+    const html = renderSheet({
+      result: {
+        ok: true,
+        summary: "Déplace ce bloc demain à 09:00.",
+      },
+      successCtaLabel: "Retour au Planning",
+    });
+
+    expect(html).toContain("Retour au Planning");
+    expect(html).not.toContain("Retour à Home");
+  });
+
   it("error state renders safe non-mutating copy", () => {
     const html = renderSheet({
       result: {

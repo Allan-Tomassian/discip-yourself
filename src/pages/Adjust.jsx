@@ -25,6 +25,7 @@ import {
 } from "../shared/ui/command";
 import { ADJUST_ACTION_IDS, buildAdjustDiagnostic } from "../features/adjust/adjustDiagnostic";
 import { buildAdjustSystemSignalPreview } from "../features/adjust/adjustSystemSignalPreviewModel";
+import { resolveAdjustRecoveryRequest } from "../features/recovery/recoveryEntryPoints";
 import {
   applySystemAnalysisSelectedCorrections,
   buildSystemAnalysisApplicationPreview,
@@ -274,6 +275,7 @@ export default function Adjust({
   data,
   setData,
   onAdjustAction,
+  onOpenRecoverySheet,
   onSystemAnalysisEntry,
   systemAnalysisAvailabilityState = "ready",
 }) {
@@ -306,6 +308,22 @@ export default function Adjust({
   const hasUsefulData = Boolean(summary?.hasPlannedData || nextBlock || hasSignals);
 
   const recommendationAction = quickActions.find((action) => action.id === recommendation?.actionId) || null;
+  const recoveryRequest = useMemo(
+    () => resolveAdjustRecoveryRequest({
+      diagnostic,
+      state: safeData,
+      selectedDateKey: activeDateKey,
+      now: new Date(),
+    }),
+    [activeDateKey, diagnostic, safeData]
+  );
+  const handlePrimaryRecommendationAction = useCallback(() => {
+    if (recoveryRequest && typeof onOpenRecoverySheet === "function") {
+      const opened = onOpenRecoverySheet(recoveryRequest);
+      if (opened) return;
+    }
+    onAdjustAction?.(recommendation?.actionId || ADJUST_ACTION_IDS.ASK_COACH);
+  }, [onAdjustAction, onOpenRecoverySheet, recommendation?.actionId, recoveryRequest]);
   const systemAnalysisSnapshot = useMemo(
     () => buildSystemAnalysisSnapshot({
       state: safeData,
@@ -858,9 +876,9 @@ export default function Adjust({
           />
           <CommandCTA
             variant="primary"
-            onClick={() => onAdjustAction?.(recommendation?.actionId || ADJUST_ACTION_IDS.ASK_COACH)}
+            onClick={handlePrimaryRecommendationAction}
           >
-            {recommendationAction ? recommendationAction.label : "Lancer cette correction"}
+            {recoveryRequest ? "Réparer ce bloc" : recommendationAction ? recommendationAction.label : "Lancer cette correction"}
           </CommandCTA>
           {Array.isArray(recommendation?.expectedImpact) && recommendation.expectedImpact.length ? (
             <div className="adjustImpactList">

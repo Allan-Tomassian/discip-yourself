@@ -13,6 +13,7 @@ import { buildNotificationDisplayCopy } from "../features/notifications/notifica
 import { ensureNotificationPreferences } from "../features/notifications/notificationPreferences";
 import { applyNotificationPolicy } from "../features/notifications/notificationPolicy";
 import { NOTIFICATION_CHANNEL, NOTIFICATION_TYPE } from "../features/notifications/notificationTypes";
+import { resolveNotificationRecoveryRequest } from "../features/recovery/recoveryEntryPoints";
 
 const DEFAULT_ENGINE_POLL_MS = 60_000;
 export const NOTIFICATION_TOAST_DELAY_MS = 1_200;
@@ -206,6 +207,7 @@ export function useNotificationEngine({
   setData,
   tab = "today",
   setTab,
+  onOpenRecoverySheet,
   activeReminder = null,
   enabled = true,
   now: fixedNow = null,
@@ -270,7 +272,7 @@ export function useNotificationEngine({
     () =>
       buildNotificationCenterItems({ history: notificationHistory }).map((item) => ({
         ...item,
-        routeable: Boolean(resolveNotificationTargetNavigation(item)),
+        routeable: Boolean(resolveNotificationRecoveryRequest(item) || resolveNotificationTargetNavigation(item)),
       })),
     [notificationHistory],
   );
@@ -385,11 +387,15 @@ export function useNotificationEngine({
       }),
     );
 
+    const recoveryRequest = resolveNotificationRecoveryRequest(nudge.candidate || nudge);
+    if (recoveryRequest && typeof onOpenRecoverySheet === "function" && onOpenRecoverySheet(recoveryRequest)) {
+      return;
+    }
     const target = resolveNotificationTargetNavigation(nudge.candidate || nudge);
     if (target && typeof setTab === "function") {
       setTab(target.tab, target.options);
     }
-  }, [activeNudge, engineNow, setData, setTab]);
+  }, [activeNudge, engineNow, onOpenRecoverySheet, setData, setTab]);
 
   const markNotificationCenterViewed = useCallback(() => {
     const unreadIds = centerItems
@@ -417,12 +423,17 @@ export function useNotificationEngine({
         }),
       );
 
+      const recoveryRequest = resolveNotificationRecoveryRequest(item);
+      if (recoveryRequest && typeof onOpenRecoverySheet === "function" && onOpenRecoverySheet(recoveryRequest)) {
+        return;
+      }
+
       const target = resolveNotificationTargetNavigation(item);
       if (target && typeof setTab === "function") {
         setTab(target.tab, target.options);
       }
     },
-    [engineNow, setData, setTab],
+    [engineNow, onOpenRecoverySheet, setData, setTab],
   );
 
   return {

@@ -573,6 +573,20 @@ export function buildRecoveryOptions({ state, occurrenceId, context, now, select
   };
 }
 
+export function buildRecoveryContext({ state, occurrenceId, context, now, selectedDateKey, source = "" } = {}) {
+  const model = buildRecoveryOptions({ state, occurrenceId, context, now, selectedDateKey });
+  return {
+    ...model,
+    source: safeString(source),
+    request: {
+      occurrenceId: safeString(occurrenceId),
+      context: model.context || normalizeContext(context),
+      selectedDateKey: normalizeDateKey(selectedDateKey),
+      source: safeString(source),
+    },
+  };
+}
+
 export function getRecoveryTomorrowDateKey(occurrence) {
   return addDaysLocal(normalizeDateKey(occurrence?.date), 1);
 }

@@ -43,6 +43,7 @@ import Support from "./pages/Support";
 import BottomNavigation from "./components/navigation/BottomNavigation";
 import InAppNudge from "./components/notifications/InAppNudge";
 import NotificationCenter from "./components/notifications/NotificationCenter";
+import UnifiedRecoverySheet from "./components/recovery/UnifiedRecoverySheet";
 import { applyThemeTokens, BRAND_ACCENT, DEFAULT_THEME } from "./theme/themeTokens";
 import { todayLocalKey } from "./utils/dateKey";
 import { normalizePriorities } from "./logic/priority";
@@ -86,6 +87,12 @@ import { resolveGoalType } from "./domain/goalType";
 import { BehaviorFeedbackHost, BehaviorFeedbackProvider } from "./feedback/BehaviorFeedbackContext";
 import { ADJUST_ACTION_IDS } from "./features/adjust/adjustDiagnostic";
 import { buildAdjustSignalBadgeModel } from "./features/adjust/adjustSignalBadgeModel";
+import { commitRecoveryOptionState } from "./features/recovery/recoveryAppController";
+import { buildRecoveryContext } from "./features/recovery/recoverySheetModel";
+import {
+  createSessionRecoveryRequest,
+  hasCommittedSessionRecoveryOutcome,
+} from "./features/recovery/sessionRecoveryQueue";
 
 function runSelfTests(data) {
   const isProd = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.PROD;
@@ -107,6 +114,32 @@ function isSameOrder(a, b) {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i += 1) if (a[i] !== b[i]) return false;
   return true;
+}
+
+const RECOVERY_ROUTE_TABS = new Set(["today", "timeline", "adjust", "coach", "objectives"]);
+
+function normalizeRecoveryTab(value) {
+  const tab = typeof value === "string" ? value.trim().toLowerCase() : "";
+  if (tab === "home") return "today";
+  if (tab === "planning") return "timeline";
+  return RECOVERY_ROUTE_TABS.has(tab) ? tab : "";
+}
+
+function defaultRecoveryOriginTab(source) {
+  const normalizedSource = typeof source === "string" ? source.trim().toLowerCase() : "";
+  if (normalizedSource === "planning") return "timeline";
+  if (normalizedSource === "adjust") return "adjust";
+  return "today";
+}
+
+function defaultRecoverySuccessTab(source) {
+  const normalizedSource = typeof source === "string" ? source.trim().toLowerCase() : "";
+  if (normalizedSource === "planning") return "timeline";
+  return "today";
+}
+
+function getRecoverySuccessCtaLabel(tab) {
+  return normalizeRecoveryTab(tab) === "timeline" ? "Retour au Planning" : "Retour à Home";
 }
 
 export default function App() {
@@ -145,6 +178,13 @@ export default function App() {
     conversationId: null,
     prefill: "",
   });
+  const [recoverySheetState, setRecoverySheetState] = useState({
+    request: null,
+    pending: false,
+    result: null,
+    error: null,
+  });
+  const [queuedSessionRecoveryRequest, setQueuedSessionRecoveryRequest] = useState(null);
   const dataRef = useRef(data);
   const invariantLogRef = useRef(new Set());
   const tour = useTour({ data, setData, steps: FIRST_USE_TOUR_STEPS, tourVersion: TOUR_VERSION });
@@ -198,11 +238,84 @@ export default function App() {
     tab === "session" ||
     tab === "onboarding";
   const [notificationCenterOpen, setNotificationCenterOpen] = useState(false);
+  const closeRecoverySheet = useCallback(() => {
+    const successTab = recoverySheetState.result?.ok
+      ? normalizeRecoveryTab(recoverySheetState.request?.successTab) || "today"
+      : "";
+    setRecoverySheetState({
+      request: null,
+      pending: false,
+      result: null,
+      error: null,
+    });
+    if (successTab) setTab(successTab);
+  }, [recoverySheetState.request, recoverySheetState.result, setTab]);
+  const openRecoverySheet = useCallback(
+    ({
+      occurrenceId,
+      context = "",
+      source = "unknown",
+      selectedDateKey = "",
+      originTab = "",
+      successTab = "",
+    } = {}) => {
+      const currentData = dataRef.current && typeof dataRef.current === "object" ? dataRef.current : {};
+      const occurrences = Array.isArray(currentData?.occurrences) ? currentData.occurrences : [];
+      const occurrence = occurrences.find((entry) => entry?.id === occurrenceId) || null;
+      const requestDateKey =
+        selectedDateKey ||
+        occurrence?.date ||
+        currentData?.ui?.selectedDateKey ||
+        currentData?.ui?.selectedDate ||
+        todayLocalKey();
+      const model = buildRecoveryContext({
+        state: currentData,
+        occurrenceId,
+        context,
+        selectedDateKey: requestDateKey,
+        now: new Date(),
+        source,
+      });
+
+      if (!model.ok || !model.options.length) return false;
+      const resolvedOriginTab =
+        normalizeRecoveryTab(originTab) ||
+        defaultRecoveryOriginTab(source);
+      const resolvedSuccessTab =
+        normalizeRecoveryTab(successTab) ||
+        defaultRecoverySuccessTab(source);
+
+      setRecoverySheetState({
+        request: {
+          occurrenceId: model.request.occurrenceId,
+          context: model.request.context,
+          selectedDateKey: model.request.selectedDateKey || requestDateKey,
+          source,
+          originTab: resolvedOriginTab,
+          successTab: resolvedSuccessTab,
+          openedAtMs: Date.now(),
+        },
+        pending: false,
+        result: null,
+        error: null,
+      });
+      setTab(resolvedOriginTab);
+      return true;
+    },
+    [setTab]
+  );
+  const queueRecoveryAfterSessionCommit = useCallback((request) => {
+    const nextRequest = createSessionRecoveryRequest(request);
+    if (!nextRequest) return false;
+    setQueuedSessionRecoveryRequest(nextRequest);
+    return true;
+  }, []);
   const notificationEngine = useNotificationEngine({
     data: safeData,
     setData,
     tab,
     setTab,
+    onOpenRecoverySheet: openRecoverySheet,
     activeReminder,
     enabled: firstRunDone && !dataLoading && !showPlanStep && !activeReminder && !paywallOpen && !hideNavigationChrome,
   });
@@ -255,6 +368,106 @@ export default function App() {
     (typeof safeData?.ui?.selectedDateKey === "string" && safeData.ui.selectedDateKey) ||
     (typeof safeData?.ui?.selectedDate === "string" && safeData.ui.selectedDate) ||
     todayLocalKey();
+
+  const recoverySheetContext = useMemo(() => {
+    const request = recoverySheetState.request;
+    if (!request) return null;
+    const currentData = data && typeof data === "object" ? data : {};
+    return buildRecoveryContext({
+      state: currentData,
+      occurrenceId: request.occurrenceId,
+      context: request.context,
+      selectedDateKey: request.selectedDateKey || resolvedSessionDateKey,
+      now: new Date(request.openedAtMs || Date.now()),
+      source: request.source,
+    });
+  }, [data, recoverySheetState.request, resolvedSessionDateKey]);
+
+  useEffect(() => {
+    const request = queuedSessionRecoveryRequest;
+    if (!request) return;
+    const currentData = data && typeof data === "object" ? data : {};
+    if (!hasCommittedSessionRecoveryOutcome(currentData, request)) return;
+
+    const model = buildRecoveryContext({
+      state: currentData,
+      occurrenceId: request.occurrenceId,
+      context: request.context,
+      selectedDateKey: request.selectedDateKey || resolvedSessionDateKey,
+      now: new Date(request.queuedAtMs || Date.now()),
+      source: request.source,
+    });
+
+    setQueuedSessionRecoveryRequest(null);
+    if (!model.ok || !model.options.length) return;
+
+    setRecoverySheetState({
+      request: {
+        occurrenceId: model.request.occurrenceId,
+        context: model.request.context,
+        selectedDateKey: model.request.selectedDateKey || request.selectedDateKey || resolvedSessionDateKey,
+        source: request.source,
+        originTab: "today",
+        successTab: "today",
+        openedAtMs: Date.now(),
+      },
+      pending: false,
+      result: null,
+      error: null,
+    });
+    setTab("today");
+  }, [data, queuedSessionRecoveryRequest, resolvedSessionDateKey, setTab]);
+
+  const commitRecoveryOption = useCallback(
+    (option) => {
+      const request = recoverySheetState.request;
+      if (!request?.occurrenceId || !option || recoverySheetState.pending) return;
+      setRecoverySheetState((previous) => ({
+        ...previous,
+        pending: true,
+        result: null,
+        error: null,
+      }));
+
+      const currentData = dataRef.current && typeof dataRef.current === "object" ? dataRef.current : {};
+      const result = commitRecoveryOptionState({
+        state: currentData,
+        occurrenceId: request.occurrenceId,
+        option,
+        now: new Date(),
+        setData,
+      });
+
+      setRecoverySheetState((previous) => ({
+        ...previous,
+        pending: false,
+        result: result.ok ? result : null,
+        error: result.ok ? null : result,
+      }));
+    },
+    [recoverySheetState.pending, recoverySheetState.request, setData]
+  );
+
+  const openRecoveryCoach = useCallback(
+    () => {
+      closeRecoverySheet();
+      setCoachState({
+        mode: "free",
+        conversationId: null,
+        prefill: "Aide-moi à récupérer ce bloc sans appliquer automatiquement de changement.",
+      });
+      setTab("coach");
+    },
+    [closeRecoverySheet, setTab]
+  );
+
+  const openRecoveryPlanningDetail = useCallback(
+    () => {
+      closeRecoverySheet();
+      setTab("timeline");
+    },
+    [closeRecoverySheet, setTab]
+  );
 
   const openSessionSurface = useCallback(
     ({ sourceSurface = "unknown", categoryId = null, dateKey = null, occurrenceId = null } = {}) => {
@@ -939,6 +1152,7 @@ export default function App() {
               occurrenceId,
             })
           }
+          onOpenRecoverySheet={openRecoverySheet}
           notificationCenter={{
             unreadCount: notificationEngine.unreadCount,
             onOpen: () => {
@@ -957,6 +1171,7 @@ export default function App() {
           data={data}
           setData={setData}
           setTab={setTab}
+          onOpenRecoverySheet={openRecoverySheet}
           onOpenSession={({ categoryId, dateKey, occurrenceId }) =>
             openSessionSurface({
               sourceSurface: "timeline",
@@ -1023,7 +1238,12 @@ export default function App() {
           }}
         />
       ) : tab === "adjust" ? (
-        <Adjust data={data} setData={setData} onAdjustAction={handleAdjustAction} />
+        <Adjust
+          data={data}
+          setData={setData}
+          onAdjustAction={handleAdjustAction}
+          onOpenRecoverySheet={openRecoverySheet}
+        />
       ) : tab === "objectives" ? (
         <Objectives
           data={data}
@@ -1110,6 +1330,7 @@ export default function App() {
           dateKey={resolvedSessionDateKey}
           occurrenceId={sessionOccurrenceId}
           setTab={setTab}
+          onQueueRecoveryAfterSessionCommit={queueRecoveryAfterSessionCommit}
           onOpenLibrary={() => setTab("objectives")}
           onOpenPaywall={openPaywall}
           ensureResolvedEntitlement={ensureResolved}
@@ -1291,6 +1512,21 @@ export default function App() {
           notificationEngine.clickNotificationCenterItem(item);
           setNotificationCenterOpen(false);
         }}
+      />
+      <UnifiedRecoverySheet
+        open={Boolean(recoverySheetState.request)}
+        recoveryContext={recoverySheetContext || recoverySheetState.request?.context || null}
+        problem={recoverySheetContext?.problem || null}
+        options={recoverySheetContext?.options || []}
+        pending={recoverySheetState.pending}
+        result={recoverySheetState.result}
+        error={recoverySheetState.error}
+        onClose={closeRecoverySheet}
+        onSelectOption={commitRecoveryOption}
+        onConfirmOption={commitRecoveryOption}
+        onOpenCoach={openRecoveryCoach}
+        onOpenPlanning={openRecoveryPlanningDetail}
+        successCtaLabel={getRecoverySuccessCtaLabel(recoverySheetState.request?.successTab)}
       />
       {showBottomRail ? (
         <BottomNavigation

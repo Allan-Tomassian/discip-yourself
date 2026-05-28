@@ -65,12 +65,14 @@ describe("timeline display model", () => {
   it("labels and tones execution statuses honestly", () => {
     expect(getTimelineStatusLabel(EXECUTION_SURFACE_STATUS.ACTIVE)).toBe("En cours");
     expect(getTimelineStatusLabel(EXECUTION_SURFACE_STATUS.MISSED)).toBe("Manquée");
+    expect(getTimelineStatusLabel("late")).toBe("En retard");
     expect(getTimelineStatusLabel(EXECUTION_SURFACE_STATUS.POSTPONED)).toBe("Reportée");
     expect(getTimelineStatusLabel(EXECUTION_SURFACE_STATUS.BLOCKED)).toBe("Bloquée");
     expect(getTimelineStatusLabel(EXECUTION_SURFACE_STATUS.REPORTED)).toBe("Signalée");
 
     expect(resolveTimelineTone(EXECUTION_SURFACE_STATUS.DONE)).toBe("execution");
     expect(resolveTimelineTone(EXECUTION_SURFACE_STATUS.ACTIVE)).toBe("execution");
+    expect(resolveTimelineTone("late")).toBe("attention");
     expect(resolveTimelineTone(EXECUTION_SURFACE_STATUS.BLOCKED)).toBe("attention");
     expect(resolveTimelineTone(EXECUTION_SURFACE_STATUS.REPORTED)).toBe("attention");
     expect(resolveTimelineTone(EXECUTION_SURFACE_STATUS.POSTPONED)).toBe("attention");
@@ -108,12 +110,43 @@ describe("timeline display model", () => {
     expect(reported).toBe(EXECUTION_SURFACE_STATUS.REPORTED);
   });
 
+  it("derives late planning status for overdue planned occurrences", () => {
+    expect(
+      resolveTimelineExecutionStatus({
+        occurrence: {
+          id: "occ_late",
+          date: "2026-05-28",
+          status: "planned",
+          start: "09:00",
+          durationMinutes: 30,
+        },
+        dateKey: "2026-05-28",
+        now: new Date("2026-05-28T12:00:00"),
+      })
+    ).toBe("late");
+
+    expect(
+      resolveTimelineExecutionStatus({
+        occurrence: {
+          id: "occ_ready",
+          date: "2026-05-28",
+          status: "planned",
+          start: "15:00",
+          durationMinutes: 30,
+        },
+        dateKey: "2026-05-28",
+        now: new Date("2026-05-28T12:00:00"),
+      })
+    ).toBe(EXECUTION_SURFACE_STATUS.PLANNED);
+  });
+
   it("keeps next focus on executable or recovery statuses only", () => {
     expect(isTimelineNextFocusCandidate(EXECUTION_SURFACE_STATUS.PLANNED)).toBe(true);
     expect(isTimelineNextFocusCandidate(EXECUTION_SURFACE_STATUS.BLOCKED)).toBe(true);
     expect(isTimelineNextFocusCandidate(EXECUTION_SURFACE_STATUS.REPORTED)).toBe(true);
     expect(isTimelineNextFocusCandidate(EXECUTION_SURFACE_STATUS.DONE)).toBe(false);
     expect(isTimelineNextFocusCandidate(EXECUTION_SURFACE_STATUS.MISSED)).toBe(false);
+    expect(isTimelineNextFocusCandidate("late")).toBe(false);
     expect(isTimelineNextFocusCandidate(EXECUTION_SURFACE_STATUS.POSTPONED)).toBe(false);
   });
 });

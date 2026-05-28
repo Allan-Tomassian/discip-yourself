@@ -29,6 +29,7 @@ import {
   resolvePreferredVisibleCategoryId,
   withExecutionActiveCategoryId,
 } from "../domain/categoryVisibility";
+import { resolveHomePrimaryRecoveryRequest } from "../features/recovery/recoveryEntryPoints";
 
 const TODAY_EXECUTION_GREEN = "#35f06d";
 
@@ -52,6 +53,7 @@ export default function Home({
   onOpenAdjust,
   onOpenPlanning,
   onOpenSession,
+  onOpenRecoverySheet,
   notificationCenter = null,
 }) {
   const safeData = useMemo(() => (data && typeof data === "object" ? data : {}), [data]);
@@ -383,6 +385,16 @@ export default function Home({
       });
       return;
     }
+    const recoveryRequest = resolveHomePrimaryRecoveryRequest(action);
+    if (recoveryRequest && typeof onOpenRecoverySheet === "function") {
+      const opened = onOpenRecoverySheet({
+        ...recoveryRequest,
+        selectedDateKey,
+      });
+      if (opened) return;
+      openPlanningForToday();
+      return;
+    }
     if (action.occurrenceId) {
       const occurrence = occurrences.find((item) => item?.id === action.occurrenceId) || null;
       if (occurrence) {
@@ -403,6 +415,8 @@ export default function Home({
     handleStartSession,
     occurrences,
     onOpenSession,
+    onOpenRecoverySheet,
+    openPlanningForToday,
     openCoachPlan,
     selectedDateKey,
     todayData.primaryAction,

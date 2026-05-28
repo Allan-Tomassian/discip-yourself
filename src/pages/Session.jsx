@@ -6,14 +6,11 @@ import SessionLaunchView from "../components/session/SessionLaunchView";
 import SessionToolResultSheet from "../components/session/SessionToolResultSheet";
 import SessionToolsSheet from "../components/session/SessionToolsSheet";
 import SessionToolTray from "../components/session/SessionToolTray";
-import { addDaysLocal, minutesToTimeStr, normalizeLocalDateKey, parseTimeToMinutes, todayLocalKey } from "../utils/datetime";
+import { normalizeLocalDateKey, todayLocalKey } from "../utils/datetime";
 import { resolveExecutableOccurrence } from "../logic/sessionResolver";
-import { updateOccurrence } from "../logic/occurrences";
 import { applySessionRuntimeTransition, isRuntimeSessionOpen } from "../logic/sessionRuntime";
 import { emitSessionRuntimeNotificationHook } from "../logic/sessionRuntimeNotifications";
-import { resolveConflictNearest } from "../logic/occurrencePlanner";
 import { normalizeActiveSessionForUI, normalizeOccurrenceForUI } from "../logic/compat";
-import { withExecutionActiveCategoryId } from "../domain/categoryVisibility";
 import { computeStreakDays } from "../logic/habits";
 import { useBehaviorFeedback } from "../feedback/behaviorFeedbackStore";
 import { deriveBehaviorFeedbackSignal, deriveSessionBehaviorCue } from "../feedback/feedbackDerivers";
@@ -88,6 +85,8 @@ import {
   shouldAttemptSessionGuidanceBackend,
 } from "../features/session/sessionGuidanceBoundary";
 import { requestAiSessionGuidance } from "../infra/aiSessionGuidanceClient";
+import { RECOVERY_CONTEXT } from "../features/recovery/recoveryTypes";
+import { SESSION_RECOVERY_SOURCE } from "../features/recovery/sessionRecoveryQueue";
 import { saveState } from "../utils/storage";
 import "../features/session/session.css";
 import "../features/session/session-guided.css";
@@ -106,12 +105,6 @@ function readOccurrenceIdFromPath() {
   if (typeof window === "undefined") return null;
   const match = window.location.pathname.match(/^\/session\/([^/]+)/);
   return match?.[1] ? decodeURIComponent(match[1]) : null;
-}
-
-function roundUpToQuarterHour(base = new Date()) {
-  const totalMinutes = base.getHours() * 60 + base.getMinutes();
-  const rounded = Math.ceil((totalMinutes + 1) / 15) * 15;
-  return minutesToTimeStr(Math.min(Math.max(rounded, 5 * 60), 22 * 60));
 }
 
 function resolveFinalViewState(session) {
@@ -345,6 +338,7 @@ export default function Session({
   occurrenceId,
   categoryId,
   setTab,
+  onQueueRecoveryAfterSessionCommit,
   onOpenPaywall,
   ensureResolvedEntitlement,
   entitlementAccess = null,
@@ -379,7 +373,6 @@ export default function Session({
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackLevel, setFeedbackLevel] = useState("");
   const [feedbackText, setFeedbackText] = useState("");
-  const [reportMode, setReportMode] = useState(false);
   const [preparationTimerId, setPreparationTimerId] = useState(0);
   const [adjustSheetMode, setAdjustSheetMode] = useState("");
   const [adjustCause, setAdjustCause] = useState("");
@@ -554,7 +547,6 @@ export default function Session({
 
   useEffect(() => {
     if (!session || isRuntimeSessionOpen(session)) return;
-    setReportMode(false);
     setShowFeedback(false);
   }, [session]);
 
@@ -2327,6 +2319,12 @@ export default function Session({
 
   const blockSession = () => {
     if (!session?.occurrenceId || typeof setData !== "function") return;
+    const recoveryRequest = {
+      occurrenceId: session.occurrenceId,
+      context: RECOVERY_CONTEXT.BLOCKED,
+      source: SESSION_RECOVERY_SOURCE.BLOCK,
+      selectedDateKey: selectedOccurrence?.date || effectiveDateKey,
+    };
     setData((prev) =>
       applySessionRuntimeTransition(prev, {
         type: "block",
@@ -2335,6 +2333,7 @@ export default function Session({
         durationSec: elapsedSec,
       })
     );
+    onQueueRecoveryAfterSessionCommit?.(recoveryRequest);
     emitSessionRuntimeNotificationHook("cancel", {
       occurrenceId: session.occurrenceId,
       dateKey: selectedOccurrence?.date || effectiveDateKey,
@@ -2343,90 +2342,24 @@ export default function Session({
     });
   };
 
-  const openPlanningForReschedule = () => {
-    if (!selectedOccurrence?.id || typeof setData !== "function") return;
-    const targetDateKey = normalizeLocalDateKey(selectedOccurrence?.date) || todayLocalKey();
-    const targetCategoryId = category?.id || null;
-    setData((prev) => {
-      const reported = session?.occurrenceId
-        ? applySessionRuntimeTransition(prev, {
-            type: "report",
-            occurrenceId: session.occurrenceId,
-            dateKey: selectedOccurrence?.date || effectiveDateKey,
-            durationSec: elapsedSec,
-          })
-        : prev;
-      return {
-        ...reported,
-        ui: withExecutionActiveCategoryId(
-          {
-            ...(reported?.ui || {}),
-            selectedDateKey: targetDateKey,
-            selectedDate: targetDateKey,
-            planningPendingOccurrenceId: selectedOccurrence.id,
-            planningPendingIntent: "reschedule",
-          },
-          targetCategoryId
-        ),
-      };
-    });
-    setReportMode(false);
-    emitBehaviorFeedback(
-      deriveBehaviorFeedbackSignal({
-        intent: "reschedule_action",
-        payload: {
-          surface: "session",
-          categoryId: targetCategoryId,
-        },
+  const reportSession = () => {
+    if (!session?.occurrenceId || typeof setData !== "function") return;
+    const recoveryRequest = {
+      occurrenceId: session.occurrenceId,
+      context: RECOVERY_CONTEXT.REPORTED,
+      source: SESSION_RECOVERY_SOURCE.REPORT,
+      selectedDateKey: selectedOccurrence?.date || effectiveDateKey,
+    };
+    setData((prev) =>
+      applySessionRuntimeTransition(prev, {
+        type: "report",
+        occurrenceId: session.occurrenceId,
+        dateKey: selectedOccurrence?.date || effectiveDateKey,
+        durationSec: elapsedSec,
+        occurrenceStatus: "planned",
       })
     );
-    setTab?.("timeline");
-  };
-
-  const applyQuickReport = (target) => {
-    if (!selectedOccurrence?.id || typeof setData !== "function") return;
-    if (target === "planning") {
-      openPlanningForReschedule();
-      return;
-    }
-    const nextDateKey = target === "tomorrow" ? addDaysLocal(todayLocalKey(), 1) : todayLocalKey();
-    const preferredStart =
-      target === "later_today"
-        ? roundUpToQuarterHour(new Date())
-        : selectedOccurrence?.start || minutesToTimeStr(Math.max(parseTimeToMinutes(selectedOccurrence?.start || "09:00") || 540, 540));
-    const resolved = resolveConflictNearest(
-      occurrences.filter((occurrenceItem) => occurrenceItem?.id !== selectedOccurrence.id),
-      nextDateKey,
-      preferredStart,
-      plannedMinutes || 30,
-      []
-    );
-    if (resolved?.conflict) {
-      openPlanningForReschedule();
-      return;
-    }
-    setData((prev) => {
-      const nextOccurrences = updateOccurrence(
-        selectedOccurrence.id,
-        {
-          date: nextDateKey,
-          start: resolved.start,
-          slotKey: resolved.start,
-          status: "planned",
-        },
-        prev
-      );
-      const next = { ...prev, occurrences: nextOccurrences };
-      return session?.occurrenceId
-        ? applySessionRuntimeTransition(next, {
-            type: "report",
-            occurrenceId: session.occurrenceId,
-            dateKey: selectedOccurrence?.date || effectiveDateKey,
-            durationSec: elapsedSec,
-          })
-        : next;
-    });
-    setReportMode(false);
+    onQueueRecoveryAfterSessionCommit?.(recoveryRequest);
     emitBehaviorFeedback(
       deriveBehaviorFeedbackSignal({
         intent: "reschedule_action",
@@ -2528,7 +2461,7 @@ export default function Session({
             onPause={pauseTimer}
             onComplete={() => setShowFeedback(true)}
             onBlock={blockSession}
-            onOpenReport={() => setReportMode((current) => !current)}
+            onOpenReport={reportSession}
             onOpenAdjust={canAdjustGuided ? openGuidedAdjust : openStandardAdjust}
             onOpenTools={openGuidedTools}
             onRegenerateGuided={handleRegenerateGuided}
@@ -2559,8 +2492,8 @@ export default function Session({
             onFeedbackLevelChange={setFeedbackLevel}
             onFeedbackTextChange={setFeedbackText}
             onFeedbackSubmit={endSession}
-            reportMode={reportMode}
-            onChooseReport={applyQuickReport}
+            reportMode={false}
+            onChooseReport={null}
             onReturnToday={() => setTab?.("home")}
           />
         )}

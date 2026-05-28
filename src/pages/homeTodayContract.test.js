@@ -76,6 +76,9 @@ describe("home today cockpit contract", () => {
     expect(home).toContain("const runPrimaryCockpitAction = useCallback(() => {");
     expect(home).toContain("const action = todayData.primaryAction || {};");
     expect(home).toContain('action.status === "in_progress"');
+    expect(home).toContain("resolveHomePrimaryRecoveryRequest(action)");
+    expect(home).toContain("onOpenRecoverySheet({");
+    expect(home).toContain("if (opened) return;");
     expect(home).toContain("handleStartSession(occurrence)");
     expect(home).toContain('todayData.state === "empty_day"');
     expect(home).toContain("openCoachPlan(");
@@ -85,6 +88,21 @@ describe("home today cockpit contract", () => {
     expect(home).toContain("openCoachInsight");
     expect(home).not.toContain("handleTodayHeroAction(todayShellModel.hero.primaryAction)");
     expect(home).not.toContain("canHandleTodayHeroAction(todayShellModel.hero.primaryAction)");
+  });
+
+  it("opens the recovery sheet before normal session launch for recoverable primary states", () => {
+    const home = readSrc("pages/Home.jsx");
+
+    const activeSessionBranch = home.indexOf('action.status === "in_progress"');
+    const recoveryBranch = home.indexOf("resolveHomePrimaryRecoveryRequest(action)");
+    const normalLaunchBranch = home.indexOf("handleStartSession(occurrence)");
+    const emptyFallbackBranch = home.indexOf('todayData.state === "empty_day"');
+
+    expect(activeSessionBranch).toBeGreaterThan(-1);
+    expect(recoveryBranch).toBeGreaterThan(activeSessionBranch);
+    expect(normalLaunchBranch).toBeGreaterThan(recoveryBranch);
+    expect(emptyFallbackBranch).toBeGreaterThan(normalLaunchBranch);
+    expect(home).toContain("openPlanningForToday();\n      return;");
   });
 
   it("preserves session and planning safeguards used by the cockpit", () => {

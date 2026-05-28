@@ -7,6 +7,31 @@ import {
 
 const iPhone13 = devices["iPhone 13"];
 
+function currentReadyStartTime() {
+  const now = new Date();
+  const minutes = Math.max(0, (now.getHours() * 60) + now.getMinutes() - 5);
+  const hh = String(Math.floor(minutes / 60)).padStart(2, "0");
+  const mm = String(minutes % 60).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
+function makeTodayBlockReady(state) {
+  const start = currentReadyStartTime();
+  const action = state.goals.find((goal) => goal.id === "goal_action");
+  if (action) {
+    action.startTime = start;
+    action.timeSlots = [start];
+    action.durationMinutes = 60;
+    action.sessionMinutes = 60;
+  }
+  const occurrence = state.occurrences.find((entry) => entry.id === "occ_today");
+  if (occurrence) {
+    occurrence.start = start;
+    occurrence.slotKey = start;
+    occurrence.durationMinutes = 60;
+  }
+}
+
 test.use({
   viewport: iPhone13.viewport,
   userAgent: iPhone13.userAgent,
@@ -17,6 +42,7 @@ test.use({
 
 test("daily execution: Today → Session → finish → feedback → surfaces update", async ({ page }) => {
   const state = buildCanonicalExecutionState();
+  makeTodayBlockReady(state);
   await seedCurrentUser(page, state);
 
   await page.goto("/");

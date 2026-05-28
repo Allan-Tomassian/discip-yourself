@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { getVisibleCategories } from "../domain/categoryVisibility";
 import { resolveGoalType } from "../domain/goalType";
+import { resolvePlanningEntryRecoveryRequest } from "../features/recovery/recoveryEntryPoints";
 import { getOpenRuntimeSession, resolveRuntimeSessionGate } from "../logic/sessionRuntime";
 import {
   AppDateField,
@@ -195,7 +196,7 @@ function CalendarIcon() {
   );
 }
 
-export default function Timeline({ data, setData, setTab, onEditItem, onOpenSession }) {
+export default function Timeline({ data, setData, setTab, onEditItem, onOpenSession, onOpenRecoverySheet }) {
   const safeData = data && typeof data === "object" ? data : {};
   const [expandedEntryId, setExpandedEntryId] = useState("");
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -225,9 +226,9 @@ export default function Timeline({ data, setData, setTab, onEditItem, onOpenSess
     () => (Array.isArray(safeData.sessionHistory) ? safeData.sessionHistory : []),
     [safeData.sessionHistory]
   );
-
   const occurrenceEntries = useMemo(() => {
     const rawOccurrences = Array.isArray(safeData.occurrences) ? safeData.occurrences : [];
+    const statusNow = new Date();
     const mapped = rawOccurrences
       .filter((occurrence) => occurrence && occurrence.status !== "canceled" && occurrence.status !== "skipped")
       .map((occurrence) => {
@@ -250,6 +251,7 @@ export default function Timeline({ data, setData, setTab, onEditItem, onOpenSess
             activeOccurrenceId,
             sessionHistory,
             dateKey: occurrence.date,
+            now: statusNow,
           }),
           occurrence,
           goal,
@@ -550,6 +552,12 @@ export default function Timeline({ data, setData, setTab, onEditItem, onOpenSess
               const tone = resolveTimelineTone(entry.status, { isCurrent, isSelectedDay });
               const expanded = entry.id === expandedEntryId;
               const targetOccurrence = entry.targetOccurrence || null;
+              const recoveryRequest = resolvePlanningEntryRecoveryRequest({
+                entry,
+                state: safeData,
+                selectedDateKey,
+                now: new Date(),
+              });
               const previousEntry = displayEntries[index - 1] || null;
               const showDateSeparator = !previousEntry || previousEntry.dateKey !== entry.dateKey;
               return (
@@ -671,20 +679,30 @@ export default function Timeline({ data, setData, setTab, onEditItem, onOpenSess
                               {TIMELINE_SCREEN_COPY.inlineEditObjective}
                             </CommandCTA>
                           ) : null}
-                          <CommandCTA
-                            type="button"
-                            className="lovableTimelineAction lovableTimelineAction--primary"
-                            disabled={!targetOccurrence?.id || !isTimelineNextFocusCandidate(entry.status)}
-                            onClick={() =>
-                              targetOccurrence?.id && isTimelineNextFocusCandidate(entry.status)
-                                ? openSessionForOccurrence(targetOccurrence, entry.category?.id || null)
-                                : undefined
-                            }
-                          >
-                            {activeOccurrenceId && targetOccurrence?.id === activeOccurrenceId
-                              ? TIMELINE_SCREEN_COPY.inlineResumeSession
-                              : TIMELINE_SCREEN_COPY.inlineStartSession}
-                          </CommandCTA>
+                          {recoveryRequest ? (
+                            <CommandCTA
+                              type="button"
+                              className="lovableTimelineAction lovableTimelineAction--primary"
+                              onClick={() => onOpenRecoverySheet?.(recoveryRequest)}
+                            >
+                              Réparer
+                            </CommandCTA>
+                          ) : (
+                            <CommandCTA
+                              type="button"
+                              className="lovableTimelineAction lovableTimelineAction--primary"
+                              disabled={!targetOccurrence?.id || !isTimelineNextFocusCandidate(entry.status)}
+                              onClick={() =>
+                                targetOccurrence?.id && isTimelineNextFocusCandidate(entry.status)
+                                  ? openSessionForOccurrence(targetOccurrence, entry.category?.id || null)
+                                  : undefined
+                              }
+                            >
+                              {activeOccurrenceId && targetOccurrence?.id === activeOccurrenceId
+                                ? TIMELINE_SCREEN_COPY.inlineResumeSession
+                                : TIMELINE_SCREEN_COPY.inlineStartSession}
+                            </CommandCTA>
+                          )}
                         </div>
                         </div>
                       ) : null}

@@ -223,7 +223,7 @@ function ApplyingView() {
   );
 }
 
-function SuccessView({ summary, onClose }) {
+function SuccessView({ summary, onClose, ctaLabel = "Retour à Home" }) {
   return (
     <>
       <main className="unifiedRecoverySheet__body" role="status" aria-live="polite">
@@ -243,7 +243,7 @@ function SuccessView({ summary, onClose }) {
           className="unifiedRecoverySheet__footerButton unifiedRecoverySheet__footerButton--primary"
           onClick={() => onClose?.()}
         >
-          Retour à Home
+          {ctaLabel}
         </button>
       </footer>
     </>
@@ -286,6 +286,7 @@ export function RecoverySheetContent({
   onConfirmOption,
   onOpenCoach,
   onOpenPlanning,
+  successCtaLabel = "Retour à Home",
   onRequestConfirmation,
   onCancelConfirmation,
 }) {
@@ -314,7 +315,7 @@ export function RecoverySheetContent({
   }
 
   if (viewModel.state === RECOVERY_SHEET_STATE.SUCCESS) {
-    return <SuccessView summary={viewModel.summary} onClose={onClose} />;
+    return <SuccessView summary={viewModel.summary} onClose={onClose} ctaLabel={successCtaLabel} />;
   }
 
   if (viewModel.state === RECOVERY_SHEET_STATE.ERROR) {
@@ -349,6 +350,7 @@ export default function UnifiedRecoverySheet({
   onConfirmOption,
   onOpenCoach,
   onOpenPlanning,
+  successCtaLabel = "Retour à Home",
 }) {
   const [confirmingOptionId, setConfirmingOptionId] = useState("");
 
@@ -386,6 +388,7 @@ export default function UnifiedRecoverySheet({
         onConfirmOption={onConfirmOption}
         onOpenCoach={onOpenCoach}
         onOpenPlanning={onOpenPlanning}
+        successCtaLabel={successCtaLabel}
         onRequestConfirmation={(option) => setConfirmingOptionId(option?.id || "")}
         onCancelConfirmation={() => setConfirmingOptionId("")}
       />
