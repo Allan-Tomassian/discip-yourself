@@ -392,31 +392,6 @@ function buildSkipOption({ state, occurrence, now }) {
   });
 }
 
-function buildChooseTimeOption(occurrence) {
-  return {
-    id: `${RECOVERY_OPTION_TYPE.CHOOSE_TIME}:${occurrence.id}`,
-    type: RECOVERY_OPTION_TYPE.CHOOSE_TIME,
-    label: "Choisir une heure",
-    description: "Sélectionner un créneau précis avant de déplacer ce bloc.",
-    confirmationRequired: true,
-    destructive: false,
-    disabled: false,
-    reason: RECOVERY_OPTION_REASON.CHOOSE_TIME,
-    occurrenceId: occurrence.id,
-    preview: {
-      occurrenceId: occurrence.id,
-      requiresInput: true,
-      repair: {
-        type: PLANNING_REPAIR_TYPE.CHOOSE_TIME,
-        occurrenceId: occurrence.id,
-        dateKey: normalizeDateKey(occurrence.date),
-        reason: RECOVERY_OPTION_REASON.CHOOSE_TIME,
-      },
-      summary: "Aucun changement sans horaire validé.",
-    },
-  };
-}
-
 function buildCoachOption(occurrence) {
   return {
     id: `${RECOVERY_OPTION_TYPE.OPEN_COACH_FOR_HELP}:${safeString(occurrence?.id) || "unknown"}`,
@@ -490,17 +465,17 @@ function buildOptionsForContext({ state, occurrence, context, now, selectedDateK
   if (context === RECOVERY_CONTEXT.BLOCKED) {
     return compactOptions([
       buildReduceOption({ state, occurrence, now, selectedDateKey }),
-      buildChooseTimeOption(occurrence),
-      buildCoachOption(occurrence),
       buildSkipOption({ state, occurrence, now }),
+      buildCoachOption(occurrence),
+      buildPlanningOption(occurrence),
     ]);
   }
   if (context === RECOVERY_CONTEXT.REPORTED) {
     return compactOptions([
       canUseToday ? buildMoveLaterOption({ state, occurrence, now, selectedDateKey }) : null,
       buildMoveTomorrowOption({ state, occurrence, now }),
-      buildChooseTimeOption(occurrence),
       buildCoachOption(occurrence),
+      buildPlanningOption(occurrence),
     ]);
   }
   if (context === RECOVERY_CONTEXT.POSTPONED) {
@@ -513,8 +488,8 @@ function buildOptionsForContext({ state, occurrence, context, now, selectedDateK
     return compactOptions([
       canUseToday ? buildMoveLaterOption({ state, occurrence, now, selectedDateKey }) : null,
       buildMoveTomorrowOption({ state, occurrence, now }),
-      buildChooseTimeOption(occurrence),
       buildPlanningOption(occurrence),
+      buildCoachOption(occurrence),
     ]);
   }
   return compactOptions([buildPlanningOption(occurrence), buildCoachOption(occurrence)]);

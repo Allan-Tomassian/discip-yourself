@@ -178,9 +178,9 @@ describe("recovery model foundation", () => {
     expect(model.context).toBe(RECOVERY_CONTEXT.BLOCKED);
     expect(optionTypes(model)).toEqual([
       RECOVERY_OPTION_TYPE.REDUCE_DURATION,
-      RECOVERY_OPTION_TYPE.CHOOSE_TIME,
-      RECOVERY_OPTION_TYPE.OPEN_COACH_FOR_HELP,
       RECOVERY_OPTION_TYPE.SKIP_ONCE,
+      RECOVERY_OPTION_TYPE.OPEN_COACH_FOR_HELP,
+      RECOVERY_OPTION_TYPE.OPEN_PLANNING_DETAIL,
     ]);
   });
 
@@ -209,9 +209,73 @@ describe("recovery model foundation", () => {
     expect(optionTypes(model)).toEqual([
       RECOVERY_OPTION_TYPE.MOVE_LATER_TODAY,
       RECOVERY_OPTION_TYPE.MOVE_TOMORROW,
-      RECOVERY_OPTION_TYPE.CHOOSE_TIME,
       RECOVERY_OPTION_TYPE.OPEN_COACH_FOR_HELP,
+      RECOVERY_OPTION_TYPE.OPEN_PLANNING_DETAIL,
     ]);
+  });
+
+  it("does not expose choose_time as an actionable option before a real time picker exists", () => {
+    const blocked = buildRecoveryOptions({
+      state: baseState({
+        sessionHistory: [
+          {
+            id: "hist_blocked",
+            occurrenceId: "occ_source",
+            actionId: "action_focus",
+            dateKey: DATE_KEY,
+            state: "ended",
+            endedReason: "blocked",
+          },
+        ],
+      }),
+      occurrenceId: "occ_source",
+      now: NOW,
+      selectedDateKey: DATE_KEY,
+    });
+    const reported = buildRecoveryOptions({
+      state: baseState({
+        sessionHistory: [
+          {
+            id: "hist_reported",
+            occurrenceId: "occ_source",
+            actionId: "action_focus",
+            dateKey: DATE_KEY,
+            state: "ended",
+            endedReason: "reported",
+          },
+        ],
+      }),
+      occurrenceId: "occ_source",
+      now: NOW,
+      selectedDateKey: DATE_KEY,
+    });
+    const postponed = buildModel(baseState({
+      occurrences: [
+        {
+          ...baseState().occurrences[0],
+          status: "rescheduled",
+          repairV1: {
+            version: 1,
+            type: PLANNING_REPAIR_TYPE.MOVE_LATER_TODAY,
+            sourceOccurrenceId: "occ_source",
+            targetOccurrenceId: "occ_target",
+            protectFromRuleSync: true,
+          },
+        },
+        {
+          ...baseState().occurrences[0],
+          id: "occ_target",
+          start: "10:30",
+          slotKey: "10:30",
+          status: "planned",
+        },
+      ],
+    }), RECOVERY_CONTEXT.POSTPONED);
+
+    for (const model of [blocked, reported, postponed]) {
+      expect(optionTypes(model)).not.toContain(RECOVERY_OPTION_TYPE.CHOOSE_TIME);
+      expect(model.options.some((option) => option.preview?.requiresInput)).toBe(false);
+    }
   });
 
   it("reduce recovery for blocked and reported creates a clean planned target", () => {
@@ -357,9 +421,12 @@ describe("recovery model foundation", () => {
         },
       ],
     });
-    const model = buildModel(state, RECOVERY_CONTEXT.BLOCKED);
-    const chooseTime = optionByType(model, RECOVERY_OPTION_TYPE.CHOOSE_TIME);
-    const result = applyRecoveryOption({ state, occurrenceId: "occ_source", option: chooseTime, now: NOW });
+    const result = applyRecoveryOption({
+      state,
+      occurrenceId: "occ_source",
+      option: { type: "unsupported_recovery" },
+      now: NOW,
+    });
 
     expect(result.ok).toBe(false);
     expect(result.nextState).toBe(state);
@@ -408,6 +475,7 @@ describe("recovery model foundation", () => {
 
     expect(model.occurrence.id).toBe("occ_target");
     expect(optionTypes(model)).toContain(RECOVERY_OPTION_TYPE.MOVE_TOMORROW);
+    expect(optionTypes(model)).not.toContain(RECOVERY_OPTION_TYPE.CHOOSE_TIME);
     expect(optionTypes(withoutTarget)).toEqual([
       RECOVERY_OPTION_TYPE.OPEN_PLANNING_DETAIL,
       RECOVERY_OPTION_TYPE.OPEN_COACH_FOR_HELP,

@@ -336,4 +336,86 @@ describe("recovery entry points", () => {
       ).toBeNull();
     }
   });
+
+  it("resolves Planning blocked, reported, and recoverable postponed entries", () => {
+    const blockedState = buildState({
+      sessionHistory: [
+        {
+          id: "hist_blocked",
+          occurrenceId: "occ_source",
+          dateKey: DATE_KEY,
+          state: "ended",
+          endedReason: "blocked",
+        },
+      ],
+    });
+    const reportedState = buildState({
+      sessionHistory: [
+        {
+          id: "hist_reported",
+          occurrenceId: "occ_source",
+          dateKey: DATE_KEY,
+          state: "ended",
+          endedReason: "reported",
+        },
+      ],
+    });
+    const postponedSource = buildOccurrence({
+      id: "occ_source",
+      status: "rescheduled",
+      repairV1: { targetOccurrenceId: "occ_target" },
+    });
+    const postponedTarget = buildOccurrence({
+      id: "occ_target",
+      start: "13:00",
+      slotKey: "13:00",
+      status: "planned",
+    });
+    const postponedState = buildState({
+      occurrences: [postponedSource, postponedTarget],
+    });
+
+    expect(
+      resolvePlanningEntryRecoveryRequest({
+        entry: {
+          id: "occ_source",
+          status: "blocked",
+          targetOccurrence: blockedState.occurrences[0],
+        },
+        state: blockedState,
+        selectedDateKey: DATE_KEY,
+        now: NOW,
+      })?.context
+    ).toBe(RECOVERY_CONTEXT.BLOCKED);
+
+    expect(
+      resolvePlanningEntryRecoveryRequest({
+        entry: {
+          id: "occ_source",
+          status: "reported",
+          targetOccurrence: reportedState.occurrences[0],
+        },
+        state: reportedState,
+        selectedDateKey: DATE_KEY,
+        now: NOW,
+      })?.context
+    ).toBe(RECOVERY_CONTEXT.REPORTED);
+
+    expect(
+      resolvePlanningEntryRecoveryRequest({
+        entry: {
+          id: "occ_source",
+          status: "postponed",
+          targetOccurrence: postponedSource,
+        },
+        state: postponedState,
+        selectedDateKey: DATE_KEY,
+        now: NOW,
+      })
+    ).toMatchObject({
+      occurrenceId: "occ_source",
+      context: RECOVERY_CONTEXT.POSTPONED,
+      source: "planning",
+    });
+  });
 });

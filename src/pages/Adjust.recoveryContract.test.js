@@ -1,12 +1,56 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import Adjust from "./Adjust";
 
 const SRC_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 function readSrc(relPath) {
   return fs.readFileSync(path.join(SRC_ROOT, relPath), "utf8");
+}
+
+const DATE_KEY = "2026-05-28";
+
+function adjustData(overrides = {}) {
+  return {
+    categories: [{ id: "cat_work", name: "Travail" }],
+    goals: [
+      {
+        id: "outcome_main",
+        type: "OUTCOME",
+        title: "Système",
+        categoryId: "cat_work",
+      },
+      {
+        id: "action_focus",
+        type: "PROCESS",
+        planType: "ACTION",
+        title: "Bloc profond",
+        categoryId: "cat_work",
+        parentId: "outcome_main",
+        outcomeId: "outcome_main",
+      },
+    ],
+    occurrences: [
+      {
+        id: "occ_missed",
+        goalId: "action_focus",
+        categoryId: "cat_work",
+        outcomeId: "outcome_main",
+        date: DATE_KEY,
+        start: "09:00",
+        slotKey: "09:00",
+        durationMinutes: 30,
+        status: "missed",
+      },
+    ],
+    sessionHistory: [],
+    ui: { selectedDateKey: DATE_KEY },
+    ...overrides,
+  };
 }
 
 describe("Adjust recovery integration contract", () => {
@@ -34,5 +78,24 @@ describe("Adjust recovery integration contract", () => {
     expect(adjust).toContain("<SystemAnalysisCommandSheet");
     expect(adjust).toContain("quickActions.map((action) => (");
     expect(adjust).toContain("onAction={onAdjustAction}");
+  });
+
+  it("renders Réparer ce bloc for a concrete recoverable Ajuster recommendation", () => {
+    const html = renderToStaticMarkup(React.createElement(Adjust, { data: adjustData() }));
+
+    expect(html).toContain("Réparer ce bloc");
+    expect(html).toContain("Aucune modification n’est appliquée sans passer par l’action choisie.");
+  });
+
+  it("keeps the normal Ajuster CTA when no concrete occurrence can be repaired", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(Adjust, {
+        data: adjustData({
+          occurrences: [],
+        }),
+      })
+    );
+
+    expect(html).not.toContain("Réparer ce bloc");
   });
 });
