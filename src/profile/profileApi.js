@@ -33,6 +33,36 @@ export function buildLocalProfileKey(userId) {
   return `${LOCAL_PROFILE_PREFIX}${String(userId || "")}`;
 }
 
+export function clearUserScopedProfile(userId) {
+  if (typeof window === "undefined") return false;
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedUserId) return false;
+  window.localStorage.removeItem(buildLocalProfileKey(normalizedUserId));
+  const map = readLocalUsernameMap();
+  let changed = false;
+  Object.entries(map).forEach(([username, ownerId]) => {
+    if (String(ownerId || "").trim() !== normalizedUserId) return;
+    delete map[username];
+    changed = true;
+  });
+  if (changed) writeLocalUsernameMap(map);
+  return true;
+}
+
+export function clearAllUserScopedProfiles() {
+  if (typeof window === "undefined") return [];
+  const removed = [];
+  for (let index = window.localStorage.length - 1; index >= 0; index -= 1) {
+    const key = window.localStorage.key(index);
+    if (typeof key !== "string" || !key.startsWith(LOCAL_PROFILE_PREFIX)) continue;
+    window.localStorage.removeItem(key);
+    removed.push(key);
+  }
+  window.localStorage.removeItem(LOCAL_PROFILE_USERNAME_MAP_KEY);
+  removed.push(LOCAL_PROFILE_USERNAME_MAP_KEY);
+  return removed;
+}
+
 function getProfileId(value) {
   return String(value?.id || "").trim();
 }

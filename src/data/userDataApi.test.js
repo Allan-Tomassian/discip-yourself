@@ -1,9 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { E2E_AUTH_SESSION_KEY } from "../auth/constants";
+import { LS_KEY } from "../utils/storage";
 
 function createLocalStorageMock() {
   const store = new Map();
   return {
+    get length() {
+      return store.size;
+    },
+    key(index) {
+      return Array.from(store.keys())[index] || null;
+    },
     getItem(key) {
       return store.has(key) ? store.get(key) : null;
     },
@@ -15,6 +22,9 @@ function createLocalStorageMock() {
     },
     clear() {
       store.clear();
+    },
+    has(key) {
+      return store.has(key);
     },
   };
 }
@@ -334,6 +344,64 @@ describe("userDataApi remote sync boundary", () => {
     expect(upsertCalls[0].data.ui.sessionPremiumPrepareCacheV1).toBeUndefined();
     expect(upsertCalls[0].data.ui.activeSession.occurrenceId).toBe("occ-guided");
     expect(JSON.parse(window.localStorage.getItem(buildLocalUserDataKey(userId)) || "null")).toEqual(payload);
+  });
+
+  it("does not import the global anonymous state into an empty authenticated account", async () => {
+    const userId = "account-b";
+    const accountAState = {
+      profile: { whyText: "Account A" },
+      goals: [{ id: "goal-a", title: "A", type: "OUTCOME" }],
+      ui: {
+        onboardingCompleted: true,
+        firstRunV1: { status: "done", commitV1: { status: "applied" } },
+      },
+    };
+    const { loadUserDataWithMeta } = await importUserDataApi();
+
+    remotePayload = {};
+    window.localStorage.setItem(LS_KEY, JSON.stringify(accountAState));
+
+    const readResult = await loadUserDataWithMeta(userId);
+
+    expect(readResult.storageScope).toBe("cloud");
+    expect(readResult.data.profile?.whyText).not.toBe("Account A");
+    expect(readResult.data.goals).toBeUndefined();
+    expect(upsertCalls).toHaveLength(0);
+  });
+
+  it("does not graft a global active session into another user's remote data", async () => {
+    const userId = "account-b";
+    const remoteState = {
+      profile: { whyText: "Account B" },
+      ui: {
+        activeSession: null,
+        onboardingCompleted: false,
+      },
+    };
+    const globalState = buildGuidedPayload({
+      id: "sess-account-a",
+      occurrenceId: "occ-account-a",
+    });
+    const { loadUserDataWithMeta, sanitizeUserDataForCloudSync } = await importUserDataApi();
+
+    remotePayload = sanitizeUserDataForCloudSync(remoteState);
+    window.localStorage.setItem(LS_KEY, JSON.stringify(globalState));
+
+    const readResult = await loadUserDataWithMeta(userId);
+
+    expect(readResult.data.profile.whyText).toBe("Account B");
+    expect(readResult.data.ui.activeSession).toBeNull();
+  });
+
+  it("clears only the requested user-scoped local data cache", async () => {
+    const { buildLocalUserDataKey, clearUserScopedLocalData, loadUserScopedLocalData } = await importUserDataApi();
+    window.localStorage.setItem(buildLocalUserDataKey("account-a"), JSON.stringify({ profile: { whyText: "A" } }));
+    window.localStorage.setItem(buildLocalUserDataKey("account-b"), JSON.stringify({ profile: { whyText: "B" } }));
+
+    expect(clearUserScopedLocalData("account-a")).toBe(true);
+
+    expect(loadUserScopedLocalData("account-a")).toEqual({});
+    expect(loadUserScopedLocalData("account-b")).toEqual({ profile: { whyText: "B" } });
   });
 
   it("rehydrates a compatible guided snapshot from the local cache after a cloud load", async () => {

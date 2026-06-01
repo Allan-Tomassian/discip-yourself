@@ -1,5 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "../infra/supabaseClient";
+import { clearUserScopedLocalData } from "../data/userDataApi";
+import { clearJournalStorageForUser } from "../pages/journalStorageModel";
+import { clearUserScopedProfile } from "../profile/profileApi";
+import { clearState } from "../utils/storage";
 import AuthContext from "./AuthContext";
 import { E2E_AUTH_SESSION_KEY } from "./constants";
 import {
@@ -213,6 +217,7 @@ export default function AuthProvider({ children }) {
   }, []);
 
   const signOut = useCallback(async () => {
+    const signedOutUserId = user?.id || session?.user?.id || "";
     if (typeof window !== "undefined" && import.meta.env.DEV) {
       window.localStorage.removeItem(E2E_AUTH_SESSION_KEY);
     }
@@ -222,9 +227,13 @@ export default function AuthProvider({ children }) {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
     }
+    clearState();
+    clearUserScopedLocalData(signedOutUserId);
+    clearUserScopedProfile(signedOutUserId);
+    clearJournalStorageForUser({ userId: signedOutUserId });
     setSession(null);
     setUser(null);
-  }, []);
+  }, [session?.user?.id, user?.id]);
 
   const isEmailVerified = isUserEmailVerified(user);
 

@@ -87,7 +87,6 @@ import {
 import { requestAiSessionGuidance } from "../infra/aiSessionGuidanceClient";
 import { RECOVERY_CONTEXT } from "../features/recovery/recoveryTypes";
 import { SESSION_RECOVERY_SOURCE } from "../features/recovery/sessionRecoveryQueue";
-import { saveState } from "../utils/storage";
 import "../features/session/session.css";
 import "../features/session/session-guided.css";
 
@@ -2221,8 +2220,6 @@ export default function Session({
   function startTimer({ guidedRuntimeSnapshot = null } = {}) {
     if (!selectedOccurrence?.id || typeof setData !== "function") return;
     const selectedOccurrenceId = selectedOccurrence.id;
-    const nextRuntimeState = buildStartedRuntimeState(safeData, guidedRuntimeSnapshot);
-    saveState(nextRuntimeState);
     setData((prev) => buildStartedRuntimeState(prev, guidedRuntimeSnapshot));
     emitSessionRuntimeNotificationHook("resume", {
       occurrenceId: selectedOccurrenceId,

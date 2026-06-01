@@ -8,16 +8,14 @@ import ForgotPassword from "./ForgotPassword";
 import ResetPassword from "./ResetPassword";
 import FirstAccessShell from "../features/first-access/FirstAccessShell";
 import AuthCommandSurface, { AuthSecureNote } from "../features/first-access/AuthCommandSurface";
-import { buildLocalUserDataKey } from "../data/userDataApi";
-import { hasMeaningfulFirstRunState, isFirstRunDone } from "../features/first-run/firstRunModel";
 import { resolveAuthGateState } from "./authGateModel";
+import { readCachedFirstRunSummary } from "./authGateCache";
 import {
   AUTH_WELCOME_PATH,
   AUTH_VERIFY_EMAIL_PATH,
   getSearchParam,
   normalizePathname,
 } from "./authPaths";
-import { loadState } from "../utils/storage";
 
 function readLocation() {
   if (typeof window === "undefined") {
@@ -27,41 +25,6 @@ function readLocation() {
     pathname: normalizePathname(window.location.pathname),
     search: window.location.search || "",
   };
-}
-
-function safeParse(raw) {
-  if (typeof raw !== "string" || !raw.trim()) return null;
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
-
-function summarizeCachedUi(ui) {
-  const safeUi = ui && typeof ui === "object" ? ui : null;
-  if (!safeUi) return null;
-  const firstRun = safeUi.firstRunV1 && typeof safeUi.firstRunV1 === "object" ? safeUi.firstRunV1 : null;
-  const hasLegacyOnboarding = typeof safeUi.onboardingCompleted === "boolean";
-  if (!firstRun && !hasLegacyOnboarding) return null;
-  return {
-    firstRunDone: firstRun ? isFirstRunDone(safeUi) : null,
-    onboardingCompleted: hasLegacyOnboarding ? safeUi.onboardingCompleted : null,
-    hasMeaningfulFirstRun: hasMeaningfulFirstRunState(firstRun),
-  };
-}
-
-function readCachedFirstRunSummary(userId) {
-  if (typeof window === "undefined") return null;
-  const globalSummary = summarizeCachedUi(loadState()?.ui);
-  if (globalSummary?.hasMeaningfulFirstRun || globalSummary?.firstRunDone === true) return globalSummary;
-
-  const normalizedUserId = String(userId || "").trim();
-  if (!normalizedUserId) return globalSummary;
-  const cached = safeParse(window.localStorage.getItem(buildLocalUserDataKey(normalizedUserId)));
-  const userSummary = summarizeCachedUi(cached?.ui);
-
-  return userSummary || globalSummary;
 }
 
 export function AuthStatusScreen({ testId, title, subtitle, steps = [] }) {

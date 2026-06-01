@@ -8,7 +8,8 @@ import { loadState, saveState } from "../utils/storage";
 import {
   isRemoteUserDataEnabled,
   loadUserDataWithMeta,
-  rehydrateUserDataWithLocalGuidedRuntime,
+  loadUserScopedLocalData,
+  saveUserScopedLocalData,
   upsertUserDataWithMeta,
   USER_DATA_STORAGE_SCOPE,
 } from "./userDataApi";
@@ -17,10 +18,6 @@ export const USER_DATA_SAVE_DEBOUNCE_MS = 500;
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
-function isEmptyObject(value) {
-  return !isPlainObject(value) || Object.keys(value).length === 0;
 }
 
 function hasMeaningfulLocalData(value) {
@@ -70,6 +67,23 @@ function logSaveError(error) {
   // Keep UI stable; log only.
   // eslint-disable-next-line no-console
   console.error("[user-data] save failed", error);
+}
+
+function persistLocalSnapshotForUser(userId, state) {
+  const normalizedUserId = String(userId || "").trim();
+  if (normalizedUserId) {
+    saveUserScopedLocalData(normalizedUserId, state);
+    return;
+  }
+  saveState(state);
+}
+
+export function loadInitialUserDataState(userId) {
+  const normalizedUserId = String(userId || "").trim();
+  if (normalizedUserId) {
+    return toSafeState(loadUserScopedLocalData(normalizedUserId) || initialData());
+  }
+  return toSafeState(loadState() || initialData());
 }
 
 export function createStateSignature(value) {
@@ -133,22 +147,28 @@ export function useUserData() {
   const { user } = useAuth();
   const userId = user?.id || null;
 
-  const [data, setDataState] = useState(() => toSafeState(loadState() || initialData()));
+  const [data, setDataState] = useState(() => loadInitialUserDataState(userId));
   const [loading, setLoading] = useState(true);
+  const [hydratedUserId, setHydratedUserId] = useState(userId || null);
   const [loadError, setLoadError] = useState("");
   const [persistenceScope, setPersistenceScope] = useState(USER_DATA_STORAGE_SCOPE.LOCAL_FALLBACK);
 
+  const userIdRef = useRef(userId);
   const skipNextRemoteSaveRef = useRef(true);
   const hydratedSignatureRef = useRef("");
   const saverRef = useRef(null);
   const useDebounceRef = useRef(false);
+
+  useEffect(() => {
+    userIdRef.current = userId;
+  }, [userId]);
 
   const setData = useCallback((next) => {
     setDataState((prev) => {
       const resolved = typeof next === "function" ? next(prev) : next;
       const safeNext = toSafeState(resolved);
       // Persist locally at mutation time so active guided sessions survive fast reload/remount paths.
-      saveState(safeNext);
+      persistLocalSnapshotForUser(userIdRef.current, safeNext);
       return safeNext;
     });
   }, []);
@@ -158,9 +178,10 @@ export function useUserData() {
     if (saverRef.current) saverRef.current.cancel();
 
     if (!userId) {
-      const next = toSafeState(loadState() || initialData());
+      const next = loadInitialUserDataState(null);
       hydratedSignatureRef.current = createStateSignature(next);
       setDataState(next);
+      setHydratedUserId(null);
       setLoading(false);
       setLoadError("");
       setPersistenceScope(USER_DATA_STORAGE_SCOPE.LOCAL_FALLBACK);
@@ -188,40 +209,26 @@ export function useUserData() {
     (async () => {
       setLoading(true);
       try {
-        const [remoteResult, localRaw] = await Promise.all([loadUserDataWithMeta(userId), Promise.resolve(loadState())]);
-        const remoteRaw = remoteResult?.data;
-        const remoteIsEmpty = isEmptyObject(remoteRaw);
-        const localCandidate = localRaw ? toSafeState(localRaw) : null;
-        let nextPersistenceScope = remoteResult?.storageScope || USER_DATA_STORAGE_SCOPE.LOCAL_FALLBACK;
-
-        let sourceData = remoteRaw;
-        if (remoteIsEmpty && hasMeaningfulLocalData(localCandidate)) {
-          const syncResult = await upsertUserDataWithMeta(userId, localCandidate);
-          nextPersistenceScope = syncResult.storageScope || USER_DATA_STORAGE_SCOPE.LOCAL_FALLBACK;
-          sourceData = localCandidate;
-        }
-
-        const next = toSafeState(
-          rehydrateUserDataWithLocalGuidedRuntime({
-            data: sourceData,
-            localData: localCandidate,
-          })
-        );
+        const remoteResult = await loadUserDataWithMeta(userId);
+        const nextPersistenceScope = remoteResult?.storageScope || USER_DATA_STORAGE_SCOPE.LOCAL_FALLBACK;
+        const next = toSafeState(remoteResult?.data || initialData());
         if (!active) return;
 
         hydratedSignatureRef.current = createStateSignature(next);
         skipNextRemoteSaveRef.current = true;
         setDataState(next);
-        saveState(next);
+        setHydratedUserId(userId);
+        saveUserScopedLocalData(userId, next);
         setLoadError("");
         setPersistenceScope(nextPersistenceScope);
       } catch (error) {
         if (!active) return;
         // eslint-disable-next-line no-console
         console.error("[user-data] load failed", error);
-        const fallback = toSafeState(loadState() || initialData());
+        const fallback = toSafeState(loadUserScopedLocalData(userId) || initialData());
         skipNextRemoteSaveRef.current = true;
         setDataState(fallback);
+        setHydratedUserId(userId);
         setLoadError(String(error?.message || "").trim() || "Impossible de charger user_data.");
         setPersistenceScope(USER_DATA_STORAGE_SCOPE.LOCAL_FALLBACK);
       } finally {
@@ -236,11 +243,11 @@ export function useUserData() {
   }, [userId]);
 
   useEffect(() => {
-    if (loading || !userId) return;
+    if (loading || !userId || hydratedUserId !== userId) return;
 
     const safeData = toSafeState(data);
     const nextSignature = createStateSignature(safeData);
-    saveState(safeData);
+    persistLocalSnapshotForUser(userId, safeData);
 
     if (skipNextRemoteSaveRef.current) {
       const shouldSkip = shouldSkipHydrationRemoteSave({
@@ -263,17 +270,19 @@ export function useUserData() {
     }
 
     if (saverRef.current) saverRef.current.schedule(safeData);
-  }, [data, loading, userId]);
+  }, [data, hydratedUserId, loading, userId]);
+
+  const effectiveLoading = loading || (userId || null) !== hydratedUserId;
 
   return useMemo(
     () => ({
       data,
       setData,
-      loading,
+      loading: effectiveLoading,
       loadError,
       hasCachedData: hasMeaningfulLocalData(data),
       persistenceScope,
     }),
-    [data, loadError, loading, persistenceScope, setData]
+    [data, effectiveLoading, loadError, persistenceScope, setData]
   );
 }

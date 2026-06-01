@@ -1,8 +1,31 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { createDebouncedSave, createStateSignature, shouldSkipHydrationRemoteSave } from "./useUserData";
+import { buildLocalUserDataKey } from "./userDataApi";
+import { LS_KEY } from "../utils/storage";
+import {
+  createDebouncedSave,
+  createStateSignature,
+  loadInitialUserDataState,
+  shouldSkipHydrationRemoteSave,
+} from "./useUserData";
+
+function createLocalStorageMock(initial = {}) {
+  const store = new Map(Object.entries(initial));
+  return {
+    getItem(key) {
+      return store.has(key) ? store.get(key) : null;
+    },
+    setItem(key, value) {
+      store.set(key, String(value));
+    },
+    removeItem(key) {
+      store.delete(key);
+    },
+  };
+}
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.unstubAllGlobals();
 });
 
 describe("createDebouncedSave", () => {
@@ -62,5 +85,41 @@ describe("hydration save guard", () => {
         nextSignature: createStateSignature({ profile: { whyText: "Modifié" } }),
       })
     ).toBe(false);
+  });
+});
+
+describe("account-scoped initial data", () => {
+  it("ignores the global anonymous state when an authenticated user id is present", () => {
+    vi.stubGlobal("window", {
+      localStorage: createLocalStorageMock({
+        [LS_KEY]: JSON.stringify({
+          profile: { whyText: "Account A" },
+          goals: [{ id: "goal-a", title: "A" }],
+          ui: { onboardingCompleted: true },
+        }),
+      }),
+    });
+
+    const next = loadInitialUserDataState("account-b");
+
+    expect(next.profile?.whyText).not.toBe("Account A");
+    expect(next.goals || []).toEqual([]);
+    expect(next.ui?.onboardingCompleted).toBe(false);
+  });
+
+  it("uses only the matching user-scoped cache for an authenticated user", () => {
+    vi.stubGlobal("window", {
+      localStorage: createLocalStorageMock({
+        [LS_KEY]: JSON.stringify({ profile: { whyText: "Global" } }),
+        [buildLocalUserDataKey("account-b")]: JSON.stringify({
+          profile: { whyText: "Account B" },
+          ui: { onboardingCompleted: true },
+        }),
+      }),
+    });
+
+    const next = loadInitialUserDataState("account-b");
+
+    expect(next.profile?.whyText).toBe("Account B");
   });
 });

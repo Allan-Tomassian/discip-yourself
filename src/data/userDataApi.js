@@ -228,14 +228,38 @@ export function buildLocalUserDataKey(userId) {
 
 export const isRemoteUserDataEnabled = Boolean(supabase);
 
-function loadLocalUserData(userId) {
+export function loadUserScopedLocalData(userId) {
   if (typeof window === "undefined") return {};
-  return safeParse(window.localStorage.getItem(buildLocalUserDataKey(userId)));
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedUserId) return {};
+  return safeParse(window.localStorage.getItem(buildLocalUserDataKey(normalizedUserId)));
 }
 
-function saveLocalUserData(userId, data) {
+export function saveUserScopedLocalData(userId, data) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(buildLocalUserDataKey(userId), JSON.stringify(data || {}));
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedUserId) return;
+  window.localStorage.setItem(buildLocalUserDataKey(normalizedUserId), JSON.stringify(data || {}));
+}
+
+export function clearUserScopedLocalData(userId) {
+  if (typeof window === "undefined") return false;
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedUserId) return false;
+  window.localStorage.removeItem(buildLocalUserDataKey(normalizedUserId));
+  return true;
+}
+
+export function clearAllUserScopedLocalData() {
+  if (typeof window === "undefined") return [];
+  const removed = [];
+  for (let index = window.localStorage.length - 1; index >= 0; index -= 1) {
+    const key = window.localStorage.key(index);
+    if (typeof key !== "string" || !key.startsWith(LOCAL_USER_DATA_PREFIX)) continue;
+    window.localStorage.removeItem(key);
+    removed.push(key);
+  }
+  return removed;
 }
 
 export async function loadUserData(userId) {
@@ -254,12 +278,12 @@ export async function loadUserDataWithMeta(userId) {
 
   if (isUsingE2EMockedSession(normalizedUserId)) {
     return {
-      data: loadLocalUserData(normalizedUserId),
+      data: loadUserScopedLocalData(normalizedUserId),
       storageScope: USER_DATA_STORAGE_SCOPE.LOCAL_FALLBACK,
     };
   }
 
-  const localSnapshot = loadLocalUserData(normalizedUserId);
+  const localSnapshot = loadUserScopedLocalData(normalizedUserId);
 
   if (!supabase) {
     return {
@@ -298,7 +322,7 @@ export async function loadUserDataWithMeta(userId) {
     data: safePayload,
     localData: localSnapshot,
   });
-  saveLocalUserData(normalizedUserId, hydratedPayload);
+  saveUserScopedLocalData(normalizedUserId, hydratedPayload);
   return {
     data: hydratedPayload,
     storageScope: USER_DATA_STORAGE_SCOPE.CLOUD,
@@ -318,7 +342,7 @@ export async function upsertUserDataWithMeta(userId, data) {
   const remotePayload = sanitizeUserDataForCloudSync(payload);
 
   if (isUsingE2EMockedSession(normalizedUserId)) {
-    saveLocalUserData(normalizedUserId, payload);
+    saveUserScopedLocalData(normalizedUserId, payload);
     return {
       data: payload,
       storageScope: USER_DATA_STORAGE_SCOPE.LOCAL_FALLBACK,
@@ -327,7 +351,7 @@ export async function upsertUserDataWithMeta(userId, data) {
   }
 
   if (!supabase) {
-    saveLocalUserData(normalizedUserId, payload);
+    saveUserScopedLocalData(normalizedUserId, payload);
     return {
       data: payload,
       storageScope: USER_DATA_STORAGE_SCOPE.LOCAL_FALLBACK,
@@ -349,7 +373,7 @@ export async function upsertUserDataWithMeta(userId, data) {
   if (error) {
     const mappedError = mapUserDataPersistenceError(error);
     if (canUseLocalPersistenceFallback(mappedError)) {
-      saveLocalUserData(normalizedUserId, payload);
+      saveUserScopedLocalData(normalizedUserId, payload);
       return {
         data: payload,
         storageScope: USER_DATA_STORAGE_SCOPE.LOCAL_FALLBACK,
@@ -358,7 +382,7 @@ export async function upsertUserDataWithMeta(userId, data) {
     }
     throw mappedError;
   }
-  saveLocalUserData(normalizedUserId, payload);
+  saveUserScopedLocalData(normalizedUserId, payload);
   return {
     data: payload,
     storageScope: USER_DATA_STORAGE_SCOPE.CLOUD,

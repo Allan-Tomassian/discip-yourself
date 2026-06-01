@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useAuth } from "../auth/useAuth";
 import { SURFACE_LABELS } from "../ui/labels";
 import {
   CATEGORY_VIEW,
@@ -23,6 +24,7 @@ import {
   PrimaryButton,
   SectionHeader,
 } from "../shared/ui/app";
+import { buildJournalStorageModel } from "./journalStorageModel";
 
 function parseJson(raw, fallback) {
   try {
@@ -78,6 +80,7 @@ function buildHistoryItems({ noteHistoryStorageKey, noteKeyPrefix, noteMetaKeyPr
 }
 
 export default function Journal({ data, setData, onBack }) {
+  const { user } = useAuth();
   const safeData = data && typeof data === "object" ? data : {};
   const categories = useMemo(() => getVisibleCategories(safeData.categories), [safeData.categories]);
   const activeCategoryId = useMemo(
@@ -101,11 +104,17 @@ export default function Journal({ data, setData, onBack }) {
   }, [activeCategoryId]);
 
   const todayKey = todayLocalKey();
-  const noteKeyPrefix = categoryId ? `dailyNote:${categoryId}:` : "dailyNote:";
-  const noteMetaKeyPrefix = categoryId ? `dailyNoteMeta:${categoryId}:` : "dailyNoteMeta:";
-  const noteStorageKey = `${noteKeyPrefix}${todayKey}`;
-  const noteMetaStorageKey = `${noteMetaKeyPrefix}${todayKey}`;
-  const noteHistoryStorageKey = categoryId ? `dailyNoteHistory:${categoryId}` : "dailyNoteHistory";
+  const {
+    noteKeyPrefix,
+    noteMetaKeyPrefix,
+    noteStorageKey,
+    noteMetaStorageKey,
+    noteHistoryStorageKey,
+  } = buildJournalStorageModel({
+    userId: user?.id || "",
+    categoryId,
+    dateKey: todayKey,
+  });
 
   useEffect(() => {
     if (!categoryId || typeof setData !== "function") return;

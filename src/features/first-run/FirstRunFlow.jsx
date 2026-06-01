@@ -9,7 +9,6 @@ import {
   ScreenHeader,
   StatusBadge,
 } from "../../shared/ui/app";
-import { saveState } from "../../utils/storage";
 import { todayLocalKey } from "../../utils/datetime";
 import {
   buildAiFirstRunStarterHintsRequest,
@@ -165,16 +164,6 @@ export default function FirstRunFlow({ data, setData, onDone, planOnly = false }
 
   const updateFirstRun = useCallback(
     (updater) => {
-      const optimisticCandidate = typeof updater === "function" ? updater(firstRun, safeData) : updater;
-      const optimisticNextFirstRun = normalizeFirstRunV1(optimisticCandidate, {
-        legacyOnboardingCompleted: safeUi.onboardingCompleted === true,
-      });
-      const optimisticNextState = {
-        ...safeData,
-        ui: buildNextUi(safeUi, optimisticNextFirstRun),
-      };
-      saveState(optimisticNextState);
-
       setData((previous) => {
         const safePrevious = isPlainObject(previous) ? previous : {};
         const baseUi = isPlainObject(safePrevious.ui) ? safePrevious.ui : {};
@@ -192,7 +181,7 @@ export default function FirstRunFlow({ data, setData, onDone, planOnly = false }
         };
       });
     },
-    [firstRun, safeData, safeUi, setData]
+    [setData]
   );
 
   const commitFirstRunFromLatest = useCallback(
@@ -211,7 +200,6 @@ export default function FirstRunFlow({ data, setData, onDone, planOnly = false }
           ...safePrevious,
           ui: buildNextUi(baseUi, nextFirstRun),
         };
-        saveState(nextState);
         return nextState;
       });
     },
@@ -536,7 +524,6 @@ export default function FirstRunFlow({ data, setData, onDone, planOnly = false }
           ...stateWithCommit,
           ui: buildNextUi(nextBaseUi, nextFirstRun),
         };
-        saveState(nextState);
         Promise.resolve().then(() => {
           commitApplyingRef.current = false;
           setIsCommitApplying(false);

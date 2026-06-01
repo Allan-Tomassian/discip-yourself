@@ -1066,9 +1066,7 @@ export default function App() {
     </BehaviorFeedbackProvider>
   );
 
-  const renderTodayDuringDataLoad = dataLoading && tab === "today";
-
-  if (dataLoading && !renderTodayDuringDataLoad) {
+  if (dataLoading) {
     return renderWithBehaviorFeedback(
       <CommandLoadingState
         data-testid="user-data-loading-screen"
@@ -1080,7 +1078,7 @@ export default function App() {
     );
   }
 
-  if (!renderTodayDuringDataLoad && showPlanStep && firstRunDone) {
+  if (showPlanStep && firstRunDone) {
     return renderWithBehaviorFeedback(
       <>
         <Onboarding data={data} setData={setData} onDone={() => setTab("settings")} planOnly />
@@ -1088,7 +1086,7 @@ export default function App() {
       </>
     );
   }
-  if (!renderTodayDuringDataLoad && !firstRunDone) {
+  if (!firstRunDone) {
     return renderWithBehaviorFeedback(
       <>
         <Onboarding data={data} setData={setData} onDone={() => setTab("today")} />
@@ -1097,7 +1095,7 @@ export default function App() {
     );
   }
 
-  if (!renderTodayDuringDataLoad && tab === "onboarding") {
+  if (tab === "onboarding") {
     return renderWithBehaviorFeedback(
       <CommandLoadingState
         data-testid="first-run-redirecting-screen"
