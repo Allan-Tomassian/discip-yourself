@@ -1,4 +1,5 @@
 import React, { useRef, useState } from "react";
+import { useAuth } from "../auth/useAuth";
 import { isPremium } from "../logic/entitlements";
 import { STATUS_COPY } from "../ui/labels";
 import {
@@ -13,6 +14,11 @@ import {
   SectionHeader,
 } from "../shared/ui/app";
 import { DATA_IMPORT_CONFIRM_COPY, prepareDataImportState } from "./dataImportModel";
+import {
+  LOCAL_DATA_RESET_COPY,
+  isLocalDataResetEnvironment,
+  runLocalDataReset,
+} from "./localDataResetModel";
 
 function downloadJsonFile(filename, payload) {
   try {
@@ -30,12 +36,80 @@ function downloadJsonFile(filename, payload) {
   }
 }
 
-export default function Data({ data, setData, onOpenPaywall, onBack }) {
+export function DataLocalResetSection({ onRequestReset }) {
+  return (
+    <section className="mainPageSection" data-testid="data-local-reset-section">
+      <SectionHeader
+        title={LOCAL_DATA_RESET_COPY.sectionTitle}
+        subtitle={LOCAL_DATA_RESET_COPY.sectionSubtitle}
+      />
+      <div className="mainPageSectionBody">
+        <AppCard>
+          <div className="col gap12">
+            <div className="small2 textMuted">{LOCAL_DATA_RESET_COPY.notice}</div>
+            <AppActionRow>
+              <GhostButton
+                type="button"
+                onClick={() => onRequestReset?.("local")}
+              >
+                {LOCAL_DATA_RESET_COPY.resetLabel}
+              </GhostButton>
+              <GhostButton
+                type="button"
+                onClick={() => onRequestReset?.("logout")}
+              >
+                {LOCAL_DATA_RESET_COPY.logoutResetLabel}
+              </GhostButton>
+            </AppActionRow>
+          </div>
+        </AppCard>
+      </div>
+    </section>
+  );
+}
+
+export function DataLocalResetConfirmationContent({
+  resetType = "",
+  pending = false,
+  onCancel,
+  onConfirm,
+}) {
+  const isLogoutReset = resetType === "logout";
+  return (
+    <div className="col gap16" data-testid="data-local-reset-confirmation">
+      <div className="col gap6">
+        <div className="titleSm">{LOCAL_DATA_RESET_COPY.confirmTitle}</div>
+        <div className="small2 textMuted">{LOCAL_DATA_RESET_COPY.notice}</div>
+      </div>
+      <AppActionRow>
+        <GhostButton type="button" onClick={onCancel} disabled={pending}>
+          {LOCAL_DATA_RESET_COPY.cancel}
+        </GhostButton>
+        <PrimaryButton type="button" onClick={onConfirm} disabled={pending}>
+          {isLogoutReset ? LOCAL_DATA_RESET_COPY.confirmLogoutResetCta : LOCAL_DATA_RESET_COPY.confirmResetCta}
+        </PrimaryButton>
+      </AppActionRow>
+    </div>
+  );
+}
+
+export default function Data({
+  data,
+  setData,
+  onOpenPaywall,
+  onBack,
+  resetEnvironment,
+  reloadApp,
+}) {
+  const { signOut } = useAuth();
   const safeData = data && typeof data === "object" ? data : {};
   const premium = isPremium(safeData);
   const importInputRef = useRef(null);
   const [importStatus, setImportStatus] = useState("");
   const [pendingImport, setPendingImport] = useState(null);
+  const [pendingResetType, setPendingResetType] = useState("");
+  const [resetPending, setResetPending] = useState(false);
+  const showLocalResetControls = isLocalDataResetEnvironment(resetEnvironment);
 
   function handleImportFile(file) {
     if (!file) return;
@@ -74,6 +148,25 @@ export default function Data({ data, setData, onOpenPaywall, onBack }) {
 
   function handleCancelImport() {
     setPendingImport(null);
+  }
+
+  function handleRequestReset(resetType) {
+    setPendingResetType(resetType === "logout" ? "logout" : "local");
+  }
+
+  function handleCancelReset() {
+    if (resetPending) return;
+    setPendingResetType("");
+  }
+
+  async function handleConfirmReset() {
+    if (!pendingResetType || resetPending) return;
+    setResetPending(true);
+    await runLocalDataReset({
+      includeLogout: pendingResetType === "logout",
+      signOut,
+      reload: reloadApp,
+    });
   }
 
   return (
@@ -133,6 +226,9 @@ export default function Data({ data, setData, onOpenPaywall, onBack }) {
           </AppCard>
         </div>
       </section>
+      {showLocalResetControls ? (
+        <DataLocalResetSection onRequestReset={handleRequestReset} />
+      ) : null}
       <AppDialog open={Boolean(pendingImport)} onClose={handleCancelImport} maxWidth={440}>
         <div className="col gap16" data-testid="data-import-confirmation">
           <div className="col gap6">
@@ -151,6 +247,14 @@ export default function Data({ data, setData, onOpenPaywall, onBack }) {
             </PrimaryButton>
           </AppActionRow>
         </div>
+      </AppDialog>
+      <AppDialog open={Boolean(pendingResetType)} onClose={handleCancelReset} maxWidth={440}>
+        <DataLocalResetConfirmationContent
+          resetType={pendingResetType}
+          pending={resetPending}
+          onCancel={handleCancelReset}
+          onConfirm={handleConfirmReset}
+        />
       </AppDialog>
     </AppScreen>
   );

@@ -7,7 +7,7 @@ import {
 } from "../features/first-run/firstRunModel";
 import { canUseLocalPersistenceFallback, mapUserDataPersistenceError } from "../infra/supabasePersistenceErrors";
 
-const LOCAL_USER_DATA_PREFIX = "e2e.supabase.user_data.";
+export const LOCAL_USER_DATA_PREFIX = "e2e.supabase.user_data.";
 export const USER_DATA_STORAGE_SCOPE = Object.freeze({
   CLOUD: "cloud",
   LOCAL_FALLBACK: "local_fallback",

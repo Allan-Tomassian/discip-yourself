@@ -6,7 +6,7 @@ import {
 } from "../infra/supabasePersistenceErrors";
 import { normalizeUsername, validateUsername } from "./username";
 
-const LOCAL_PROFILE_PREFIX = "e2e.supabase.profile.user.";
+export const LOCAL_PROFILE_PREFIX = "e2e.supabase.profile.user.";
 export const LOCAL_PROFILE_USERNAME_MAP_KEY = "e2e.supabase.profile.usernames";
 
 function safeParse(raw, fallback = null) {
