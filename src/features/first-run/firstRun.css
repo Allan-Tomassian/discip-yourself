@@ -190,6 +190,36 @@
   color: var(--text-secondary);
 }
 
+.firstRunFirstBlockSummary {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-8);
+  border: 1px solid color-mix(in srgb, var(--execution-border) 76%, rgba(255, 255, 255, 0.08));
+  border-radius: calc(var(--radius-card) - 2px);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--execution-bg) 34%, transparent), transparent 72%),
+    color-mix(in srgb, var(--surface-1) 92%, var(--background-secondary));
+}
+
+.firstRunFirstBlockSummary span {
+  font-size: var(--font-micro);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.firstRunFirstBlockSummary strong {
+  font-size: var(--font-body-strong);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+}
+
+.firstRunFirstBlockSummary em {
+  font-size: var(--font-body);
+  font-style: normal;
+  color: var(--text-secondary);
+}
+
 .firstRunWhyBody {
   gap: var(--space-8);
   justify-content: center;

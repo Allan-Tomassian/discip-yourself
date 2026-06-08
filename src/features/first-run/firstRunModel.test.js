@@ -505,6 +505,7 @@ describe("firstRunModel", () => {
     expect(recommended.id).toBe("recommended");
     expect(recommended.title).toBe("Plan recommandé");
     expect(recommended.summary).not.toMatch(/fallback|IA génér/i);
+    expect(recommended.differenceNote).toBe("Plan local construit à partir de tes réponses.");
     expect(recommended.commitDraft.categories.length).toBeGreaterThan(0);
     expect(recommended.commitDraft.goals.length).toBeGreaterThan(0);
     expect(recommended.commitDraft.actions.length).toBeGreaterThanOrEqual(2);
@@ -514,6 +515,132 @@ describe("firstRunModel", () => {
     expect(recommended.weekSchedule).toHaveLength(7);
     expect(generated.ai.status).toBe("locked");
     expect(generated.ai.missingInformation).toContain("Horaires précis");
+  });
+
+  it("keeps the deterministic first block goal-first when a support category is selected first", () => {
+    const generated = buildDeterministicRecommendedGeneratedPlans(
+      {
+        whyText: "Je veux publier mon app sans perdre mon énergie.",
+        primaryGoal: "Lancer mon application",
+        currentCapacity: "stable",
+        priorityCategoryIds: ["health", "business"],
+        preferredWindows: [{ id: "p1", daysOfWeek: [3], startTime: "08:00", endTime: "10:00", label: "Matin" }],
+        locale: "fr-FR",
+        timezone: "Europe/Paris",
+        referenceDateKey: "2026-04-29",
+      },
+      { inputHash: "hash-app-goal-first", now: new Date(2026, 3, 29, 8, 0, 0, 0) }
+    );
+
+    const plan = generated.plans[0];
+    const firstAction = plan.commitDraft.actions[0];
+    const firstTodayBlock = plan.todayPreview[0];
+
+    expect(plan.commitDraft.goals[0].title).toBe("Lancer mon application");
+    expect(firstAction.title).toMatch(/Lancer mon application/);
+    expect(firstTodayBlock.title).toBe(firstAction.title);
+    expect(firstTodayBlock.title).not.toMatch(/sport|énergie|santé/i);
+  });
+
+  it.each([
+    {
+      name: "fitness",
+      input: {
+        whyText: "Je veux me remettre en forme.",
+        primaryGoal: "Courir 5 km sans m’arrêter",
+        currentCapacity: "reprise",
+        priorityCategoryIds: ["health"],
+      },
+      expected: /courir|5 km|forme/i,
+      forbidden: /organisation du système|bloc d’exécution prioritaire/i,
+    },
+    {
+      name: "study",
+      input: {
+        whyText: "Réussir mon examen.",
+        primaryGoal: "Valider ma certification AWS",
+        currentCapacity: "stable",
+        priorityCategoryIds: ["personal", "business"],
+      },
+      expected: /certification|aws|valider/i,
+      forbidden: /rituel personnel|first-run|inscription/i,
+    },
+    {
+      name: "job search",
+      input: {
+        whyText: "Trouver un nouveau poste.",
+        primaryGoal: "Trouver un job d’alternance",
+        currentCapacity: "stable",
+        priorityCategoryIds: ["productivity", "business"],
+      },
+      expected: /job|alternance|trouver/i,
+      forbidden: /bloc d’exécution prioritaire|organisation du système/i,
+    },
+    {
+      name: "content creation",
+      input: {
+        whyText: "Développer mon audience.",
+        primaryGoal: "Publier deux vidéos YouTube par semaine",
+        currentCapacity: "stable",
+        priorityCategoryIds: ["personal", "business"],
+      },
+      expected: /youtube|vidéos|publier/i,
+      forbidden: /inscription|first-run|application/i,
+    },
+    {
+      name: "admin",
+      input: {
+        whyText: "Arrêter de subir l’administratif.",
+        primaryGoal: "Mettre mes papiers et factures à jour",
+        currentCapacity: "reprise",
+        priorityCategoryIds: ["personal", "productivity"],
+      },
+      expected: /papiers|factures|jour/i,
+      forbidden: /rituel personnel|bloc d’exécution prioritaire/i,
+    },
+  ])("makes the deterministic first block goal-forward for $name", ({ input, expected, forbidden }) => {
+    const generated = buildDeterministicRecommendedGeneratedPlans(
+      {
+        ...input,
+        preferredWindows: [],
+        unavailableWindows: [],
+        locale: "fr-FR",
+        timezone: "Europe/Paris",
+        referenceDateKey: "2026-04-29",
+      },
+      { inputHash: `hash-${input.primaryGoal}`, now: new Date(2026, 3, 29, 8, 0, 0, 0) }
+    );
+
+    const plan = generated.plans[0];
+    const firstAction = plan.commitDraft.actions[0];
+    const firstTodayBlock = plan.todayPreview[0];
+
+    expect(plan.commitDraft.goals[0].title).toBe(input.primaryGoal);
+    expect(firstAction.title).toMatch(expected);
+    expect(firstTodayBlock.title).toBe(firstAction.title);
+    expect(firstTodayBlock.title).not.toMatch(forbidden);
+  });
+
+  it("keeps support blocks after the primary-result block in Today preview", () => {
+    const generated = buildDeterministicRecommendedGeneratedPlans(
+      {
+        whyText: "Je veux lancer le projet tout en reprenant mon énergie.",
+        primaryGoal: "Lancer mon offre de coaching",
+        currentCapacity: "stable",
+        priorityCategoryIds: ["health", "business", "personal"],
+        preferredWindows: [],
+        unavailableWindows: [],
+        locale: "fr-FR",
+        timezone: "Europe/Paris",
+        referenceDateKey: "2026-04-29",
+      },
+      { inputHash: "hash-support-after-primary", now: new Date(2026, 3, 29, 8, 0, 0, 0) }
+    );
+
+    const plan = generated.plans[0];
+    expect(plan.todayPreview.length).toBeGreaterThan(1);
+    expect(plan.todayPreview[0].title).toBe(plan.commitDraft.actions[0].title);
+    expect(plan.todayPreview[0].title).toMatch(/Lancer mon offre de coaching/);
   });
 
   it("turns AI starter hints into a concrete v3 recommended plan without letting AI build commitDraft", () => {
@@ -599,6 +726,7 @@ describe("firstRunModel", () => {
     const actionTitles = recommended.commitDraft.actions.map((action) => action.title);
     expect(generated.source).toBe("ai_assisted_starter");
     expect(generated.ai.status).toBe("succeeded");
+    expect(recommended.differenceNote).toBe("Plan affiné avec l’IA à partir de tes réponses.");
     expect(recommended.summary).toContain("Finir le parcours critique");
     expect(actionTitles).toContain("Finaliser le parcours First Access");
     expect(actionTitles).toContain("Tester inscription + first-run complet");

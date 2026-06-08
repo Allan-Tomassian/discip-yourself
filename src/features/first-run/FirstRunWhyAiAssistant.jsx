@@ -15,7 +15,8 @@ import {
 } from "./firstRunWhyAiAssistantModel";
 
 const REQUEST_TIMEOUT_MS = 8000;
-const FAILURE_COPY = "L’IA n’a pas répondu. Tu peux continuer manuellement.";
+const FAILURE_COPY =
+  "Aide IA indisponible pour l’instant. Tu peux continuer en mode manuel : tes réponses suffisent pour générer un plan.";
 
 function trimString(value, maxLength = 1200) {
   if (typeof value !== "string") return "";

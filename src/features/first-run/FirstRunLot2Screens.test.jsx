@@ -95,6 +95,15 @@ describe("First-run narrative screens", () => {
     expect(html).not.toContain("Ce texte sert de point de départ");
   });
 
+  it("frames the why AI unavailable state as an intentional manual fallback", () => {
+    const source = readFileSync(new URL("./FirstRunWhyAiAssistant.jsx", import.meta.url), "utf8");
+
+    expect(source).toContain(
+      "Aide IA indisponible pour l’instant. Tu peux continuer en mode manuel : tes réponses suffisent pour générer un plan."
+    );
+    expect(source).not.toContain("L’IA n’a pas répondu. Tu peux continuer manuellement.");
+  });
+
   it("switches the why AI helper between inspiration and clarification without changing readiness", () => {
     expect(getFirstRunWhyAiMode("")).toBe("inspiration");
     expect(getFirstRunWhyAiCta("")).toBe("M’aider à formuler");
@@ -152,20 +161,24 @@ describe("First-run narrative screens", () => {
       />
     );
 
-    expect(html).toContain("Quels sont tes");
-    expect(html).toContain("plus grands freins");
-    expect(html).toContain("Sélectionne ce qui te correspond.");
-    expect(html).toContain("On construira ton système autour de ça.");
-    expect(html).toContain("Cap principal");
+    expect(html).toContain("Construis ton premier système d’exécution.");
+    expect(html).toContain("Donne juste les signaux nécessaires : cap, capacité, domaines et créneaux.");
+    expect(html).toContain("Résultat prioritaire");
     expect(html).toContain("Ce que ton système doit faire avancer en premier.");
     expect(html).toContain("Ex. remettre mon projet en mouvement");
     expect(html).toContain("Capacité actuelle");
-    expect(html).toContain("Zones à reprendre en main");
+    expect(html).toContain("Domaines à soutenir");
+    expect(html).toContain("Créneaux et contraintes");
     expect(html).toContain("Contraintes horaires");
     expect(html).toContain("Créneaux favorables");
     expect(html).toContain("Aucune pour l’instant.");
     expect(html).toContain("Ajoute-en un si tu en as déjà un en tête.");
     expect(html).toContain("Générer les plans");
+    expect(html).not.toContain("Quels sont tes plus grands freins");
+    expect(html).not.toContain("plus grands freins");
+    expect(html).not.toContain("Cap principal");
+    expect(html).not.toContain("Zones à reprendre en main");
+    expect(html).not.toContain("Contraintes &amp; créneaux");
     expect(html).not.toContain("Quelques signaux essentiels");
     expect(html).not.toContain("On garde l&#x27;élan");
     expect(html).not.toContain("Utilisé pour structurer la semaine proposée.");
@@ -239,9 +252,9 @@ describe("First-run narrative screens", () => {
       />
     );
 
-    expect(html.indexOf("Cap principal")).toBeLessThan(html.indexOf("Capacité actuelle"));
-    expect(html.indexOf("Capacité actuelle")).toBeLessThan(html.indexOf("Zones à reprendre en main"));
-    expect(html.indexOf("Zones à reprendre en main")).toBeLessThan(html.indexOf("Contraintes horaires"));
+    expect(html.indexOf("Résultat prioritaire")).toBeLessThan(html.indexOf("Capacité actuelle"));
+    expect(html.indexOf("Capacité actuelle")).toBeLessThan(html.indexOf("Domaines à soutenir"));
+    expect(html.indexOf("Domaines à soutenir")).toBeLessThan(html.indexOf("Contraintes horaires"));
     expect(html.indexOf("Contraintes horaires")).toBeLessThan(html.indexOf("Créneaux favorables"));
     expect(html).toContain("Repère");
     expect(html).toContain("Début");
@@ -295,9 +308,7 @@ describe("First-run narrative screens", () => {
         onContinue={() => {}}
       />
     );
-    const discoveryHtml = renderToStaticMarkup(
-      <FirstRunDiscoveryScreen data={{}} onComplete={() => {}} />
-    );
+    const discoveryHtml = renderToStaticMarkup(<FirstRunDiscoveryScreen data={{}} onComplete={() => {}} />);
 
     expect(generateHtml).toContain("Générer");
     expect(generateHtml).toContain("Préparer");
@@ -307,7 +318,50 @@ describe("First-run narrative screens", () => {
     expect(commitHtml).toContain("Prêt à activer ton plan");
     expect(commitHtml).toContain("Activer mon plan");
     expect(commitHtml).not.toContain("ne crée pas encore le vrai système produit");
+    expect(discoveryHtml).toContain("Ton système est prêt");
+    expect(discoveryHtml).toContain("Ton premier bloc est planifié. Tu peux commencer depuis Home.");
+    expect(discoveryHtml).toContain("Aller à Home");
     expect(discoveryHtml).not.toContain("Découverte");
+  });
+
+  it("renders discovery as a user-facing confidence screen with first block details", () => {
+    const html = renderToStaticMarkup(
+      <FirstRunDiscoveryScreen
+        data={{
+          ui: {
+            firstRunV1: {
+              commitV1: {
+                status: "applied",
+                createdOccurrenceIds: ["occ_today"],
+              },
+            },
+          },
+          goals: [{ id: "action_deep", title: "Finaliser le parcours First Access", durationMinutes: 30 }],
+          occurrences: [
+            {
+              id: "occ_today",
+              goalId: "action_deep",
+              date: "2026-04-29",
+              start: "09:00",
+              durationMinutes: 30,
+              status: "planned",
+            },
+          ],
+        }}
+        onComplete={() => {}}
+      />
+    );
+
+    expect(html).toContain("Ton système est prêt");
+    expect(html).toContain("Objectif créé");
+    expect(html).toContain("Première action définie");
+    expect(html).toContain("Premier bloc planifié");
+    expect(html).toContain("Premier bloc");
+    expect(html).toContain("Finaliser le parcours First Access");
+    expect(html).toContain("29/04/2026 · 09:00 · 30 min");
+    expect(html).not.toMatch(/\b(flow|peuplement|routing)\b/i);
+    expect(html).not.toContain("lot suivant");
+    expect(html).not.toContain("state machine");
   });
 
   it("renders v3 recommended plan review as one plan with a locked AI precision card", () => {
@@ -395,19 +449,58 @@ describe("First-run narrative screens", () => {
 
     expect(html).toContain("PLAN RECOMMANDÉ");
     expect(html).toContain("Ton plan recommandé est prêt.");
-    expect(html).toContain("Créé à partir de tes signaux. Tu peux l’activer maintenant.");
+    expect(html).toContain("Plan local construit à partir de tes réponses.");
     expect(html).toContain("Objectif principal");
     expect(html).toContain("Premier bloc Today");
     expect(html).toContain("Structure 7 jours");
     expect(html).toContain("Actions prévues");
     expect(html).toContain("Pourquoi ce plan est réaliste");
-    expect(html).toContain("Plan plus précis avec IA");
+    expect(html).toContain("Affinage IA optionnel");
     expect(html).toContain("Verrouillé");
-    expect(html).toContain("Ajouter les infos manquantes");
+    expect(html).toContain("Ton plan local reste activable.");
+    expect(html).toContain("Affiner plus tard");
     expect(html).toContain("disabled=\"\"");
     expect(html).not.toContain("firstRunPlanDecisionCard");
     expect(html).not.toContain("local fallback");
     expect(html).not.toContain("Ton système est généré localement.");
+    expect(html).not.toContain("Plan plus précis avec IA");
+  });
+
+  it("labels recommended plans with an intentional local fallback when AI refinement fails", () => {
+    const html = renderToStaticMarkup(
+      <FirstRunCompareScreen
+        data={{}}
+        generatedPlans={{
+          version: 3,
+          source: "deterministic_starter",
+          plans: [
+            {
+              id: "recommended",
+              variant: "recommended",
+              title: "Plan recommandé",
+              summary: "Une première semaine concrète.",
+              weekGoal: "Relancer mon projet principal",
+              comparisonMetrics: {},
+              categories: [],
+              preview: [],
+              todayPreview: [],
+              weekSchedule: [],
+              rationale: {},
+              commitDraft: { categories: [], goals: [], actions: [], occurrences: [] },
+            },
+          ],
+          ai: { status: "failed", errorCode: "NETWORK_ERROR", missingInformation: [] },
+        }}
+        selectedPlanId="recommended"
+        onBack={() => {}}
+        onSelectPlan={() => {}}
+        onContinue={() => {}}
+      />
+    );
+
+    expect(html).toContain("Aide IA indisponible : plan local fiable généré avec tes réponses.");
+    expect(html).not.toContain("L’IA n’a pas répondu");
+    expect(html).not.toContain("Plan plus précis avec IA");
   });
 
   it("labels v3 AI-assisted recommended plans without switching back to two-card compare", () => {
@@ -489,7 +582,7 @@ describe("First-run narrative screens", () => {
       />
     );
 
-    expect(html).toContain("Affiné par l’IA à partir de tes signaux.");
+    expect(html).toContain("Plan affiné avec l’IA à partir de tes réponses.");
     expect(html).toContain("firstRunRecommendedSourceBadge--ai");
     expect(html).not.toContain("firstRunPlanDecisionCard");
   });
@@ -520,9 +613,10 @@ describe("First-run narrative screens", () => {
       />
     );
 
-    expect(html).toContain("IA indisponible");
-    expect(html).toContain("Ton système est généré localement.");
+    expect(html).toContain("Plan local");
+    expect(html).toContain("Plan local construit à partir de tes réponses.");
     expect(html).not.toContain("généré par l’IA");
+    expect(html).not.toContain("Ton système est généré localement.");
   });
 
   it("keeps commit failure on the commit screen with conservative copy", () => {

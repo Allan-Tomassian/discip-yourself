@@ -197,18 +197,8 @@ export default function FirstRunSignalsScreen({
       testId="first-run-screen-signals"
       activeStep="signals"
       eyebrow="Tes signaux"
-      title={
-        <>
-          Quels sont tes <strong>plus grands freins&nbsp;?</strong>
-        </>
-      }
-      subtitle={
-        <>
-          Sélectionne ce qui te correspond.
-          <br />
-          On construira ton système autour de ça.
-        </>
-      }
+      title="Construis ton premier système d’exécution."
+      subtitle="Donne juste les signaux nécessaires : cap, capacité, domaines et créneaux."
       footer={
         <>
           <GhostButton onClick={onBack}>Retour</GhostButton>
@@ -222,7 +212,7 @@ export default function FirstRunSignalsScreen({
     >
       <div className="firstRunSectionStack">
         <SignalBoardSection
-          title="Cap principal"
+          title="Résultat prioritaire"
           description="Ce que ton système doit faire avancer en premier."
           className="firstRunSignalSection firstRunSignalSection--goal"
         >
@@ -256,7 +246,7 @@ export default function FirstRunSignalsScreen({
         </SignalBoardSection>
 
         <SignalBoardSection
-          title="Zones à reprendre en main"
+          title="Domaines à soutenir"
           description="Choisis jusqu’à 3 domaines. Ils deviennent les premiers axes de ton système."
           className="firstRunSignalSection firstRunSignalSection--categories"
         >
@@ -281,7 +271,7 @@ export default function FirstRunSignalsScreen({
         </SignalBoardSection>
 
         <SignalBoardSection
-          title="Contraintes & créneaux"
+          title="Créneaux et contraintes"
           description="Pose seulement les moments qui changent vraiment ton plan."
           className="firstRunSignalSection firstRunSignalSection--windows"
         >

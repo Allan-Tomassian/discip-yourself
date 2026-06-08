@@ -119,6 +119,17 @@ function buildCreatedSummary(plan) {
   ];
 }
 
+function getPlanSourceLabel(generatedPlans) {
+  const aiStatus = generatedPlans?.ai?.status;
+  if (generatedPlans?.source === FIRST_RUN_AI_ASSISTED_SOURCE) {
+    return "Plan affiné avec l’IA à partir de tes réponses.";
+  }
+  if (aiStatus === "timeout" || aiStatus === "failed") {
+    return "Aide IA indisponible : plan local fiable généré avec tes réponses.";
+  }
+  return "Plan local construit à partir de tes réponses.";
+}
+
 function RecommendedWeekStructure({ weekSchedule = [] }) {
   const safeSchedule = Array.isArray(weekSchedule) ? weekSchedule.slice(0, 7) : [];
   const totalBlocks = safeSchedule.reduce((sum, day) => sum + (Number(day?.blockCount) || 0), 0);
@@ -150,9 +161,7 @@ function RecommendedPlanReview({ data, plan, generatedPlans, onBack, onContinue 
   const draft = plan?.commitDraft || {};
   const actions = Array.isArray(draft.actions) ? draft.actions.slice(0, 4) : [];
   const isAiAssisted = generatedPlans?.source === FIRST_RUN_AI_ASSISTED_SOURCE;
-  const sourceLabel = isAiAssisted
-    ? "Affiné par l’IA à partir de tes signaux."
-    : "Créé à partir de tes signaux. Tu peux l’activer maintenant.";
+  const sourceLabel = getPlanSourceLabel(generatedPlans);
   const missingInformation = Array.isArray(generatedPlans?.ai?.missingInformation) && generatedPlans.ai.missingInformation.length
     ? generatedPlans.ai.missingInformation
     : ["Horaires précis", "Niveau d’énergie", "Habitudes actuelles", "Contraintes fixes"];
@@ -268,11 +277,11 @@ function RecommendedPlanReview({ data, plan, generatedPlans, onBack, onContinue 
             <Lock size={13} strokeWidth={2} />
           </span>
           <span>
-            <strong>Plan plus précis avec IA</strong>
+            <strong>Affinage IA optionnel</strong>
             <em>Verrouillé</em>
           </span>
         </div>
-        <p>Ajoute plus d’informations pour générer une version vraiment personnalisée.</p>
+        <p>Ton plan local reste activable. Ces infos pourront aider l’IA à l’affiner plus tard.</p>
         <div className="firstRunAiLockedMissingList">
           {missingInformation.map((item) => (
             <span key={item}>
@@ -282,7 +291,7 @@ function RecommendedPlanReview({ data, plan, generatedPlans, onBack, onContinue 
           ))}
         </div>
         <button className="firstRunAiLockedButton" type="button" disabled>
-          Ajouter les infos manquantes
+          Affiner plus tard
         </button>
       </div>
     </FirstRunCommandSurface>
@@ -345,8 +354,8 @@ export default function FirstRunCompareScreen({
         <div className="firstRunLocalFallbackBanner" data-testid="first-run-local-fallback-banner">
           <AlertCircle size={18} strokeWidth={1.8} aria-hidden="true" />
           <span>
-            <strong>IA indisponible</strong>
-            <span>Ton système est généré localement.</span>
+            <strong>Plan local</strong>
+            <span>Plan local construit à partir de tes réponses.</span>
           </span>
         </div>
       ) : null}

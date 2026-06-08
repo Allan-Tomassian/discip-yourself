@@ -18,6 +18,10 @@ const COMMIT_SOURCE = "first_run";
 const PLANNING_WINDOW_DAYS = 7;
 const ACTION_ACTIVE_DAYS = 30;
 const DOW_ALL = Object.freeze([1, 2, 3, 4, 5, 6, 7]);
+const MINUTES_PER_DAY = 24 * 60;
+const FIRST_RUN_SAFE_START_BUFFER_MINUTES = 15;
+const FIRST_RUN_SAFE_START_STEP_MINUTES = 15;
+const FIRST_RUN_DEFAULT_START_CANDIDATES = Object.freeze(["09:00", "12:30", "18:30", "20:00"]);
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -198,6 +202,269 @@ function addMinutes(dateKey, start, durationMinutes) {
   if (!Number.isFinite(startMinutes)) return "";
   const endTime = minutesToTimeStr(startMinutes + normalizeDuration(durationMinutes, 0));
   return endTime ? `${dateKey}T${endTime}` : "";
+}
+
+function roundUpToStep(minutes, step = FIRST_RUN_SAFE_START_STEP_MINUTES) {
+  if (!Number.isFinite(minutes)) return 0;
+  const safeStep = Number.isFinite(step) && step > 0 ? step : FIRST_RUN_SAFE_START_STEP_MINUTES;
+  return Math.ceil(minutes / safeStep) * safeStep;
+}
+
+function getNowMinutes(nowDate) {
+  if (!(nowDate instanceof Date) || Number.isNaN(nowDate.getTime())) return 0;
+  return nowDate.getHours() * 60 + nowDate.getMinutes();
+}
+
+function normalizeCommitWindow(windowValue) {
+  const startTime = normalizeStartTime(windowValue?.startTime);
+  const endTime = normalizeStartTime(windowValue?.endTime);
+  const start = parseTimeToMinutes(startTime);
+  const end = parseTimeToMinutes(endTime);
+  const daysOfWeek = Array.isArray(windowValue?.daysOfWeek)
+    ? windowValue.daysOfWeek.map((day) => Number(day)).filter((day) => DOW_ALL.includes(day))
+    : [];
+  if (!startTime || !endTime || !daysOfWeek.length || !Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+    return null;
+  }
+  return { startTime, endTime, daysOfWeek, start, end };
+}
+
+function normalizeCommitWindows(windows) {
+  if (!Array.isArray(windows)) return [];
+  return windows.map((windowValue) => normalizeCommitWindow(windowValue)).filter(Boolean);
+}
+
+function windowAppliesOnDate(windowValue, dateKey) {
+  const dow = appDowFromDate(fromLocalDateKey(dateKey));
+  return Number.isInteger(dow) && Array.isArray(windowValue?.daysOfWeek) && windowValue.daysOfWeek.includes(dow);
+}
+
+function intervalsOverlap(leftStart, leftDuration, rightStart, rightDuration) {
+  const leftEnd = leftStart + Math.max(1, normalizeDuration(leftDuration, 1));
+  const rightEnd = rightStart + Math.max(1, normalizeDuration(rightDuration, 1));
+  return leftStart < rightEnd && leftEnd > rightStart;
+}
+
+function overlapsUnavailable({ dateKey, startMinutes, durationMinutes, unavailableWindows }) {
+  return unavailableWindows.some((windowValue) => {
+    if (!windowAppliesOnDate(windowValue, dateKey)) return false;
+    return intervalsOverlap(startMinutes, durationMinutes, windowValue.start, windowValue.end - windowValue.start);
+  });
+}
+
+function overlapsExistingOccurrence({ occurrences, currentOccurrenceId, dateKey, startMinutes, durationMinutes }) {
+  return (Array.isArray(occurrences) ? occurrences : []).some((occurrence) => {
+    if (!occurrence || occurrence.id === currentOccurrenceId) return false;
+    if (normalizeLocalDateKey(occurrence.date) !== dateKey) return false;
+    const status = trimString(occurrence.status, 40).toLowerCase();
+    if (status && status !== "planned" && status !== "postponed" && status !== "rescheduled") return false;
+    const otherStart = parseTimeToMinutes(normalizeStartTime(occurrence.start) || normalizeStartTime(occurrence.slotKey));
+    if (!Number.isFinite(otherStart)) return false;
+    const otherDuration = normalizeDuration(occurrence.durationMinutes, durationMinutes);
+    return intervalsOverlap(startMinutes, durationMinutes, otherStart, otherDuration);
+  });
+}
+
+function addCandidateMinutes(candidates, minutes) {
+  if (!Number.isFinite(minutes)) return;
+  const rounded = Math.round(minutes);
+  if (rounded < 0 || rounded >= MINUTES_PER_DAY) return;
+  if (!candidates.includes(rounded)) candidates.push(rounded);
+}
+
+function buildPreferredSlotCandidates({ dateKey, minStartMinutes, durationMinutes, preferredWindows }) {
+  const candidates = [];
+  preferredWindows.forEach((windowValue) => {
+    if (!windowAppliesOnDate(windowValue, dateKey)) return;
+    const candidate = roundUpToStep(Math.max(windowValue.start, minStartMinutes));
+    if (candidate + durationMinutes <= windowValue.end) {
+      addCandidateMinutes(candidates, candidate);
+    }
+  });
+  return candidates;
+}
+
+function buildDefaultSlotCandidates({ minStartMinutes, actionStart }) {
+  const candidates = [];
+  const actionStartMinutes = parseTimeToMinutes(actionStart);
+  if (Number.isFinite(actionStartMinutes) && actionStartMinutes >= minStartMinutes) {
+    addCandidateMinutes(candidates, actionStartMinutes);
+  }
+  if (minStartMinutes > 0) {
+    addCandidateMinutes(candidates, roundUpToStep(minStartMinutes));
+  }
+  FIRST_RUN_DEFAULT_START_CANDIDATES.forEach((candidate) => {
+    const minutes = parseTimeToMinutes(candidate);
+    if (Number.isFinite(minutes) && minutes >= minStartMinutes) addCandidateMinutes(candidates, minutes);
+  });
+  return candidates.sort((left, right) => left - right);
+}
+
+function chooseSafeSlotOnDate({
+  state,
+  occurrence,
+  dateKey,
+  minStartMinutes,
+  durationMinutes,
+  actionStart,
+  preferredWindows,
+  unavailableWindows,
+  allowDefaultCandidates = true,
+}) {
+  const preferredCandidates = buildPreferredSlotCandidates({ dateKey, minStartMinutes, durationMinutes, preferredWindows });
+  const defaultCandidates = allowDefaultCandidates
+    ? buildDefaultSlotCandidates({ minStartMinutes, actionStart })
+    : [];
+  const candidates = [...preferredCandidates, ...defaultCandidates].filter((candidate, index, list) => list.indexOf(candidate) === index);
+  for (const candidate of candidates) {
+    if (candidate + durationMinutes >= MINUTES_PER_DAY) continue;
+    if (overlapsUnavailable({ dateKey, startMinutes: candidate, durationMinutes, unavailableWindows })) continue;
+    if (
+      overlapsExistingOccurrence({
+        occurrences: state.occurrences,
+        currentOccurrenceId: occurrence?.id,
+        dateKey,
+        startMinutes: candidate,
+        durationMinutes,
+      })
+    ) {
+      continue;
+    }
+    const startTime = minutesToTimeStr(candidate);
+    if (startTime) return { date: dateKey, start: startTime, startMinutes: candidate };
+  }
+  return null;
+}
+
+function findSafeFirstRunSlot({ state, occurrence, action, firstRun, todayKey, nowDate }) {
+  const durationMinutes = normalizeDuration(occurrence?.durationMinutes || action?.durationMinutes || action?.sessionMinutes, 25);
+  const preferredWindows = normalizeCommitWindows(firstRun?.draftAnswers?.preferredWindows);
+  const unavailableWindows = normalizeCommitWindows(firstRun?.draftAnswers?.unavailableWindows);
+  const actionStart = resolveActionStart(action);
+  const nowMinutes = getNowMinutes(nowDate);
+  const todayMinStart = roundUpToStep(nowMinutes + FIRST_RUN_SAFE_START_BUFFER_MINUTES);
+
+  const todaySlot = chooseSafeSlotOnDate({
+    state,
+    occurrence,
+    dateKey: todayKey,
+    minStartMinutes: todayMinStart,
+    durationMinutes,
+    actionStart,
+    preferredWindows,
+    unavailableWindows,
+    allowDefaultCandidates: true,
+  });
+  if (todaySlot) return { ...todaySlot, durationMinutes };
+
+  for (let offset = 1; offset < PLANNING_WINDOW_DAYS; offset += 1) {
+    const dateKey = addDaysLocal(todayKey, offset);
+    if (!dateKey) continue;
+    const preferredSlot = chooseSafeSlotOnDate({
+      state,
+      occurrence,
+      dateKey,
+      minStartMinutes: 0,
+      durationMinutes,
+      actionStart,
+      preferredWindows,
+      unavailableWindows,
+      allowDefaultCandidates: preferredWindows.length === 0,
+    });
+    if (preferredSlot) return { ...preferredSlot, durationMinutes };
+  }
+
+  const tomorrowKey = addDaysLocal(todayKey, 1);
+  if (!tomorrowKey) return null;
+  const fallbackSlot = chooseSafeSlotOnDate({
+    state,
+    occurrence,
+    dateKey: tomorrowKey,
+    minStartMinutes: 0,
+    durationMinutes,
+    actionStart: actionStart || "09:00",
+    preferredWindows: [],
+    unavailableWindows,
+    allowDefaultCandidates: true,
+  });
+  return fallbackSlot ? { ...fallbackSlot, durationMinutes } : null;
+}
+
+function isFirstRunTodayOccurrenceUnsafe(occurrence, { todayKey, nowDate }) {
+  if (normalizeLocalDateKey(occurrence?.date) !== todayKey) return false;
+  const status = trimString(occurrence?.status, 40).toLowerCase();
+  if (status && status !== "planned" && status !== "postponed" && status !== "rescheduled") return false;
+  if (occurrence?.noTime === true) return true;
+  const start = normalizeStartTime(occurrence?.start) || normalizeStartTime(occurrence?.slotKey);
+  const startMinutes = parseTimeToMinutes(start);
+  if (!Number.isFinite(startMinutes)) return true;
+  const minStartMinutes = roundUpToStep(getNowMinutes(nowDate) + FIRST_RUN_SAFE_START_BUFFER_MINUTES);
+  return startMinutes < minStartMinutes;
+}
+
+function compareFirstRunOccurrences(left, right) {
+  const leftDate = normalizeLocalDateKey(left?.date);
+  const rightDate = normalizeLocalDateKey(right?.date);
+  if (leftDate !== rightDate) return leftDate.localeCompare(rightDate);
+  const leftStart = normalizeStartTime(left?.start) || normalizeStartTime(left?.slotKey) || "23:59";
+  const rightStart = normalizeStartTime(right?.start) || normalizeStartTime(right?.slotKey) || "23:59";
+  if (leftStart !== rightStart) return leftStart.localeCompare(rightStart);
+  return trimString(left?.id, 120).localeCompare(trimString(right?.id, 120));
+}
+
+function applySafeSlotToOccurrence(occurrence, slot, commitKey, selectedPlan) {
+  const durationMinutes = normalizeDuration(slot.durationMinutes || occurrence?.durationMinutes, 25);
+  return {
+    ...occurrence,
+    date: slot.date,
+    start: slot.start,
+    slotKey: slot.start,
+    status: "planned",
+    durationMinutes,
+    source: occurrence?.source || COMMIT_SOURCE,
+    firstRunCommitKey: occurrence?.firstRunCommitKey || commitKey,
+    firstRunPlanId: occurrence?.firstRunPlanId || selectedPlan?.id || null,
+    timeType: "fixed",
+    noTime: false,
+    startAt: `${slot.date}T${slot.start}`,
+    endAt: addMinutes(slot.date, slot.start, durationMinutes),
+    windowStartAt: undefined,
+    windowEndAt: undefined,
+  };
+}
+
+function keepFirstRunActivationLaunchSafe({ state, actionIds, actionById, firstRun, todayKey, nowDate, commitKey, selectedPlan }) {
+  const actionSet = new Set(actionIds);
+  const todayOccurrences = (Array.isArray(state.occurrences) ? state.occurrences : [])
+    .filter((occurrence) => occurrence && actionSet.has(occurrence.goalId) && isFirstRunTodayOccurrenceUnsafe(occurrence, { todayKey, nowDate }))
+    .sort(compareFirstRunOccurrences);
+
+  if (!todayOccurrences.length) return state;
+
+  let nextState = state;
+  const replacements = new Map();
+  for (const occurrence of todayOccurrences) {
+    const action = actionById.get(occurrence.goalId) || null;
+    const slot = findSafeFirstRunSlot({
+      state: nextState,
+      occurrence,
+      action,
+      firstRun,
+      todayKey,
+      nowDate,
+    });
+    if (!slot) continue;
+    const nextOccurrence = applySafeSlotToOccurrence(occurrence, slot, commitKey, selectedPlan);
+    replacements.set(occurrence.id, nextOccurrence);
+    nextState = {
+      ...nextState,
+      occurrences: (Array.isArray(nextState.occurrences) ? nextState.occurrences : []).map((entry) =>
+        entry?.id === occurrence.id ? nextOccurrence : entry
+      ),
+    };
+  }
+
+  return replacements.size ? nextState : state;
 }
 
 function buildScheduleForAction(action, todayKey, durationMinutes, startTime, daysOfWeek) {
@@ -680,6 +947,16 @@ export function applyFirstRunCommitDraft({ state, firstRun, selectedPlan, now = 
   nextState = ensureWindowFromScheduleRules(nextState, todayKey, toKey, actionIds, nowDate);
   nextState = keepFirstRunTodayExecutable({ state: nextState, actionIds, todayKey });
   nextState = guaranteeTodayOccurrence({ state: nextState, actionIds, actionById, todayKey, commitKey, selectedPlan });
+  nextState = keepFirstRunActivationLaunchSafe({
+    state: nextState,
+    actionIds,
+    actionById,
+    firstRun: safeFirstRun,
+    todayKey,
+    nowDate,
+    commitKey,
+    selectedPlan,
+  });
 
   const patched = patchFirstRunOccurrences({
     state: nextState,

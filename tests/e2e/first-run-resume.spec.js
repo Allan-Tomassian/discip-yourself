@@ -148,7 +148,7 @@ test("ne force pas onboardingCompleted trop tot et passe a done uniquement a la 
 
   await page.getByRole("button", { name: "Activer mon plan" }).click();
   await expect(page.getByTestId("first-run-screen-discovery")).toBeVisible();
-  await page.getByRole("button", { name: "Entrer dans l'app" }).click();
+  await page.getByRole("button", { name: "Aller à Home" }).click();
 
   await expect(page.locator("[data-tour-id=\"topnav-tabs\"]")).toBeVisible();
   persistedUi = await readPersistedUiState(page);
@@ -232,7 +232,7 @@ test("affiche un plan assiste IA quand starter hints repond dans la fenetre born
   await page.getByRole("button", { name: "Générer les plans" }).click();
 
   await expect(page.getByTestId("first-run-screen-compare")).toBeVisible({ timeout: 12_000 });
-  await expect(page.getByTestId("first-run-v3-source-label")).toContainText("Affiné par l’IA à partir de tes signaux.");
+  await expect(page.getByTestId("first-run-v3-source-label")).toContainText("Plan affiné avec l’IA à partir de tes réponses.");
   const persistedUi = await readPersistedUiState(page);
   expect(persistedUi?.firstRunV1?.generatedPlans?.version).toBe(3);
   expect(persistedUi?.firstRunV1?.generatedPlans?.source).toBe("ai_assisted_starter");
@@ -255,7 +255,7 @@ test("activation complète: commit crée un bloc Today lançable", async ({ page
   await expect(page.getByTestId("first-run-screen-commit")).toBeVisible();
   await page.getByRole("button", { name: "Activer mon plan" }).click();
   await expect(page.getByTestId("first-run-screen-discovery")).toBeVisible();
-  await page.getByRole("button", { name: "Entrer dans l'app" }).click();
+  await page.getByRole("button", { name: "Aller à Home" }).click();
 
   await expect(page.getByTestId("today-primary-action-card")).toBeVisible();
   await expect(page.locator(".todayCommitmentButton")).toBeVisible();

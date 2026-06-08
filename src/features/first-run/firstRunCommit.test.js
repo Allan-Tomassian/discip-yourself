@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { initialData, normalizeCategory } from "../../logic/state";
 import { assertNoSystemInvariantErrors } from "../../logic/systemInvariants";
-import { addDaysLocal } from "../../utils/datetime";
+import { addDaysLocal, parseTimeToMinutes } from "../../utils/datetime";
+import { buildTodayData } from "../today/todayDataAdapter";
 import {
   buildDeterministicRecommendedGeneratedPlans,
   buildLocalStubGeneratedPlans,
@@ -99,6 +100,14 @@ function occurrencesForAction(state, actionId) {
   return (state.occurrences || []).filter((occ) => occ.goalId === actionId);
 }
 
+function todayModelFor(state, now = NOW) {
+  return buildTodayData({
+    data: state,
+    selectedDateKey: TODAY,
+    now,
+  });
+}
+
 describe("applyFirstRunCommitDraft", () => {
   it("creates categories, goals, actions, occurrences, and context", () => {
     const result = apply();
@@ -129,6 +138,180 @@ describe("applyFirstRunCommitDraft", () => {
     expect(todayOccurrence.status).toBe("planned");
     expect(dates.has(addDaysLocal(TODAY, 6))).toBe(true);
     expect(dates.size).toBeGreaterThanOrEqual(7);
+  });
+
+  it("moves a first-run block whose preferred time has passed to a safe future slot today", () => {
+    const result = apply();
+    const actionId = result.createdActionIds[0];
+    const todayOccurrence = occurrencesForAction(result.nextState, actionId).find((occ) => occ.date === TODAY);
+    const startMinutes = parseTimeToMinutes(todayOccurrence?.start);
+
+    expect(todayOccurrence).toBeTruthy();
+    expect(startMinutes).toBeGreaterThanOrEqual(10 * 60 + 15);
+    expect(todayOccurrence.noTime).toBe(false);
+    expect(todayOccurrence.startAt).toBe(`${TODAY}T${todayOccurrence.start}`);
+
+    const today = todayModelFor(result.nextState);
+    expect(today.primaryAction.status).not.toBe("late");
+    expect(today.primaryAction.primaryLabel).toBe("Démarrer");
+  });
+
+  it("turns a no-window local fallback occurrence into a concrete launchable slot", () => {
+    const draftAnswers = {
+      ...firstRun().draftAnswers,
+      preferredWindows: [],
+      unavailableWindows: [],
+    };
+    const generatedPlans = buildLocalStubGeneratedPlans(draftAnswers, NOW);
+    const fallbackPlan = generatedPlans.plans[0];
+    const fr = firstRun({
+      generatedPlans,
+      selectedPlanId: fallbackPlan.id,
+      inputHash: "fallback-no-window-hash",
+      draftAnswers,
+    });
+    const result = apply(baseState(), fr, fallbackPlan);
+    const actionId = result.createdActionIds[0];
+    const todayOccurrence = occurrencesForAction(result.nextState, actionId).find((occ) => occ.date === TODAY);
+
+    expect(todayOccurrence).toBeTruthy();
+    expect(todayOccurrence.start).toBe("10:15");
+    expect(todayOccurrence.noTime).toBe(false);
+    expect(todayOccurrence.timeType).toBe("fixed");
+
+    const today = todayModelFor(result.nextState);
+    expect(today.primaryAction.status).not.toBe("late");
+    expect(today.primaryAction.primaryLabel).toBe("Démarrer");
+  });
+
+  it("moves the first block to the next realistic day when no safe slot remains today", () => {
+    const lateNow = new Date(2026, 3, 29, 23, 30, 0, 0);
+    const latePlan = plan({
+      commitDraft: {
+        ...plan().commitDraft,
+        actions: [
+          {
+            ...plan().commitDraft.actions[0],
+            startTime: "23:00",
+            timeSlots: ["23:00"],
+            durationMinutes: 60,
+            sessionMinutes: 60,
+          },
+        ],
+        occurrences: [
+          { id: "occ_today_late", actionId: "action_deep", date: TODAY, start: "23:00", durationMinutes: 60, status: "planned" },
+        ],
+      },
+    });
+    const result = applyFirstRunCommitDraft({
+      state: {
+        ...baseState(),
+        ui: {
+          ...baseState().ui,
+          firstRunV1: firstRun(),
+        },
+      },
+      firstRun: firstRun(),
+      selectedPlan: latePlan,
+      now: lateNow,
+    });
+    const actionId = result.createdActionIds[0];
+    const movedOccurrence = occurrencesForAction(result.nextState, actionId).find(
+      (occ) => occ.date === addDaysLocal(TODAY, 1) && occ.start === "09:00"
+    );
+
+    expect(movedOccurrence).toMatchObject({
+      date: addDaysLocal(TODAY, 1),
+      start: "09:00",
+      noTime: false,
+      timeType: "fixed",
+    });
+  });
+
+  it("avoids declared unavailable windows when making the first block safe", () => {
+    const eveningNow = new Date(2026, 3, 29, 17, 50, 0, 0);
+    const draftAnswers = {
+      ...firstRun().draftAnswers,
+      preferredWindows: [],
+      unavailableWindows: [{ id: "u-evening", daysOfWeek: [3], startTime: "18:00", endTime: "20:00", label: "Occupé" }],
+    };
+    const eveningPlan = plan({
+      commitDraft: {
+        ...plan().commitDraft,
+        actions: [
+          {
+            ...plan().commitDraft.actions[0],
+            startTime: "17:00",
+            timeSlots: ["17:00"],
+          },
+        ],
+        occurrences: [
+          { id: "occ_today_evening", actionId: "action_deep", date: TODAY, start: "17:00", durationMinutes: 25, status: "planned" },
+        ],
+      },
+    });
+    const result = applyFirstRunCommitDraft({
+      state: {
+        ...baseState(),
+        ui: {
+          ...baseState().ui,
+          firstRunV1: firstRun({ draftAnswers }),
+        },
+      },
+      firstRun: firstRun({ draftAnswers }),
+      selectedPlan: eveningPlan,
+      now: eveningNow,
+    });
+    const actionId = result.createdActionIds[0];
+    const todayOccurrence = occurrencesForAction(result.nextState, actionId).find((occ) => occ.date === TODAY);
+
+    expect(todayOccurrence).toMatchObject({
+      start: "20:00",
+      noTime: false,
+      timeType: "fixed",
+    });
+  });
+
+  it("keeps deterministic review preview and committed first occurrence on the same safe block", () => {
+    const draftAnswers = {
+      whyText: "Je veux publier mon app sans perdre mon énergie.",
+      primaryGoal: "Lancer mon application",
+      currentCapacity: "stable",
+      priorityCategoryIds: ["health", "business"],
+      preferredWindows: [{ id: "p1", daysOfWeek: [3], startTime: "08:00", endTime: "10:00", label: "Matin" }],
+      unavailableWindows: [],
+      referenceDateKey: TODAY,
+    };
+    const generatedPlans = buildDeterministicRecommendedGeneratedPlans(draftAnswers, {
+      inputHash: "preview-commit-safe",
+      now: NOW,
+    });
+    const recommendedPlan = generatedPlans.plans[0];
+    const firstPreview = recommendedPlan.todayPreview[0];
+    const previewStart = firstPreview.slotLabel.split(" ")[0];
+    const fr = firstRun({
+      generatedPlans,
+      selectedPlanId: "recommended",
+      inputHash: "preview-commit-safe",
+      draftAnswers,
+    });
+    const result = apply(baseState(), fr, recommendedPlan);
+    const committedAction = result.nextState.goals.find((goal) => goal.type === "PROCESS" && goal.title === firstPreview.title);
+    const committedOccurrence = occurrencesForAction(result.nextState, committedAction?.id).find((occ) => occ.date === TODAY);
+
+    expect(firstPreview.title).toMatch(/Lancer mon application/);
+    expect(previewStart).toBe("10:15");
+    expect(committedAction).toBeTruthy();
+    expect(committedOccurrence).toMatchObject({
+      date: TODAY,
+      start: previewStart,
+      noTime: false,
+      timeType: "fixed",
+    });
+
+    const today = todayModelFor(result.nextState);
+    expect(today.primaryAction.status).not.toBe("late");
+    expect(today.primaryAction.occurrenceId).toBe(committedOccurrence.id);
   });
 
   it("is idempotent and does not duplicate entities on repeated commit", () => {

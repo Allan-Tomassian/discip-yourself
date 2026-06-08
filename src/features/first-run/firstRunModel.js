@@ -853,12 +853,40 @@ const GENERIC_RECOMMENDED_TITLE_KEYS = Object.freeze([
 ]);
 
 const RECOMMENDED_CATEGORY_KEYWORDS = Object.freeze({
-  app: ["application", "app", "first access", "first-run", "inscription", "publier"],
+  app: ["application", "app", "saas", "first access", "first-run", "inscription", "lancement app", "app store"],
   sport: ["sport", "sportive", "sportif", "entrainement", "musculation", "courir", "course", "routine sportive"],
   smoking: ["fumer", "cigarette", "cigarettes", "tabac", "nicotine", "arreter de fumer"],
   launch: ["publier", "lancer", "livrer", "sortir", "avant juin"],
   money: ["argent", "budget", "finance", "revenus", "cash", "facture"],
   learning: ["apprendre", "formation", "cours", "etud", "competence"],
+});
+
+const RECOMMENDED_GOAL_CATEGORY_KEYWORDS = Object.freeze({
+  health: ["sport", "courir", "course", "5 km", "entrainement", "musculation", "forme", "santé", "energie", "énergie"],
+  learning: ["apprendre", "etudier", "étudier", "certification", "aws", "examen", "formation", "cours", "diplome", "diplôme"],
+  finance: ["argent", "budget", "finance", "facture", "factures", "impot", "impôt", "revenus", "cash"],
+  business: [
+    "application",
+    "app",
+    "saas",
+    "produit",
+    "lancer",
+    "lancement",
+    "publier",
+    "business",
+    "client",
+    "job",
+    "poste",
+    "alternance",
+    "offre",
+    "coaching",
+    "youtube",
+    "video",
+    "vidéo",
+    "contenu",
+  ],
+  productivity: ["papiers", "administratif", "admin", "organiser", "organisation", "factures", "ranger", "planifier"],
+  personal: ["personnel", "routine", "environnement", "stabilité", "stabilite"],
 });
 
 function normalizeTextKey(value, maxLength = 1600) {
@@ -956,6 +984,125 @@ function buildConcreteActionDetail({ categoryId, primaryGoal, whyText, title }) 
   if (categoryId === "learning") return "Transformer l’intention en pratique observable.";
   if (categoryId === "finance") return "Clarifier une décision utile et la prochaine action.";
   return `${title} sans surcharger la semaine.`;
+}
+
+function shortenGoalTitle(value, maxLength = 76) {
+  const normalized = trimString(value, 160).replace(/\s+/g, " ");
+  if (!normalized) return "le résultat prioritaire";
+  if (normalized.length <= maxLength) return normalized;
+  return `${normalized.slice(0, Math.max(20, maxLength - 3)).trim()}...`;
+}
+
+function buildPrimaryResultActionTitle(primaryGoal) {
+  return `Première avancée : ${shortenGoalTitle(primaryGoal)}`;
+}
+
+function buildPrimaryResultActionDetail(primaryGoal, categoryId) {
+  const safeGoal = shortenGoalTitle(primaryGoal, 110);
+  const categoryLabel = USER_AI_CATEGORY_META[categoryId]?.label;
+  return categoryLabel
+    ? `Créer une preuve concrète pour ${safeGoal}, avec ${categoryLabel.toLowerCase()} comme contexte.`
+    : `Créer une preuve concrète pour ${safeGoal}.`;
+}
+
+function goalTextMatchesCategory(goalText, categoryId) {
+  const tokens = RECOMMENDED_GOAL_CATEGORY_KEYWORDS[categoryId] || [];
+  return textIncludesAny(goalText, tokens);
+}
+
+function resolvePrimaryResultCategoryId({ categoryIds, primaryGoal, whyText }) {
+  const safeCategoryIds = Array.isArray(categoryIds) && categoryIds.length ? categoryIds : ["productivity"];
+  const goalText = trimString(primaryGoal, 240) || trimString(whyText, 1200);
+  const priority = ["health", "learning", "finance", "business", "productivity", "personal"];
+  const matched = priority.find((categoryId) => safeCategoryIds.includes(categoryId) && goalTextMatchesCategory(goalText, categoryId));
+  if (matched) return matched;
+  if (safeCategoryIds.includes("business") && !safeCategoryIds.includes("health")) return "business";
+  return safeCategoryIds[0] || "productivity";
+}
+
+function orderCategoryIdsGoalFirst(categoryIds, primaryCategoryId) {
+  const out = [];
+  const safePrimary = trimString(primaryCategoryId, 80);
+  if (safePrimary) out.push(safePrimary);
+  (Array.isArray(categoryIds) ? categoryIds : []).forEach((categoryId) => {
+    const normalized = trimString(categoryId, 80);
+    if (!normalized || out.includes(normalized)) return;
+    out.push(normalized);
+  });
+  return out.length ? out : ["productivity"];
+}
+
+function buildSupportActionTitle(categoryId) {
+  if (categoryId === "health") return "Soutien énergie";
+  if (categoryId === "personal") return "Stabiliser l’environnement";
+  if (categoryId === "business") return "Revue courte du projet";
+  if (categoryId === "learning") return "Session d’apprentissage de soutien";
+  if (categoryId === "finance") return "Point décisions financières";
+  return "Organisation de soutien";
+}
+
+function buildSupportActionDetail(categoryId, primaryGoal) {
+  const safeGoal = shortenGoalTitle(primaryGoal, 110);
+  if (categoryId === "health") return `Préserver l’énergie nécessaire pour avancer sur ${safeGoal}.`;
+  if (categoryId === "personal") return `Stabiliser l’environnement autour de ${safeGoal}.`;
+  if (categoryId === "business") return `Clarifier rapidement ce qui soutient ${safeGoal}.`;
+  if (categoryId === "learning") return `Protéger un apprentissage utile à ${safeGoal}.`;
+  if (categoryId === "finance") return `Clarifier une décision financière liée à ${safeGoal}.`;
+  return `Réduire le bruit autour de ${safeGoal}.`;
+}
+
+function buildDeterministicGoalFirstActionBlueprints({ categoryIds, primaryGoal, whyText, capacityConfig }) {
+  const maxActionCount = Math.max(2, Number(capacityConfig.actionLimit) || 3);
+  const primaryCategoryId = resolvePrimaryResultCategoryId({ categoryIds, primaryGoal, whyText });
+  const orderedCategoryIds = orderCategoryIdsGoalFirst(categoryIds, primaryCategoryId);
+  const safePrimaryGoal = trimString(primaryGoal, 180) || "Reprendre le contrôle de ma journée";
+  const actions = [
+    {
+      id: sanitizeIdSegment(`primary_result_${safePrimaryGoal}`),
+      categoryId: primaryCategoryId,
+      title: buildPrimaryResultActionTitle(safePrimaryGoal),
+      detail: buildPrimaryResultActionDetail(safePrimaryGoal, primaryCategoryId),
+      durationMinutes: capacityConfig.coreMinutes,
+      offsets: capacityConfig.coreOffsets,
+      anchor: RECOMMENDED_CATEGORY_ACTIONS[primaryCategoryId]?.anchor || "09:00",
+      priority: 100,
+      todayCandidate: true,
+      primaryResult: true,
+    },
+  ];
+
+  orderedCategoryIds.forEach((categoryId, index) => {
+    if (categoryId === primaryCategoryId || actions.length >= maxActionCount) return;
+    const supportOffsets = capacityConfig.supportOffsets.length ? capacityConfig.supportOffsets : [Math.min(6, index + 1)];
+    actions.push({
+      id: sanitizeIdSegment(`support_${categoryId}_${safePrimaryGoal}`),
+      categoryId,
+      title: buildSupportActionTitle(categoryId),
+      detail: buildSupportActionDetail(categoryId, safePrimaryGoal),
+      durationMinutes: categoryId === "health" ? Math.min(25, capacityConfig.supportMinutes) : capacityConfig.supportMinutes,
+      offsets: supportOffsets,
+      anchor: RECOMMENDED_CATEGORY_ACTIONS[categoryId]?.anchor || "12:30",
+      priority: 20,
+      todayCandidate: false,
+    });
+  });
+
+  if (actions.length < maxActionCount) {
+    actions.push({
+      id: sanitizeIdSegment(`review_${safePrimaryGoal}`),
+      categoryId: primaryCategoryId,
+      title: "Revue d’exécution",
+      detail: `Fermer la boucle sur ${shortenGoalTitle(safePrimaryGoal, 100)} et préparer le prochain bloc.`,
+      durationMinutes: capacityConfig.reviewMinutes,
+      offsets: capacityConfig.reviewOffsets,
+      anchor: "18:30",
+      priority: 5,
+      todayCandidate: false,
+      preferAnchor: true,
+    });
+  }
+
+  return actions.slice(0, maxActionCount);
 }
 
 function normalizeStarterPlanStrategy(starterHints) {
@@ -1111,22 +1258,50 @@ function normalizeCompleteWindows(windows) {
     : [];
 }
 
-function buildPreferredStartCandidates({ dateKey, durationMinutes, preferredWindows, anchor }) {
+function roundUpStartMinutes(minutes, step = 15) {
+  if (!Number.isFinite(minutes)) return 0;
+  const safeStep = Number.isFinite(step) && step > 0 ? step : 15;
+  return Math.ceil(minutes / safeStep) * safeStep;
+}
+
+function resolveMinimumStartMinutes({ dateKey, now }) {
+  if (!(now instanceof Date) || Number.isNaN(now.getTime())) return 0;
+  if (normalizeLocalDateKey(dateKey) !== toLocalDateKey(now)) return 0;
+  return roundUpStartMinutes(now.getHours() * 60 + now.getMinutes() + 15);
+}
+
+function addStartCandidate(candidates, minutes, minStartMinutes = 0) {
+  if (!Number.isFinite(minutes)) return;
+  const rounded = Math.round(minutes);
+  if (rounded < minStartMinutes || rounded < 0 || rounded > 23 * 60 + 59) return;
+  const time = minutesToTimeStr(rounded);
+  if (time && !candidates.includes(time)) candidates.push(time);
+}
+
+function appendDefaultStartCandidates(candidates, anchor, minStartMinutes, { includeMinimum = true } = {}) {
+  if (includeMinimum && minStartMinutes > 0) addStartCandidate(candidates, roundUpStartMinutes(minStartMinutes), minStartMinutes);
+  [anchor, "07:30", "09:00", "12:30", "18:30", "20:00"].forEach((candidate) => {
+    const normalized = normalizeTime(candidate);
+    const minutes = parseTimeToMinutes(normalized);
+    addStartCandidate(candidates, minutes, minStartMinutes);
+  });
+}
+
+function buildPreferredStartCandidates({ dateKey, durationMinutes, preferredWindows, anchor, minStartMinutes = 0, preferAnchor = false }) {
   const candidates = [];
+  if (preferAnchor) appendDefaultStartCandidates(candidates, anchor, minStartMinutes, { includeMinimum: false });
   preferredWindows.forEach((windowValue) => {
     if (!windowAppliesToDate(windowValue, dateKey)) return;
     const start = parseTimeToMinutes(windowValue.startTime);
     const end = parseTimeToMinutes(windowValue.endTime);
     if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return;
     const latestStart = end - durationMinutes;
-    if (latestStart >= start) {
-      candidates.push(minutesToTimeStr(start));
+    const safeStart = roundUpStartMinutes(Math.max(start, minStartMinutes));
+    if (latestStart >= safeStart) {
+      addStartCandidate(candidates, safeStart, minStartMinutes);
     }
   });
-  [anchor, "07:30", "09:00", "12:30", "18:30", "20:00"].forEach((candidate) => {
-    const normalized = normalizeTime(candidate);
-    if (normalized && !candidates.includes(normalized)) candidates.push(normalized);
-  });
+  if (!preferAnchor) appendDefaultStartCandidates(candidates, anchor, minStartMinutes);
   return candidates;
 }
 
@@ -1145,8 +1320,9 @@ function startOverlapsUnavailable({ dateKey, startTime, durationMinutes, unavail
   });
 }
 
-function chooseRecommendedStartTime({ dateKey, durationMinutes, preferredWindows, unavailableWindows, anchor }) {
-  const candidates = buildPreferredStartCandidates({ dateKey, durationMinutes, preferredWindows, anchor });
+function chooseRecommendedStartTime({ dateKey, durationMinutes, preferredWindows, unavailableWindows, anchor, now, preferAnchor = false }) {
+  const minStartMinutes = resolveMinimumStartMinutes({ dateKey, now });
+  const candidates = buildPreferredStartCandidates({ dateKey, durationMinutes, preferredWindows, anchor, minStartMinutes, preferAnchor });
   const safeCandidate = candidates.find(
     (candidate) =>
       !startOverlapsUnavailable({
@@ -1170,6 +1346,16 @@ function buildRecommendedActionBlueprints({ categoryIds, primaryGoal, whyText, c
   const primaryCategoryId = categoryIds[0] || "productivity";
   const safePrimaryGoal = trimString(primaryGoal, 180) || "Reprendre le contrôle de ma journée";
   const maxActionCount = Math.max(2, Number(capacityConfig.actionLimit) || 3);
+
+  if (!isPlainObject(starterHints)) {
+    return buildDeterministicGoalFirstActionBlueprints({
+      categoryIds,
+      primaryGoal: safePrimaryGoal,
+      whyText,
+      capacityConfig,
+    });
+  }
+
   const actions = buildStarterHintBlueprints({
     starterHints,
     categoryIds,
@@ -1252,7 +1438,7 @@ function buildRecommendedActionBlueprints({ categoryIds, primaryGoal, whyText, c
   return dedupeRecommendedActionBlueprints(actions).slice(0, maxActionCount);
 }
 
-function buildRecommendedOccurrences({ actionBlueprints, todayKey, preferredWindows, unavailableWindows, locale, categoryMap }) {
+function buildRecommendedOccurrences({ actionBlueprints, todayKey, preferredWindows, unavailableWindows, locale, categoryMap, now }) {
   const occurrences = [];
   const previewEntries = [];
 
@@ -1266,6 +1452,8 @@ function buildRecommendedOccurrences({ actionBlueprints, todayKey, preferredWind
         preferredWindows,
         unavailableWindows,
         anchor: action.anchor,
+        now,
+        preferAnchor: action.preferAnchor === true,
       });
       const occurrence = {
         id: `recommended_occ_${action.id}_${offset}`,
@@ -1318,7 +1506,13 @@ function buildRecommendedCommitDraft({ draftAnswers, input, now, starterHints = 
   const safeDraftAnswers = normalizeFirstRunDraftAnswers(draftAnswers);
   const capacity = safeDraftAnswers.currentCapacity || "stable";
   const capacityConfig = RECOMMENDED_CAPACITY_CONFIG[capacity] || RECOMMENDED_CAPACITY_CONFIG.stable;
-  const categoryIds = resolveRecommendedCategoryIds(safeDraftAnswers);
+  const inputCategoryIds = resolveRecommendedCategoryIds(safeDraftAnswers);
+  const primaryCategoryId = resolvePrimaryResultCategoryId({
+    categoryIds: inputCategoryIds,
+    primaryGoal: safeDraftAnswers.primaryGoal,
+    whyText: safeDraftAnswers.whyText,
+  });
+  const categoryIds = orderCategoryIdsGoalFirst(inputCategoryIds, primaryCategoryId);
   const todayKey = resolveRecommendedTodayKey(input, now);
   const locale = resolveRecommendedLocale(input);
   const preferredWindows = normalizeCompleteWindows(safeDraftAnswers.preferredWindows);
@@ -1359,6 +1553,7 @@ function buildRecommendedCommitDraft({ draftAnswers, input, now, starterHints = 
     unavailableWindows,
     locale,
     categoryMap,
+    now,
   });
   const dateKeys = buildRecommendedDateKeys(todayKey);
   const weekSchedule = buildRecommendedWeekSchedule({ dateKeys, previewEntries, locale });
@@ -1464,8 +1659,10 @@ function buildRecommendedGeneratedPlans(input, options = {}) {
       weekBenefit: strategy.weekBenefit || "Créer une preuve d’exécution dès aujourd’hui.",
       differenceNote:
         source === FIRST_RUN_AI_ASSISTED_SOURCE
-          ? "Affiné par l’IA à partir de tes signaux."
-          : "Créé à partir de tes signaux. Tu peux l’activer maintenant.",
+          ? "Plan affiné avec l’IA à partir de tes réponses."
+          : options?.aiStatus === "timeout" || options?.aiStatus === "failed"
+            ? "Aide IA indisponible : plan local fiable généré avec tes réponses."
+            : "Plan local construit à partir de tes réponses.",
       comparisonMetrics: {
         weeklyMinutes,
         totalBlocks: built.commitDraft.occurrences.length,
