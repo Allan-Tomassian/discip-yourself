@@ -23,6 +23,10 @@ import {
   systemAnalysisPublicResponseSchema,
   systemAnalysisRequestSchema,
 } from "../schemas/systemAnalysis.js";
+import {
+  dayAnalysisPublicResponseSchema,
+  dayAnalysisRequestSchema,
+} from "../schemas/dayAnalysis.js";
 import { insertAiRequestLog, hashValue } from "../services/logging.js";
 import { resolveAiFeatureQuotaState } from "../services/aiFeatureQuota.js";
 import { resolveQuotaState, enforceMemoryRateLimit } from "../services/quotas.js";
@@ -42,6 +46,10 @@ import {
   resolveSystemAnalysisPromptVersion,
   runSystemAnalysisService,
 } from "../services/systemAnalysis/systemAnalysisService.js";
+import {
+  resolveDayAnalysisPromptVersion,
+  runDayAnalysisService,
+} from "../services/dayAnalysis/dayAnalysisService.js";
 import { AI_FEATURE_IDS, AI_TIERS, COACH_CHAT_MODES } from "../../../src/domain/aiPolicy.js";
 
 function isPlainObject(value) {
@@ -401,6 +409,20 @@ function buildSystemAnalysisRequestHash({ snapshot, promptVersion }) {
   );
 }
 
+function buildDayAnalysisRequestHash({ snapshot, snapshotHash, promptVersion }) {
+  return hashValue(
+    JSON.stringify({
+      route: "day-analysis",
+      dayKey: snapshot?.dayKey || "",
+      snapshotHash: snapshotHash || "",
+      candidateIds: Array.isArray(snapshot?.deterministicActions)
+        ? snapshot.deterministicActions.map((candidate) => candidate?.id).filter(Boolean).slice(0, 12)
+        : [],
+      promptVersion,
+    })
+  );
+}
+
 function logAiStageError({
   app,
   request,
@@ -513,6 +535,14 @@ export async function aiRoutes(app) {
     }
   );
 
+  app.post(
+    "/day-analysis",
+    { preHandler: [app.authenticate], bodyLimit: 48 * 1024 },
+    async (request, reply) => {
+      return handleDayAnalysisRoute({ app, request, reply });
+    }
+  );
+
   app.post("/first-run-plan", { preHandler: [app.authenticate] }, async (request, reply) => {
     return handleFirstRunPlanRoute({ app, request, reply });
   });
@@ -524,6 +554,342 @@ export async function aiRoutes(app) {
   app.post("/first-run-why-clarification", { preHandler: [app.authenticate] }, async (request, reply) => {
     return handleFirstRunWhyClarificationRoute({ app, request, reply });
   });
+}
+
+async function handleDayAnalysisRoute({ app, request, reply }) {
+  const startedAt = Date.now();
+  const route = "/ai/day-analysis";
+  const featureId = AI_FEATURE_IDS.TODAY_AI_INSIGHT;
+  const coachKind = "day-analysis";
+  const promptVersion = resolveDayAnalysisPromptVersion(app);
+  const parsedBody = dayAnalysisRequestSchema.safeParse(request.body);
+
+  if (!parsedBody.success) {
+    await logBlockedAiRequest({
+      app,
+      request,
+      startedAt,
+      route,
+      coachKind,
+      featureId,
+      statusCode: 400,
+      errorCode: "DAY_ANALYSIS_SNAPSHOT_INVALID",
+      mode: "day_analysis",
+      protocolType: promptVersion,
+      promptVersion,
+      validationPassed: false,
+      zodIssuePaths: parsedBody.error.issues.map((issue) => issue.path.join(".")).filter(Boolean).slice(0, 24),
+    });
+    return reply.code(400).send({
+      error: "DAY_ANALYSIS_SNAPSHOT_INVALID",
+      message: "Day analysis request body is invalid.",
+      issues: parsedBody.error.issues,
+      requestId: request.requestId,
+    });
+  }
+
+  const body = parsedBody.data;
+  const requestHash = buildDayAnalysisRequestHash({
+    snapshot: body.snapshot,
+    snapshotHash: body.snapshotHash,
+    promptVersion,
+  });
+
+  const rateLimited =
+    enforceMemoryRateLimit({
+      key: `day-analysis:user:${request.user.id}`,
+      limit: 3,
+      windowMs: 60 * 1000,
+    }) ||
+    enforceMemoryRateLimit({
+      key: `day-analysis:ip:${getClientIp(request)}`,
+      limit: 12,
+      windowMs: 15 * 60 * 1000,
+    });
+  if (rateLimited) {
+    await logBlockedAiRequest({
+      app,
+      request,
+      startedAt,
+      route,
+      coachKind,
+      featureId,
+      statusCode: 429,
+      errorCode: "RATE_LIMITED",
+      mode: "day_analysis",
+      protocolType: promptVersion,
+      promptVersion,
+      requestHash,
+    });
+    return reply.code(429).send({
+      error: "RATE_LIMITED",
+      message: "Rate limit exceeded.",
+      requestId: request.requestId,
+    });
+  }
+
+  let snapshot;
+  try {
+    snapshot = await loadUserSnapshot(app.supabase, request.user.id);
+  } catch (error) {
+    logAiStageError({
+      app,
+      request,
+      route,
+      stage: "snapshot_load",
+      status: 503,
+      errorCode: isSupabaseSchemaError(error) ? "BACKEND_SCHEMA_MISSING" : "SNAPSHOT_LOAD_FAILED",
+      err: error,
+    });
+    if (isSupabaseSchemaError(error)) {
+      return reply.code(503).send(buildSchemaErrorReply(request.requestId));
+    }
+    return sendAiStageError(reply, request.requestId, {
+      status: 503,
+      errorCode: "SNAPSHOT_LOAD_FAILED",
+      message: "Unable to load user context.",
+    });
+  }
+
+  let quotaState;
+  try {
+    quotaState = await resolveQuotaState(app.supabase, {
+      userId: request.user.id,
+      entitlement: snapshot.entitlement,
+      quotaMode: app.config.AI_QUOTA_MODE,
+    });
+  } catch (error) {
+    logAiStageError({
+      app,
+      request,
+      route,
+      stage: "quota_load",
+      status: 503,
+      errorCode: isSupabaseSchemaError(error) ? "BACKEND_SCHEMA_MISSING" : "QUOTA_LOAD_FAILED",
+      err: error,
+    });
+    if (isSupabaseSchemaError(error)) {
+      return reply.code(503).send(buildSchemaErrorReply(request.requestId));
+    }
+    return sendAiStageError(reply, request.requestId, {
+      status: 503,
+      errorCode: "QUOTA_LOAD_FAILED",
+      message: "Unable to resolve AI quota.",
+    });
+  }
+
+  if (quotaState.exceeded) {
+    await insertAiRequestLog(app.supabase, {
+      requestId: request.requestId,
+      userId: request.user.id,
+      coachKind,
+      route,
+      routeName: routeNameFromPath(route),
+      featureId,
+      planTier: quotaState.planTier,
+      decisionSource: "rules",
+      statusCode: 429,
+      mode: "day_analysis",
+      protocolType: promptVersion,
+      promptVersion,
+      providerStatus: "blocked",
+      countsForQuota: false,
+      requestHash,
+      ipHash: hashValue(getClientIp(request)),
+      userAgent: request.headers["user-agent"] || "",
+      latencyMs: Date.now() - startedAt,
+      errorCode: "QUOTA_EXCEEDED",
+    });
+    return reply.code(429).send({
+      error: "QUOTA_EXCEEDED",
+      message: "AI quota exceeded.",
+      requestId: request.requestId,
+      quotaRemaining: quotaState.remaining,
+    });
+  }
+
+  let serviceResult;
+  try {
+    serviceResult = await runDayAnalysisService({
+      app,
+      context: {
+        snapshot: body.snapshot,
+        snapshotHash: body.snapshotHash,
+        clientRequestId: body.clientRequestId || "",
+        requestId: request.requestId,
+        locale: "fr-FR",
+        timezone: body.snapshot.timezone || "Europe/Paris",
+        promptVersion,
+        quota: {
+          featureId,
+          planTier: quotaState.planTier,
+          remaining: Number.isFinite(quotaState.remaining) ? Math.max(0, Math.round(quotaState.remaining)) : null,
+        },
+      },
+    });
+  } catch (error) {
+    const rawErrorCode = String(error?.code || "").trim().toUpperCase() || "UNKNOWN_BACKEND_ERROR";
+    const errorDetails = isPlainObject(error?.details) ? error.details : null;
+    const status =
+      rawErrorCode === "DAY_ANALYSIS_PROVIDER_TIMEOUT" ? 504
+      : rawErrorCode === "INVALID_DAY_ANALYSIS_RESPONSE" ? 502
+      : 503;
+    const responseErrorCode =
+      rawErrorCode === "DAY_ANALYSIS_PROVIDER_TIMEOUT" ? "DAY_ANALYSIS_PROVIDER_TIMEOUT"
+      : rawErrorCode === "INVALID_DAY_ANALYSIS_RESPONSE" ? "INVALID_DAY_ANALYSIS_RESPONSE"
+      : "DAY_ANALYSIS_BACKEND_UNAVAILABLE";
+    logAiStageError({
+      app,
+      request,
+      route,
+      stage: "provider",
+      status,
+      errorCode: responseErrorCode,
+      err: error,
+      context: {
+        aiIntent: "day_analysis",
+        mode: "day_analysis",
+        requestId: request.requestId,
+      },
+    });
+    await insertAiRequestLog(app.supabase, {
+      requestId: request.requestId,
+      userId: request.user.id,
+      coachKind,
+      route,
+      routeName: routeNameFromPath(route),
+      featureId,
+      planTier: quotaState.planTier,
+      decisionSource: "ai",
+      statusCode: status,
+      mode: "day_analysis",
+      protocolType: promptVersion,
+      promptVersion,
+      providerStatus:
+        errorDetails?.providerStatus ||
+        (responseErrorCode === "INVALID_DAY_ANALYSIS_RESPONSE" ? "invalid_response" : "error"),
+      model: errorDetails?.model || null,
+      modelClass: errorDetails?.modelClass || null,
+      providerMs: Number.isFinite(errorDetails?.providerMs) ? Math.round(errorDetails.providerMs) : null,
+      rejectionStage: errorDetails?.rejectionStage || null,
+      rejectionReason: errorDetails?.rejectionReason || null,
+      validationPassed:
+        typeof errorDetails?.validationPassed === "boolean" ? errorDetails.validationPassed : false,
+      countsForQuota: false,
+      zodIssuePaths:
+        Array.isArray(errorDetails?.zodIssuePaths) && errorDetails.zodIssuePaths.length
+          ? errorDetails.zodIssuePaths
+          : Array.isArray(errorDetails?.governanceIssues)
+            ? errorDetails.governanceIssues.map((issue) => issue.path || issue.code).filter(Boolean).slice(0, 24)
+            : null,
+      requestHash,
+      ipHash: hashValue(getClientIp(request)),
+      userAgent: request.headers["user-agent"] || "",
+      latencyMs: Number.isFinite(errorDetails?.totalMs) ? Math.round(errorDetails.totalMs) : Date.now() - startedAt,
+      errorCode: responseErrorCode,
+    });
+    return reply.code(status).send({
+      error: responseErrorCode,
+      message:
+        responseErrorCode === "DAY_ANALYSIS_PROVIDER_TIMEOUT"
+          ? "Day analysis provider timed out."
+          : responseErrorCode === "INVALID_DAY_ANALYSIS_RESPONSE"
+            ? "Day analysis response is invalid."
+            : "Day analysis backend unavailable.",
+      requestId: request.requestId,
+      ...(errorDetails ? { details: errorDetails } : {}),
+    });
+  }
+
+  const parsedResponse = dayAnalysisPublicResponseSchema.safeParse(serviceResult.response);
+  if (!parsedResponse.success) {
+    await insertAiRequestLog(app.supabase, {
+      requestId: request.requestId,
+      userId: request.user.id,
+      coachKind,
+      route,
+      routeName: routeNameFromPath(route),
+      featureId,
+      planTier: quotaState.planTier,
+      decisionSource: "ai",
+      statusCode: 502,
+      mode: "day_analysis",
+      protocolType: promptVersion,
+      promptVersion,
+      providerStatus: "invalid_response",
+      rejectionStage: "response_schema",
+      rejectionReason: "provider_parse_failed",
+      validationPassed: false,
+      countsForQuota: false,
+      zodIssuePaths: parsedResponse.error.issues.map((issue) => issue.path.join(".")).filter(Boolean).slice(0, 24),
+      requestHash,
+      ipHash: hashValue(getClientIp(request)),
+      userAgent: request.headers["user-agent"] || "",
+      latencyMs: Date.now() - startedAt,
+      errorCode: "INVALID_DAY_ANALYSIS_RESPONSE",
+    });
+    return reply.code(502).send({
+      error: "INVALID_DAY_ANALYSIS_RESPONSE",
+      message: "Day analysis response is invalid.",
+      requestId: request.requestId,
+    });
+  }
+
+  request.log.info(
+    {
+      requestId: request.requestId,
+      route,
+      dayKey: body.snapshot.dayKey,
+      snapshotHash: body.snapshotHash,
+      promptVersion,
+      model: serviceResult.diagnostics?.model || null,
+      modelClass: serviceResult.diagnostics?.modelClass || null,
+      status: "ok",
+      providerMs: serviceResult.diagnostics?.providerMs || null,
+    },
+    "day analysis completed"
+  );
+  await insertAiRequestLog(app.supabase, {
+    requestId: request.requestId,
+    userId: request.user.id,
+    coachKind,
+    route,
+    routeName: routeNameFromPath(route),
+    featureId,
+    planTier: quotaState.planTier,
+    decisionSource: "ai",
+    statusCode: 200,
+    mode: "day_analysis",
+    protocolType: promptVersion,
+    promptVersion,
+    model: serviceResult.diagnostics?.model || parsedResponse.data.modelMeta?.model || null,
+    modelClass: serviceResult.diagnostics?.modelClass || null,
+    providerStatus: "ok",
+    providerMs: Number.isFinite(serviceResult.diagnostics?.providerMs)
+      ? Math.round(serviceResult.diagnostics.providerMs)
+      : null,
+    rejectionStage: null,
+    rejectionReason: null,
+    validationPassed: true,
+    richnessPassed: true,
+    countsForQuota: true,
+    stepCount: 1,
+    itemCount: 1 + parsedResponse.data.alternatives.length,
+    requestHash,
+    inputBytes: safeJsonByteLength({
+      dayKey: body.snapshot.dayKey,
+      snapshotHash: body.snapshotHash,
+      candidateCount: body.snapshot.deterministicActions.length,
+    }),
+    outputBytes: safeJsonByteLength(parsedResponse.data),
+    ipHash: hashValue(getClientIp(request)),
+    userAgent: request.headers["user-agent"] || "",
+    latencyMs: Number.isFinite(serviceResult.diagnostics?.totalMs)
+      ? Math.round(serviceResult.diagnostics.totalMs)
+      : Date.now() - startedAt,
+  });
+
+  return reply.code(200).send(parsedResponse.data);
 }
 
 async function handleCoachRoute({

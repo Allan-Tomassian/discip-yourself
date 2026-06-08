@@ -54,6 +54,7 @@ export default function Home({
   onOpenPlanning,
   onOpenSession,
   onOpenRecoverySheet,
+  onOpenDayAnalysisSheet,
   notificationCenter = null,
 }) {
   const safeData = useMemo(() => (data && typeof data === "object" ? data : {}), [data]);
@@ -449,6 +450,14 @@ export default function Home({
     openPlanningForToday();
   }, [onOpenSecondaryRoute, openCoachInsight, openPlanningForToday, todayData.primaryAction?.detailLabel]);
 
+  const openDayAnalysis = useCallback(() => {
+    onOpenDayAnalysisSheet?.({
+      todayData,
+      selectedDateKey,
+      source: "home",
+    });
+  }, [onOpenDayAnalysisSheet, selectedDateKey, todayData]);
+
   return (
     <>
       <AppScreen
@@ -489,8 +498,7 @@ export default function Home({
             aiMode={todayData.aiMode}
             status={todayData.aiInsight.status}
             canApply
-            onOptimize={() => openCoachInsight("Optimise ma journée : propose une réduction, un déplacement ou un bloc utile sans appliquer automatiquement.")}
-            onOpenCoach={() => openCoachInsight("Optimise ma journée : propose une réduction, un déplacement ou un bloc utile sans appliquer automatiquement.")}
+            onOptimize={openDayAnalysis}
           />
 
           <PrimaryActionCard

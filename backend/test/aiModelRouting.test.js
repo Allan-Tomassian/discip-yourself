@@ -40,6 +40,27 @@ test("route-specific model overrides model-class and global envs", () => {
   assert.equal(resolved.source.timeout, "route_override");
 });
 
+test("route-specific model class can select reasoning medium without changing the feature policy", () => {
+  const resolved = resolveAiModelConfig({
+    featureId: AI_FEATURE_IDS.TODAY_AI_INSIGHT,
+    config: {
+      OPENAI_MODEL: "global-model",
+      AI_MODEL_FAST_LOW_COST_TEXT: "fast-class-model",
+      AI_MODEL_REASONING_MEDIUM: "reasoning-class-model",
+      AI_TIMEOUT_REASONING_MEDIUM_MS: 34_000,
+    },
+    routeOverride: {
+      modelClass: AI_MODEL_CLASSES.REASONING_MEDIUM,
+      defaultTimeoutMs: 35_000,
+    },
+  });
+
+  assert.equal(AI_FEATURE_POLICY[AI_FEATURE_IDS.TODAY_AI_INSIGHT].modelClass, AI_MODEL_CLASSES.FAST_LOW_COST_TEXT);
+  assert.equal(resolved.modelClass, AI_MODEL_CLASSES.REASONING_MEDIUM);
+  assert.equal(resolved.model, "reasoning-class-model");
+  assert.equal(resolved.timeoutMs, 34_000);
+});
+
 test("model-class env overrides the global fallback", () => {
   const resolved = resolveAiModelConfig({
     featureId: AI_FEATURE_IDS.COACH_CHAT_FREE,

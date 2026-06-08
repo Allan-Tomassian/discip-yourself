@@ -65,6 +65,12 @@ function readConfigValue(config, key) {
   return config?.[key];
 }
 
+function resolveModelClass(featurePolicy, routeOverride = {}) {
+  const routeModelClass = cleanString(routeOverride.modelClass);
+  if (routeModelClass && MODEL_ENV_BY_CLASS[routeModelClass]) return routeModelClass;
+  return featurePolicy?.modelClass || null;
+}
+
 function resolveModel({ config, modelClass, routeOverride = {} }) {
   const classEnvName = MODEL_ENV_BY_CLASS[modelClass];
   const routeModel = cleanString(routeOverride.model);
@@ -128,7 +134,7 @@ export function resolveAiModelConfig({
     };
   }
 
-  const modelClass = featurePolicy.modelClass;
+  const modelClass = resolveModelClass(featurePolicy, routeOverride);
   const model = resolveModel({ config, modelClass, routeOverride });
   const timeout = resolveTimeout({ config, modelClass, routeOverride });
 

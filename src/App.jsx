@@ -44,6 +44,7 @@ import BottomNavigation from "./components/navigation/BottomNavigation";
 import InAppNudge from "./components/notifications/InAppNudge";
 import NotificationCenter from "./components/notifications/NotificationCenter";
 import UnifiedRecoverySheet from "./components/recovery/UnifiedRecoverySheet";
+import DayAnalysisSheet from "./components/day-analysis/DayAnalysisSheet";
 import { applyThemeTokens, BRAND_ACCENT, DEFAULT_THEME } from "./theme/themeTokens";
 import { todayLocalKey } from "./utils/dateKey";
 import { normalizePriorities } from "./logic/priority";
@@ -65,6 +66,7 @@ import { getInboxId } from "./app/inbox";
 import { createHomeNavigationHandlers } from "./app/homeNavigation";
 import { resolveCoachCreatedViewTarget } from "./app/coachCreatedViewTarget";
 import { scheduleMainTabScrollReset } from "./app/mainTabScroll";
+import { useAuth } from "./auth/useAuth";
 import {
   normalizeRouteOrigin,
   resolveMainTabForSurface,
@@ -93,6 +95,16 @@ import {
   createSessionRecoveryRequest,
   hasCommittedSessionRecoveryOutcome,
 } from "./features/recovery/sessionRecoveryQueue";
+import { requestAiDayAnalysis } from "./infra/aiDayAnalysisClient";
+import { buildDayAnalysisSnapshot } from "./features/day-analysis/dayAnalysisSnapshot";
+import { buildDayAnalysisSnapshotHash } from "./features/day-analysis/dayAnalysisCache";
+import { DAY_ANALYSIS_SHEET_STATE } from "./features/day-analysis/dayAnalysisSheetModel";
+import {
+  applyDayAnalysisDeterministicAction,
+  buildDayAnalysisRecoveryRequest,
+  isDayAnalysisActionDirectlyApplicable,
+  resolveDayAnalysisActionHandoff,
+} from "./features/day-analysis/dayAnalysisAppController";
 
 function runSelfTests(data) {
   const isProd = typeof import.meta !== "undefined" && import.meta.env && import.meta.env.PROD;
@@ -142,7 +154,25 @@ function getRecoverySuccessCtaLabel(tab) {
   return normalizeRecoveryTab(tab) === "timeline" ? "Retour au Planning" : "Retour à Home";
 }
 
+function createInitialDayAnalysisSheetState() {
+  return {
+    open: false,
+    phase: DAY_ANALYSIS_SHEET_STATE.INTRO,
+    source: "home",
+    selectedDateKey: "",
+    todayData: null,
+    snapshot: null,
+    snapshotHash: "",
+    result: null,
+    selectedActionId: "",
+    pending: false,
+    error: null,
+    successSummary: "",
+  };
+}
+
 export default function App() {
+  const auth = useAuth();
   const {
     data,
     setData,
@@ -184,8 +214,12 @@ export default function App() {
     result: null,
     error: null,
   });
+  const [dayAnalysisSheetState, setDayAnalysisSheetState] = useState(createInitialDayAnalysisSheetState);
   const [queuedSessionRecoveryRequest, setQueuedSessionRecoveryRequest] = useState(null);
   const dataRef = useRef(data);
+  const dayAnalysisRequestSeqRef = useRef(0);
+  const dayAnalysisAbortRef = useRef(null);
+  const dayAnalysisCacheRef = useRef(new Map());
   const invariantLogRef = useRef(new Set());
   const tour = useTour({ data, setData, steps: FIRST_USE_TOUR_STEPS, tourVersion: TOUR_VERSION });
 
@@ -368,6 +402,293 @@ export default function App() {
     (typeof safeData?.ui?.selectedDateKey === "string" && safeData.ui.selectedDateKey) ||
     (typeof safeData?.ui?.selectedDate === "string" && safeData.ui.selectedDate) ||
     todayLocalKey();
+
+  const closeDayAnalysisSheet = useCallback(() => {
+    dayAnalysisRequestSeqRef.current += 1;
+    dayAnalysisAbortRef.current?.abort?.();
+    dayAnalysisAbortRef.current = null;
+    setDayAnalysisSheetState(createInitialDayAnalysisSheetState());
+  }, []);
+
+  const openDayAnalysisSheet = useCallback(
+    ({ todayData = null, selectedDateKey = "", source = "home" } = {}) => {
+      dayAnalysisRequestSeqRef.current += 1;
+      dayAnalysisAbortRef.current?.abort?.();
+      dayAnalysisAbortRef.current = null;
+      setDayAnalysisSheetState({
+        ...createInitialDayAnalysisSheetState(),
+        open: true,
+        phase: DAY_ANALYSIS_SHEET_STATE.INTRO,
+        source,
+        selectedDateKey: selectedDateKey || resolvedSessionDateKey || todayLocalKey(),
+        todayData,
+      });
+      setTab("today");
+      return true;
+    },
+    [resolvedSessionDateKey, setTab]
+  );
+
+  const launchDayAnalysis = useCallback(async () => {
+    if (dayAnalysisSheetState.pending) return;
+
+    const requestSeq = dayAnalysisRequestSeqRef.current + 1;
+    dayAnalysisRequestSeqRef.current = requestSeq;
+    dayAnalysisAbortRef.current?.abort?.();
+
+    const abortController = typeof AbortController !== "undefined" ? new AbortController() : null;
+    dayAnalysisAbortRef.current = abortController;
+    const now = new Date();
+    const currentData = dataRef.current && typeof dataRef.current === "object" ? dataRef.current : {};
+    const selectedDateKey =
+      dayAnalysisSheetState.selectedDateKey ||
+      currentData?.ui?.selectedDateKey ||
+      currentData?.ui?.selectedDate ||
+      resolvedSessionDateKey ||
+      todayLocalKey();
+
+    let snapshot;
+    let snapshotHash;
+    try {
+      snapshot = buildDayAnalysisSnapshot({
+        state: currentData,
+        todayData: dayAnalysisSheetState.todayData,
+        now,
+        selectedDateKey,
+      });
+      snapshotHash = buildDayAnalysisSnapshotHash(snapshot);
+    } catch (error) {
+      setDayAnalysisSheetState((previous) => ({
+        ...previous,
+        open: true,
+        phase: DAY_ANALYSIS_SHEET_STATE.ERROR,
+        pending: false,
+        error: { errorCode: "SNAPSHOT_INVALID", error },
+      }));
+      return;
+    }
+
+    const cached = dayAnalysisCacheRef.current.get(snapshotHash);
+    if (cached?.result) {
+      dayAnalysisAbortRef.current = null;
+      setDayAnalysisSheetState((previous) => ({
+        ...previous,
+        open: true,
+        phase: DAY_ANALYSIS_SHEET_STATE.RESULT,
+        selectedDateKey,
+        snapshot,
+        snapshotHash,
+        result: cached.result,
+        selectedActionId: "",
+        pending: false,
+        error: null,
+      }));
+      return;
+    }
+
+    setDayAnalysisSheetState((previous) => ({
+      ...previous,
+      open: true,
+      phase: DAY_ANALYSIS_SHEET_STATE.LOADING,
+      selectedDateKey,
+      snapshot,
+      snapshotHash,
+      result: null,
+      selectedActionId: "",
+      pending: true,
+      error: null,
+    }));
+
+    let response;
+    try {
+      response = await requestAiDayAnalysis({
+        snapshot,
+        snapshotHash,
+        accessToken: auth?.session?.access_token || "",
+        signal: abortController?.signal,
+      });
+    } catch (error) {
+      response = {
+        ok: false,
+        errorCode: "BACKEND_UNAVAILABLE",
+        error,
+      };
+    }
+
+    if (dayAnalysisRequestSeqRef.current !== requestSeq) return;
+    if (dayAnalysisAbortRef.current === abortController) {
+      dayAnalysisAbortRef.current = null;
+    }
+
+    if (response?.ok && response.result) {
+      dayAnalysisCacheRef.current.set(snapshotHash, {
+        result: response.result,
+        storedAtMs: Date.now(),
+      });
+      setDayAnalysisSheetState((previous) => ({
+        ...previous,
+        open: true,
+        phase: DAY_ANALYSIS_SHEET_STATE.RESULT,
+        selectedDateKey,
+        snapshot,
+        snapshotHash,
+        result: response.result,
+        selectedActionId: "",
+        pending: false,
+        error: null,
+      }));
+      return;
+    }
+
+    setDayAnalysisSheetState((previous) => ({
+      ...previous,
+      open: true,
+      phase: DAY_ANALYSIS_SHEET_STATE.ERROR,
+      selectedDateKey,
+      snapshot,
+      snapshotHash,
+      result: null,
+      selectedActionId: "",
+      pending: false,
+      error: response || { errorCode: "BACKEND_UNAVAILABLE" },
+    }));
+  }, [
+    auth?.session?.access_token,
+    dayAnalysisSheetState.pending,
+    dayAnalysisSheetState.selectedDateKey,
+    dayAnalysisSheetState.todayData,
+    resolvedSessionDateKey,
+  ]);
+
+  const routeDayAnalysisAction = useCallback(
+    (action) => {
+      if (isDayAnalysisActionDirectlyApplicable(action)) {
+        setDayAnalysisSheetState((previous) => ({
+          ...previous,
+          phase: DAY_ANALYSIS_SHEET_STATE.CONFIRMATION,
+          selectedActionId: action?.id || "",
+          pending: false,
+          error: null,
+        }));
+        return;
+      }
+
+      const handoff = resolveDayAnalysisActionHandoff(action);
+      const selectedDateKey = dayAnalysisSheetState.selectedDateKey || resolvedSessionDateKey || todayLocalKey();
+
+      if (handoff.kind === "close" || handoff.kind === "none") {
+        closeDayAnalysisSheet();
+        setTab("today");
+        return;
+      }
+
+      if (handoff.kind === "coach") {
+        closeDayAnalysisSheet();
+        setCoachState({
+          mode: "free",
+          conversationId: null,
+          prefill: "Aide-moi à optimiser ma journée sans appliquer automatiquement de changement.",
+        });
+        setTab("coach");
+        return;
+      }
+
+      if (handoff.kind === "recovery") {
+        const request = buildDayAnalysisRecoveryRequest({
+          action,
+          selectedDateKey,
+          source: "day_analysis",
+        });
+        closeDayAnalysisSheet();
+        const opened = request ? openRecoverySheet(request) : false;
+        if (!opened) setTab("timeline");
+        return;
+      }
+
+      closeDayAnalysisSheet();
+      setTab("timeline");
+    },
+    [closeDayAnalysisSheet, dayAnalysisSheetState.selectedDateKey, openRecoverySheet, resolvedSessionDateKey, setTab]
+  );
+
+  const confirmDayAnalysisApply = useCallback(
+    (action) => {
+      if (!action || dayAnalysisSheetState.pending) return;
+      if (!isDayAnalysisActionDirectlyApplicable(action)) {
+        routeDayAnalysisAction(action);
+        return;
+      }
+
+      setDayAnalysisSheetState((previous) => ({
+        ...previous,
+        pending: true,
+        error: null,
+      }));
+
+      const currentData = dataRef.current && typeof dataRef.current === "object" ? dataRef.current : {};
+      const selectedDateKey =
+        dayAnalysisSheetState.selectedDateKey ||
+        currentData?.ui?.selectedDateKey ||
+        currentData?.ui?.selectedDate ||
+        resolvedSessionDateKey ||
+        todayLocalKey();
+      const result = applyDayAnalysisDeterministicAction({
+        state: currentData,
+        todayData: dayAnalysisSheetState.todayData,
+        selectedDateKey,
+        action,
+        now: new Date(),
+      });
+
+      if (result.ok && result.nextState) {
+        setData(result.nextState);
+        setDayAnalysisSheetState((previous) => ({
+          ...previous,
+          phase: DAY_ANALYSIS_SHEET_STATE.SUCCESS,
+          pending: false,
+          error: null,
+          successSummary: result.summary,
+        }));
+        return;
+      }
+
+      setDayAnalysisSheetState((previous) => ({
+        ...previous,
+        phase: DAY_ANALYSIS_SHEET_STATE.ERROR,
+        pending: false,
+        error: result,
+      }));
+    },
+    [
+      dayAnalysisSheetState.pending,
+      dayAnalysisSheetState.selectedDateKey,
+      dayAnalysisSheetState.todayData,
+      resolvedSessionDateKey,
+      routeDayAnalysisAction,
+      setData,
+    ]
+  );
+
+  const handleDayAnalysisSelectAction = useCallback(
+    (action) => {
+      if (!action) return;
+      setDayAnalysisSheetState((previous) => ({
+        ...previous,
+        selectedActionId: action.id || "",
+      }));
+      routeDayAnalysisAction(action);
+    },
+    [routeDayAnalysisAction]
+  );
+
+  const handleDayAnalysisBackToResult = useCallback(() => {
+    setDayAnalysisSheetState((previous) => ({
+      ...previous,
+      phase: DAY_ANALYSIS_SHEET_STATE.RESULT,
+      pending: false,
+      error: null,
+    }));
+  }, []);
 
   const recoverySheetContext = useMemo(() => {
     const request = recoverySheetState.request;
@@ -1151,6 +1472,7 @@ export default function App() {
             })
           }
           onOpenRecoverySheet={openRecoverySheet}
+          onOpenDayAnalysisSheet={openDayAnalysisSheet}
           notificationCenter={{
             unreadCount: notificationEngine.unreadCount,
             onOpen: () => {
@@ -1510,6 +1832,24 @@ export default function App() {
           notificationEngine.clickNotificationCenterItem(item);
           setNotificationCenterOpen(false);
         }}
+      />
+      <DayAnalysisSheet
+        open={dayAnalysisSheetState.open}
+        state={dayAnalysisSheetState.phase}
+        result={dayAnalysisSheetState.result}
+        selectedActionId={dayAnalysisSheetState.selectedActionId}
+        pending={dayAnalysisSheetState.pending}
+        error={dayAnalysisSheetState.error}
+        successSummary={dayAnalysisSheetState.successSummary}
+        onClose={closeDayAnalysisSheet}
+        onLaunch={launchDayAnalysis}
+        onRetry={launchDayAnalysis}
+        onSelectAction={handleDayAnalysisSelectAction}
+        onPrepareValidation={routeDayAnalysisAction}
+        onConfirmApply={confirmDayAnalysisApply}
+        onBackToResult={handleDayAnalysisBackToResult}
+        onOpenCoach={routeDayAnalysisAction}
+        onOpenPlanning={routeDayAnalysisAction}
       />
       <UnifiedRecoverySheet
         open={Boolean(recoverySheetState.request)}

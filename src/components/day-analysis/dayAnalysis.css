@@ -1,0 +1,754 @@
+.dayAnalysisSheet {
+  --day-analysis-bg: #05040a;
+  --day-analysis-panel: rgba(12, 10, 21, 0.94);
+  --day-analysis-border: rgba(190, 149, 255, 0.22);
+  --day-analysis-ai: #a35cff;
+  --day-analysis-ai-strong: #d7b6ff;
+  --day-analysis-text: rgba(255, 255, 255, 0.96);
+  --day-analysis-muted: rgba(236, 226, 255, 0.68);
+  --day-analysis-soft: rgba(236, 226, 255, 0.12);
+  --day-analysis-success: #40e58b;
+  --day-analysis-warning: #ffb15c;
+  --day-analysis-danger: #ff6677;
+  overflow: hidden;
+  background: var(--day-analysis-bg);
+  border: 1px solid var(--day-analysis-border);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.56), 0 0 46px rgba(127, 61, 255, 0.2);
+}
+
+.dayAnalysisSheet__shell {
+  position: relative;
+  display: flex;
+  min-height: min(700px, calc(100dvh - 46px));
+  max-height: calc(100dvh - 46px);
+  flex-direction: column;
+  overflow: hidden;
+  color: var(--day-analysis-text);
+  background:
+    linear-gradient(180deg, rgba(15, 10, 28, 0.94), rgba(5, 4, 10, 0.99) 46%),
+    var(--day-analysis-bg);
+}
+
+.dayAnalysisSheet__hero {
+  position: relative;
+  min-height: 202px;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.dayAnalysisSheet__heroMedia {
+  position: absolute;
+  inset: 0;
+  z-index: -3;
+  background-image: var(--day-analysis-hero-bg);
+  background-size: cover;
+  background-position: center right;
+  filter: brightness(1.12) saturate(1.08);
+  transform: scale(1.01);
+}
+
+.dayAnalysisSheet__heroOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background:
+    linear-gradient(90deg, rgba(3, 3, 9, 0.95) 0%, rgba(5, 4, 13, 0.82) 38%, rgba(8, 3, 23, 0.34) 72%, rgba(13, 3, 32, 0.1) 100%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.06), rgba(5, 4, 10, 0.93) 98%);
+}
+
+.dayAnalysisSheet__topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 0;
+}
+
+.dayAnalysisSheet__glyph,
+.dayAnalysisSheet__close,
+.dayAnalysisSheet__actionIcon,
+.dayAnalysisSheet__confirmIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.dayAnalysisSheet__glyph {
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(215, 182, 255, 0.24);
+  border-radius: 999px;
+  color: var(--day-analysis-ai-strong);
+  background: rgba(111, 54, 255, 0.16);
+  box-shadow: 0 0 20px rgba(138, 76, 255, 0.28);
+}
+
+.dayAnalysisSheet__close {
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.84);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.dayAnalysisSheet__close:focus-visible,
+.dayAnalysisSheet__button:focus-visible,
+.dayAnalysisSheet__actionCard:focus-visible {
+  outline: 2px solid rgba(215, 182, 255, 0.84);
+  outline-offset: 2px;
+}
+
+.dayAnalysisSheet__heroCopy {
+  width: min(72%, 360px);
+  padding: 18px 18px 22px;
+}
+
+.dayAnalysisSheet__eyebrow {
+  margin: 0 0 8px;
+  color: var(--day-analysis-ai-strong);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.dayAnalysisSheet__hero h2 {
+  margin: 0;
+  color: #fff;
+  font-size: 1.95rem;
+  line-height: 1.02;
+  letter-spacing: 0;
+}
+
+.dayAnalysisSheet__subtitle {
+  margin: 8px 0 0;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 0.98rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.dayAnalysisSheet__heroText {
+  margin: 10px 0 0;
+  color: var(--day-analysis-muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+  letter-spacing: 0;
+}
+
+.dayAnalysisSheet__body {
+  display: grid;
+  flex: 1 1 auto;
+  align-content: start;
+  gap: 14px;
+  min-height: 0;
+  padding: 16px;
+  overflow-y: auto;
+  background:
+    linear-gradient(180deg, rgba(7, 5, 13, 0.82), rgba(5, 4, 10, 1)),
+    var(--day-analysis-bg);
+}
+
+.dayAnalysisSheet__scopeGrid,
+.dayAnalysisSheet__diagnosis,
+.dayAnalysisSheet__actionBlock,
+.dayAnalysisSheet__alternatives,
+.dayAnalysisSheet__confirmPanel,
+.dayAnalysisSheet__previewPanel,
+.dayAnalysisSheet__successPanel,
+.dayAnalysisSheet__errorPanel,
+.dayAnalysisSheet__steps {
+  border: 1px solid var(--day-analysis-border);
+  border-radius: 18px;
+  background: var(--day-analysis-panel);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.dayAnalysisSheet__scopeGrid {
+  display: grid;
+  gap: 0;
+  overflow: hidden;
+}
+
+.dayAnalysisSheet__scopeRow {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dayAnalysisSheet__scopeRow:last-child {
+  border-bottom: 0;
+}
+
+.dayAnalysisSheet__scopeRow > span:first-child {
+  width: 30px;
+  height: 30px;
+  border-radius: 12px;
+  color: var(--day-analysis-ai-strong);
+  background: rgba(134, 78, 255, 0.13);
+}
+
+.dayAnalysisSheet__scopeRow strong,
+.dayAnalysisSheet__actionHeader strong,
+.dayAnalysisSheet__step strong,
+.dayAnalysisSheet__previewRow strong {
+  display: block;
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 0.92rem;
+  line-height: 1.22;
+  letter-spacing: 0;
+}
+
+.dayAnalysisSheet__scopeRow small,
+.dayAnalysisSheet__sectionTitle small,
+.dayAnalysisSheet__target {
+  color: var(--day-analysis-muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+
+.dayAnalysisSheet__footer {
+  display: grid;
+  gap: 10px;
+  padding: 12px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(5, 4, 10, 0.98);
+}
+
+.dayAnalysisSheet__button {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: 16px;
+  font-size: 0.94rem;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.dayAnalysisSheet__button--primary {
+  color: #10091e;
+  background: linear-gradient(135deg, #ffffff, #ddc7ff);
+  box-shadow: 0 14px 30px rgba(135, 77, 255, 0.24);
+}
+
+.dayAnalysisSheet__button--ghost {
+  color: rgba(255, 255, 255, 0.78);
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dayAnalysisSheet__button--success {
+  color: #02140a;
+  background: linear-gradient(135deg, #d9ffe8, var(--day-analysis-success));
+}
+
+.dayAnalysisSheet__button:disabled,
+.dayAnalysisSheet__close:disabled,
+.dayAnalysisSheet__actionCard:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.dayAnalysisSheet__body--loading {
+  align-content: start;
+  justify-items: center;
+  text-align: center;
+}
+
+.dayAnalysisSheet__signal {
+  position: relative;
+  display: grid;
+  width: 116px;
+  height: 116px;
+  place-items: center;
+  margin: 6px 0 2px;
+}
+
+.dayAnalysisSheet__signal span {
+  position: absolute;
+  border: 1px solid rgba(198, 154, 255, 0.28);
+  border-radius: 999px;
+  box-shadow: 0 0 24px rgba(158, 86, 255, 0.24);
+  animation: dayAnalysisPulse 2.4s ease-in-out infinite;
+}
+
+.dayAnalysisSheet__signal span:nth-child(1) {
+  width: 48px;
+  height: 48px;
+  background: radial-gradient(circle, rgba(203, 166, 255, 0.32), rgba(123, 66, 255, 0.08));
+}
+
+.dayAnalysisSheet__signal span:nth-child(2) {
+  width: 78px;
+  height: 78px;
+  animation-delay: 0.25s;
+}
+
+.dayAnalysisSheet__signal span:nth-child(3) {
+  width: 110px;
+  height: 110px;
+  animation-delay: 0.5s;
+}
+
+.dayAnalysisSheet__steps {
+  display: grid;
+  width: 100%;
+  gap: 0;
+  overflow: hidden;
+}
+
+.dayAnalysisSheet__step {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 14px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dayAnalysisSheet__step:last-child {
+  border-bottom: 0;
+}
+
+.dayAnalysisSheet__step > span {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: var(--day-analysis-ai-strong);
+  background: rgba(141, 82, 255, 0.16);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.dayAnalysisSheet__sectionTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  color: var(--day-analysis-ai-strong);
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.dayAnalysisSheet__diagnosis,
+.dayAnalysisSheet__actionBlock,
+.dayAnalysisSheet__alternatives,
+.dayAnalysisSheet__confirmPanel,
+.dayAnalysisSheet__previewPanel {
+  padding: 14px;
+}
+
+.dayAnalysisSheet__diagnosis h3,
+.dayAnalysisSheet__confirmPanel h3,
+.dayAnalysisSheet__successPanel h3,
+.dayAnalysisSheet__errorPanel h3 {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.96);
+  font-size: 1.1rem;
+  line-height: 1.18;
+  letter-spacing: 0;
+}
+
+.dayAnalysisSheet__diagnosis p,
+.dayAnalysisSheet__confirmPanel p,
+.dayAnalysisSheet__successPanel p,
+.dayAnalysisSheet__errorPanel p {
+  margin: 8px 0 0;
+  color: var(--day-analysis-muted);
+  font-size: 0.9rem;
+  line-height: 1.42;
+}
+
+.dayAnalysisSheet__evidence {
+  display: grid;
+  gap: 7px;
+  padding: 0;
+  margin: 12px 0 0;
+  list-style: none;
+}
+
+.dayAnalysisSheet__evidence li {
+  position: relative;
+  padding-left: 16px;
+  color: rgba(236, 226, 255, 0.78);
+  font-size: 0.82rem;
+  line-height: 1.34;
+}
+
+.dayAnalysisSheet__evidence li::before {
+  position: absolute;
+  top: 0.48em;
+  left: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--day-analysis-ai);
+  content: "";
+}
+
+.dayAnalysisSheet__actionCard {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 38px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(211, 179, 255, 0.16);
+  border-radius: 16px;
+  color: inherit;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+article.dayAnalysisSheet__actionCard {
+  grid-template-columns: 38px 1fr;
+}
+
+.dayAnalysisSheet__actionCard + .dayAnalysisSheet__actionCard {
+  margin-top: 8px;
+}
+
+.dayAnalysisSheet__actionCard.is-ai {
+  border-color: rgba(182, 124, 255, 0.36);
+  background: linear-gradient(135deg, rgba(141, 82, 255, 0.18), rgba(255, 255, 255, 0.04));
+}
+
+.dayAnalysisSheet__actionCard.is-attention {
+  border-color: rgba(255, 177, 92, 0.3);
+}
+
+.dayAnalysisSheet__actionCard.is-navigation {
+  border-color: rgba(188, 155, 255, 0.22);
+}
+
+.dayAnalysisSheet__actionIcon {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  color: var(--day-analysis-ai-strong);
+  background: rgba(141, 82, 255, 0.15);
+}
+
+.dayAnalysisSheet__actionText {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.dayAnalysisSheet__actionText > span:not(.dayAnalysisSheet__actionHeader),
+.dayAnalysisSheet__target {
+  margin: 0;
+  color: var(--day-analysis-muted);
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
+.dayAnalysisSheet__actionHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+}
+
+.dayAnalysisSheet__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 4px 7px;
+  color: rgba(255, 255, 255, 0.86);
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.dayAnalysisSheet__badge.is-ai {
+  color: #f0e4ff;
+  background: rgba(151, 85, 255, 0.24);
+}
+
+.dayAnalysisSheet__badge.is-attention {
+  color: #ffe6c8;
+  background: rgba(255, 177, 92, 0.18);
+}
+
+.dayAnalysisSheet__badge.is-navigation {
+  color: #e9dcff;
+  background: rgba(190, 149, 255, 0.16);
+}
+
+.dayAnalysisSheet__safeNote {
+  margin: 0;
+  color: rgba(236, 226, 255, 0.7);
+  font-size: 0.82rem;
+  line-height: 1.36;
+  text-align: center;
+}
+
+.dayAnalysisSheet__confirmPanel {
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  gap: 12px;
+  border-color: rgba(255, 177, 92, 0.28);
+}
+
+.dayAnalysisSheet__confirmIcon {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  color: var(--day-analysis-warning);
+  background: rgba(255, 177, 92, 0.12);
+}
+
+.dayAnalysisSheet__previewPanel {
+  display: grid;
+  gap: 0;
+  overflow: hidden;
+}
+
+.dayAnalysisSheet__previewRow {
+  display: grid;
+  gap: 4px;
+  padding: 11px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dayAnalysisSheet__previewRow:first-child {
+  padding-top: 0;
+}
+
+.dayAnalysisSheet__previewRow:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.dayAnalysisSheet__previewRow span {
+  color: var(--day-analysis-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.dayAnalysisSheet__successPanel,
+.dayAnalysisSheet__errorPanel {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 18px 16px;
+  text-align: center;
+}
+
+.dayAnalysisSheet__successPanel {
+  border-color: rgba(64, 229, 139, 0.26);
+}
+
+.dayAnalysisSheet__successPanel > span {
+  color: var(--day-analysis-success);
+}
+
+.dayAnalysisSheet__successPanel strong {
+  display: block;
+  max-width: 100%;
+  color: rgba(224, 255, 235, 0.94);
+  font-size: 0.9rem;
+  line-height: 1.36;
+}
+
+.dayAnalysisSheet__errorPanel {
+  border-color: rgba(255, 102, 119, 0.16);
+  background:
+    linear-gradient(180deg, rgba(255, 102, 119, 0.055), rgba(255, 255, 255, 0.026)),
+    rgba(12, 10, 21, 0.78);
+}
+
+.dayAnalysisSheet__errorPanel > span {
+  color: var(--day-analysis-danger);
+}
+
+@keyframes dayAnalysisPulse {
+  0%, 100% {
+    opacity: 0.48;
+    transform: scale(0.94);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+
+@media (max-width: 430px) {
+  .dayAnalysisSheet__shell {
+    min-height: min(630px, calc(100dvh - 34px));
+    max-height: calc(100dvh - 34px);
+  }
+
+  .dayAnalysisSheet__hero {
+    min-height: 182px;
+  }
+
+  .dayAnalysisSheet__heroCopy {
+    width: min(79%, 330px);
+    padding: 14px 16px 17px;
+  }
+
+  .dayAnalysisSheet__hero h2 {
+    font-size: 1.54rem;
+  }
+
+  .dayAnalysisSheet__subtitle {
+    margin-top: 6px;
+    font-size: 0.91rem;
+  }
+
+  .dayAnalysisSheet__heroText {
+    margin-top: 8px;
+    font-size: 0.84rem;
+    line-height: 1.38;
+  }
+
+  .dayAnalysisSheet__body {
+    gap: 12px;
+    padding: 12px 14px;
+  }
+
+  .dayAnalysisSheet__scopeGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dayAnalysisSheet__scopeRow {
+    grid-template-columns: 28px 1fr;
+    align-items: start;
+    gap: 7px;
+    padding: 9px;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .dayAnalysisSheet__scopeRow:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .dayAnalysisSheet__scopeRow:last-child {
+    grid-column: 1 / -1;
+    border-right: 0;
+    border-bottom: 0;
+  }
+
+  .dayAnalysisSheet__scopeRow > span:first-child {
+    width: 26px;
+    height: 26px;
+    border-radius: 10px;
+  }
+
+  .dayAnalysisSheet__scopeRow strong {
+    font-size: 0.82rem;
+  }
+
+  .dayAnalysisSheet__scopeRow small {
+    display: none;
+    font-size: 0.71rem;
+    line-height: 1.25;
+  }
+
+  .dayAnalysisSheet__footer {
+    padding: 10px 14px calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .dayAnalysisSheet__button {
+    min-height: 46px;
+  }
+
+  .dayAnalysisSheet__button--ghost {
+    min-height: 40px;
+  }
+}
+
+@media (max-width: 360px), (max-height: 650px) {
+  .dayAnalysisSheet__hero {
+    min-height: 168px;
+  }
+
+  .dayAnalysisSheet__topbar {
+    padding: calc(10px + env(safe-area-inset-top, 0px)) 14px 0;
+  }
+
+  .dayAnalysisSheet__glyph,
+  .dayAnalysisSheet__close {
+    width: 30px;
+    height: 30px;
+  }
+
+  .dayAnalysisSheet__heroCopy {
+    width: min(82%, 300px);
+    padding: 10px 14px 13px;
+  }
+
+  .dayAnalysisSheet__eyebrow {
+    margin-bottom: 6px;
+    font-size: 0.66rem;
+  }
+
+  .dayAnalysisSheet__hero h2 {
+    font-size: 1.32rem;
+    line-height: 1.04;
+  }
+
+  .dayAnalysisSheet__subtitle {
+    font-size: 0.8rem;
+  }
+
+  .dayAnalysisSheet__heroText {
+    display: none;
+  }
+
+  .dayAnalysisSheet__scopeRow {
+    min-height: 44px;
+    padding: 7px 8px;
+  }
+
+  .dayAnalysisSheet__scopeRow strong {
+    font-size: 0.75rem;
+  }
+
+  .dayAnalysisSheet__footer {
+    gap: 8px;
+  }
+
+  .dayAnalysisSheet__button {
+    min-height: 42px;
+    border-radius: 14px;
+    font-size: 0.88rem;
+  }
+
+  .dayAnalysisSheet__button--ghost {
+    min-height: 36px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dayAnalysisSheet__signal span {
+    animation: none;
+  }
+
+  .dayAnalysisSheet__heroMedia {
+    transform: none;
+  }
+}
