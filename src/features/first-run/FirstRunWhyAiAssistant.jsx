@@ -202,7 +202,7 @@ export default function FirstRunWhyAiAssistant({
               <div className="firstRunWhyAiDetailsGrid">
                 <SuggestionList label="Intention principale" values={[clarification.primaryIntent]} />
                 <SuggestionList label="Intentions secondaires" values={clarification.secondaryIntents} />
-                <SuggestionList label="Frictions" values={clarification.frictions} />
+                <SuggestionList label="Points de blocage" values={clarification.frictions} />
                 <SuggestionList label="Identité visée" values={[clarification.desiredIdentity]} />
                 <SuggestionList label="Risques d’exécution" values={clarification.executionRisks} />
                 <SuggestionList label="Domaines suggérés" values={clarification.suggestedDomains} />

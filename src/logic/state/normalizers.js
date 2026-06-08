@@ -552,6 +552,7 @@ export function initialData() {
       creationFlowVersion: "v2",
       createDraft: null,
       showPlanStep: false,
+      firstHomeNotificationGraceUntil: null,
       soundEnabled: false,
       selectedDate: toLocalDateKey(),
       microActionsV1: {
@@ -678,6 +679,7 @@ export function demoData() {
       creationFlowVersion: "v2",
       createDraft: null,
       showPlanStep: false,
+      firstHomeNotificationGraceUntil: null,
       soundEnabled: false,
       selectedDate: toLocalDateKey(),
       microActionsV1: {

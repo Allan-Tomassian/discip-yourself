@@ -364,6 +364,14 @@ describe("First-run narrative screens", () => {
     expect(html).not.toContain("state machine");
   });
 
+  it("starts a short Home notification grace when first-run discovery completes", () => {
+    const source = readFileSync(new URL("./FirstRunFlow.jsx", import.meta.url), "utf8");
+
+    expect(source).toContain("FIRST_RUN_HOME_NOTIFICATION_GRACE_MS = 20_000");
+    expect(source).toContain("firstHomeNotificationGraceUntil");
+    expect(source).toContain("completed && !wasCompleted && nextFirstRun.commitV1?.status === \"applied\"");
+  });
+
   it("renders v3 recommended plan review as one plan with a locked AI precision card", () => {
     const html = renderToStaticMarkup(
       <FirstRunCompareScreen

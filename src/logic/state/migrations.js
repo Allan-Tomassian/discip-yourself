@@ -486,6 +486,12 @@ export function migrate(prev) {
   if (typeof next.ui.createDraft === "undefined") next.ui.createDraft = null;
   if (next.ui.createDraft && typeof next.ui.createDraft !== "object") next.ui.createDraft = null;
   if (typeof next.ui.showPlanStep === "undefined") next.ui.showPlanStep = false;
+  if (
+    typeof next.ui.firstHomeNotificationGraceUntil !== "string" ||
+    Number.isNaN(Date.parse(next.ui.firstHomeNotificationGraceUntil))
+  ) {
+    next.ui.firstHomeNotificationGraceUntil = null;
+  }
   if (!next.ui.selectedHabits || typeof next.ui.selectedHabits !== "object") next.ui.selectedHabits = {};
   if (typeof next.ui.sessionDraft === "undefined") next.ui.sessionDraft = null;
   if (typeof next.ui.activeSession === "undefined") next.ui.activeSession = null;

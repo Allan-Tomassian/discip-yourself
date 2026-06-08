@@ -44,6 +44,8 @@ import FirstRunSignalsScreen from "./FirstRunSignalsScreen";
 import FirstRunWhyScreen from "./FirstRunWhyScreen";
 import "../create-flow/createFlow.css";
 
+export const FIRST_RUN_HOME_NOTIFICATION_GRACE_MS = 20_000;
+
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
@@ -77,6 +79,8 @@ function toggleOrderedSelection(currentValues, nextValue, max = 3) {
 
 function buildNextUi(baseUi, nextFirstRun) {
   const completed = nextFirstRun.status === "done";
+  const wasCompleted = baseUi?.firstRunV1?.status === "done" && baseUi?.firstRunV1?.discoveryDone === true;
+  const shouldStartHomeGrace = completed && !wasCompleted && nextFirstRun.commitV1?.status === "applied";
   return {
     ...baseUi,
     firstRunV1: nextFirstRun,
@@ -89,6 +93,9 @@ function buildNextUi(baseUi, nextFirstRun) {
         : Number(baseUi?.tourSeenVersion) || 0,
     tourStepIndex: completed && nextFirstRun.commitV1?.status === "applied" ? 0 : Number(baseUi?.tourStepIndex) || 0,
     showPlanStep: false,
+    firstHomeNotificationGraceUntil: shouldStartHomeGrace
+      ? new Date(Date.now() + FIRST_RUN_HOME_NOTIFICATION_GRACE_MS).toISOString()
+      : baseUi?.firstHomeNotificationGraceUntil || null,
   };
 }
 

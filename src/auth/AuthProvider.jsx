@@ -1,11 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../infra/supabaseClient";
-import { clearUserScopedLocalData } from "../data/userDataApi";
-import { clearJournalStorageForUser } from "../pages/journalStorageModel";
-import { clearUserScopedProfile } from "../profile/profileApi";
-import { clearState } from "../utils/storage";
 import AuthContext from "./AuthContext";
 import { E2E_AUTH_SESSION_KEY } from "./constants";
+import { clearSignedOutLocalState } from "./signOutCleanup";
 import {
   AUTH_RESET_PASSWORD_PATH,
   AUTH_VERIFY_EMAIL_PATH,
@@ -62,12 +59,22 @@ export default function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [lastAuthEvent, setLastAuthEvent] = useState("");
   const [recoveryMode, setRecoveryMode] = useState(() => readPersistedRecoveryMode() || isInitialRecoveryRoute());
+  const signedInUserIdRef = useRef("");
+
+  const applySignedOutState = useCallback((signedOutUserId = "") => {
+    clearSignedOutLocalState(signedOutUserId || signedInUserIdRef.current);
+    signedInUserIdRef.current = "";
+    setRecoveryMode(false);
+    setSession(null);
+    setUser(null);
+  }, []);
 
   useEffect(() => {
     let active = true;
 
     const mockedSession = readE2ESession();
     if (mockedSession) {
+      signedInUserIdRef.current = mockedSession?.user?.id || "";
       setSession(mockedSession);
       setUser(mockedSession?.user || null);
       setLastAuthEvent("INITIAL_SESSION");
@@ -88,15 +95,20 @@ export default function AuthProvider({ children }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (!active) return;
+      const previousUserId = signedInUserIdRef.current;
+      const nextUserId = nextSession?.user?.id || "";
+      if (nextUserId) signedInUserIdRef.current = nextUserId;
       setLastAuthEvent(event || "");
+      if (event === "SIGNED_OUT") {
+        applySignedOutState(previousUserId);
+        setLoading(false);
+        return;
+      }
       setSession(nextSession || null);
       setUser(nextSession?.user || null);
       if (event === "PASSWORD_RECOVERY" || (nextSession && isResetPasswordRoute())) {
         setRecoveryMode(true);
         writePersistedRecoveryMode(true);
-      } else if (event === "SIGNED_OUT") {
-        setRecoveryMode(false);
-        writePersistedRecoveryMode(false);
       }
       setLoading(false);
     });
@@ -112,6 +124,7 @@ export default function AuthProvider({ children }) {
           writePersistedRecoveryMode(false);
         } else {
           const nextSession = data?.session || null;
+          signedInUserIdRef.current = nextSession?.user?.id || "";
           setSession(nextSession);
           setUser(nextSession?.user || null);
           if (nextSession && (readPersistedRecoveryMode() || isInitialRecoveryRoute() || isResetPasswordRoute())) {
@@ -139,7 +152,7 @@ export default function AuthProvider({ children }) {
       active = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [applySignedOutState]);
 
   const signUpWithPassword = useCallback(async (email, password, redirectTo = AUTH_VERIFY_EMAIL_PATH) => {
     const normalizedEmail = String(email || "").trim();
@@ -205,35 +218,26 @@ export default function AuthProvider({ children }) {
     const { data, error } = await supabase.auth.updateUser({ password: normalizedPassword });
     if (error) throw error;
     if (options?.signOutAfter) {
+      const signedOutUserId = user?.id || session?.user?.id || signedInUserIdRef.current;
       const { error: signOutError } = await supabase.auth.signOut();
       if (signOutError) throw signOutError;
-      setSession(null);
-      setUser(null);
+      applySignedOutState(signedOutUserId);
       setLastAuthEvent("SIGNED_OUT");
     }
     setRecoveryMode(false);
     writePersistedRecoveryMode(false);
     return data;
-  }, []);
+  }, [applySignedOutState, session?.user?.id, user?.id]);
 
   const signOut = useCallback(async () => {
-    const signedOutUserId = user?.id || session?.user?.id || "";
-    if (typeof window !== "undefined" && import.meta.env.DEV) {
-      window.localStorage.removeItem(E2E_AUTH_SESSION_KEY);
-    }
-    writePersistedRecoveryMode(false);
-    setRecoveryMode(false);
+    const signedOutUserId = user?.id || session?.user?.id || signedInUserIdRef.current;
     if (supabase) {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
     }
-    clearState();
-    clearUserScopedLocalData(signedOutUserId);
-    clearUserScopedProfile(signedOutUserId);
-    clearJournalStorageForUser({ userId: signedOutUserId });
-    setSession(null);
-    setUser(null);
-  }, [session?.user?.id, user?.id]);
+    applySignedOutState(signedOutUserId);
+    setLastAuthEvent("SIGNED_OUT");
+  }, [applySignedOutState, session?.user?.id, user?.id]);
 
   const isEmailVerified = isUserEmailVerified(user);
 

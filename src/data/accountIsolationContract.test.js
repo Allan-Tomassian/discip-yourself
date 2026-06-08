@@ -23,11 +23,16 @@ describe("account isolation contract", () => {
 
   it("cleans local user caches on sign-out without remote deletion", () => {
     const authProvider = readSrc("auth/AuthProvider.jsx");
+    const signOutCleanup = readSrc("auth/signOutCleanup.js");
 
-    expect(authProvider).toContain("clearState()");
-    expect(authProvider).toContain("clearUserScopedLocalData(signedOutUserId)");
-    expect(authProvider).toContain("clearUserScopedProfile(signedOutUserId)");
-    expect(authProvider).toContain("clearJournalStorageForUser({ userId: signedOutUserId })");
+    expect(signOutCleanup).toContain("clearState()");
+    expect(signOutCleanup).toContain("clearUserScopedLocalData(signedOutUserId)");
+    expect(signOutCleanup).toContain("clearUserScopedProfile(signedOutUserId)");
+    expect(signOutCleanup).toContain("clearJournalStorageForUser({ userId: signedOutUserId })");
+    expect(authProvider).toContain('event === "SIGNED_OUT"');
+    expect(authProvider).toContain("applySignedOutState(previousUserId)");
+    expect(authProvider).toContain("clearSignedOutLocalState(");
+    expect(signOutCleanup).not.toContain("deleteUser");
     expect(authProvider).not.toContain("deleteUser");
   });
 });

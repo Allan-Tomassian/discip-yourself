@@ -23,7 +23,7 @@ const COPY_BY_TYPE = Object.freeze({
     message: "Une version plus claire évite l’improvisation.",
   },
   [SYSTEM_SIGNAL_TYPE.MISSED_BLOCK]: {
-    title: "Friction détectée",
+    title: "Bloc manqué",
     message: "Reprends sans dette avec un ajustement simple.",
   },
   [SYSTEM_SIGNAL_TYPE.NO_NEXT_BLOCK]: {

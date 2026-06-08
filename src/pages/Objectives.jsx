@@ -50,12 +50,12 @@ function getStandaloneProgressSummary(items) {
     return {
       progress: expectedCount ? completedCount / expectedCount : 0,
       source: OBJECTIVE_PROGRESS_SOURCE.EXECUTION,
-      sourceLabel: frictionCount ? "Friction détectée" : PROGRESS_SOURCE_LABELS[OBJECTIVE_PROGRESS_SOURCE.EXECUTION],
+      sourceLabel: frictionCount ? "Point de blocage" : PROGRESS_SOURCE_LABELS[OBJECTIVE_PROGRESS_SOURCE.EXECUTION],
       progressLabel: PROGRESS_SOURCE_LABELS[OBJECTIVE_PROGRESS_SOURCE.EXECUTION],
       evidenceLabel: expectedCount ? `${completedCount}/${expectedCount} blocs validés` : "Aucun bloc validé",
       frictionCount,
       status: frictionCount
-        ? { key: "execution_friction", label: "Friction détectée", tone: "attention" }
+        ? { key: "execution_friction", label: "Point de blocage", tone: "attention" }
         : { key: "active", label: "Actif", tone: "execution" },
     };
   }
@@ -174,7 +174,7 @@ function buildObjectiveSections({ actions = [], actionProgressById, occurrencesB
         meta: hasEvidence ? progress.labels?.evidence || "" : "",
         isDone: action.status === "done" || progress?.status?.key === "completed",
         tone: progress?.frictionCount > 0 ? "attention" : "neutral",
-        statusLabel: progress?.frictionCount > 0 ? "Friction" : "",
+        statusLabel: progress?.frictionCount > 0 ? "Blocage" : "",
         goal: action,
       };
     })
@@ -620,7 +620,7 @@ export default function Objectives({
                           <span className="objectivesProgressSource">{card.progressLabel}</span>
                           {card.frictionCount > 0 ? (
                             <span className="objectivesFrictionText">
-                              {card.frictionCount} friction{card.frictionCount > 1 ? "s" : ""}
+                              {card.frictionCount} point{card.frictionCount > 1 ? "s" : ""} de blocage
                             </span>
                           ) : null}
                           <div className="objectivesProgressTrack">

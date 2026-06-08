@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   buildInAppNudgeModel,
   createNotificationEngineModel,
+  FIRST_HOME_NOTIFICATION_GRACE_FIELD,
+  isFirstHomeNotificationGraceActive,
   NOTIFICATION_TOAST_AUTO_DISMISS_MS,
   NOTIFICATION_TOAST_DELAY_MS,
   resolveNotificationTargetNavigation,
@@ -167,6 +169,66 @@ describe("useNotificationEngine pure model", () => {
     });
 
     expect(model.nudge).toBeNull();
+  });
+
+  it("suppresses the first Home toast during first-run arrival grace without removing candidates", () => {
+    const graceUntil = new Date(NOW.getTime() + 20_000).toISOString();
+    const model = createNotificationEngineModel({
+      data: data({
+        ui: {
+          activeSession: null,
+          [FIRST_HOME_NOTIFICATION_GRACE_FIELD]: graceUntil,
+        },
+      }),
+      now: NOW,
+      appVisibility: "visible",
+      currentRoute: "/",
+    });
+
+    expect(isFirstHomeNotificationGraceActive({ ui: { [FIRST_HOME_NOTIFICATION_GRACE_FIELD]: graceUntil } }, NOW)).toBe(true);
+    expect(model.toastGraceActive).toBe(true);
+    expect(model.candidates.length).toBeGreaterThan(0);
+    expect(model.allowedCandidates.length).toBeGreaterThan(0);
+    expect(model.selectedCandidate).toBeNull();
+    expect(model.selectedChannel).toBe(NOTIFICATION_CHANNEL.NONE);
+    expect(model.nudge).toBeNull();
+  });
+
+  it("allows the notification toast after the first Home grace window expires", () => {
+    const graceUntil = new Date(NOW.getTime() + 20_000).toISOString();
+    const model = createNotificationEngineModel({
+      data: data({
+        ui: {
+          activeSession: null,
+          [FIRST_HOME_NOTIFICATION_GRACE_FIELD]: graceUntil,
+        },
+      }),
+      now: new Date(NOW.getTime() + 21_000),
+      appVisibility: "visible",
+      currentRoute: "/",
+    });
+
+    expect(model.toastGraceActive).toBe(false);
+    expect(model.nudge).toMatchObject({
+      type: NOTIFICATION_TYPE.BLOCK_START_NOW,
+    });
+  });
+
+  it("keeps normal recovery notifications active outside first Home grace", () => {
+    const model = createNotificationEngineModel({
+      data: data({
+        occurrences: [occurrence({ start: "08:00" })],
+      }),
+      now: NOW,
+      appVisibility: "visible",
+      currentRoute: "/",
+    });
+
+    expect(model.toastGraceActive).toBe(false);
+    expect(model.nudge).toMatchObject({
+      type: NOTIFICATION_TYPE.BLOCK_OVERDUE_RECOVERY,
+      title: "Bloc à récupérer",
+    });
   });
 
   it("maps notification target routes to app navigation calls", () => {

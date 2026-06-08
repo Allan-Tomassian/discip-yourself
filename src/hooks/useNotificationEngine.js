@@ -18,6 +18,7 @@ import { resolveNotificationRecoveryRequest } from "../features/recovery/recover
 const DEFAULT_ENGINE_POLL_MS = 60_000;
 export const NOTIFICATION_TOAST_DELAY_MS = 1_200;
 export const NOTIFICATION_TOAST_AUTO_DISMISS_MS = 5_000;
+export const FIRST_HOME_NOTIFICATION_GRACE_FIELD = "firstHomeNotificationGraceUntil";
 const ACTIVE_SESSION_PHASES = new Set(["in_progress", "paused"]);
 const LEGACY_REMINDER_DUPLICATE_TYPES = new Set([
   NOTIFICATION_TYPE.BLOCK_START_SOON,
@@ -81,6 +82,17 @@ function filterLegacyReminderDuplicates(candidates, activeReminder) {
 function filterSuppressedIds(candidates, suppressedIds) {
   if (!suppressedIds?.size) return candidates;
   return candidates.filter((candidate) => !suppressedIds.has(candidate?.id));
+}
+
+function parseTimestamp(value) {
+  const timestamp = Date.parse(safeString(value));
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+export function isFirstHomeNotificationGraceActive(data = {}, now = new Date()) {
+  const current = now instanceof Date && !Number.isNaN(now.getTime()) ? now.getTime() : Date.now();
+  const graceUntil = parseTimestamp(data?.ui?.[FIRST_HOME_NOTIFICATION_GRACE_FIELD]);
+  return graceUntil > current;
 }
 
 export function buildInAppNudgeModel({ candidate, channel = NOTIFICATION_CHANNEL.IN_APP } = {}) {
@@ -172,15 +184,17 @@ export function createNotificationEngineModel({
       });
       return channel === NOTIFICATION_CHANNEL.IN_APP;
     }) || null;
-  const selectedChannel = selectedCandidate ? NOTIFICATION_CHANNEL.IN_APP : NOTIFICATION_CHANNEL.NONE;
+  const toastGraceActive = isFirstHomeNotificationGraceActive(data, now);
+  const selectedChannel = selectedCandidate && !toastGraceActive ? NOTIFICATION_CHANNEL.IN_APP : NOTIFICATION_CHANNEL.NONE;
 
   return {
     candidates: builtCandidates,
     allowedCandidates: policy.candidates,
-    selectedCandidate,
+    selectedCandidate: toastGraceActive ? null : selectedCandidate,
     selectedChannel,
-    nudge: buildInAppNudgeModel({ candidate: selectedCandidate, channel: selectedChannel }),
+    nudge: toastGraceActive ? null : buildInAppNudgeModel({ candidate: selectedCandidate, channel: selectedChannel }),
     policy,
+    toastGraceActive,
   };
 }
 

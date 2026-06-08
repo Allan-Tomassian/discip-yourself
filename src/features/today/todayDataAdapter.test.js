@@ -386,7 +386,7 @@ describe("buildTodayData", () => {
       title: "Récupérer le prochain bloc",
       primaryLabel: "Simplifier le bloc",
       secondaryLabel: "Ajuster",
-      reason: "Ce bloc a rencontré une friction. Repars court, ou ajuste-le.",
+      reason: "Ce bloc t’a bloqué. Repars court, ou ajuste-le.",
     });
     expect(result.timelineItems[0].status).toBe("blocked");
     expect(result.systemSignals.map((signal) => signal.type)).toContain("blocked_block");
@@ -417,7 +417,7 @@ describe("buildTodayData", () => {
       title: "Récupérer le prochain bloc",
       primaryLabel: "Simplifier le bloc",
       secondaryLabel: "Changer l’heure",
-      reason: "Tu as signalé une friction. Choisis une version faisable.",
+      reason: "Ce bloc a été signalé. Choisis une version faisable.",
     });
     expect(result.timelineItems[0].status).toBe("reported");
   });

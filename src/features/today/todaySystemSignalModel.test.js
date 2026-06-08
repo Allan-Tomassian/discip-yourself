@@ -32,7 +32,7 @@ describe("buildTodaySystemSignalSurface", () => {
     expect(build()).toMatchObject({
       severity: SYSTEM_SIGNAL_SEVERITY.ATTENTION,
       tone: SYSTEM_SIGNAL_SEVERITY.ATTENTION,
-      title: "Friction détectée",
+      title: "Bloc manqué",
       message: "Reprends sans dette avec un ajustement simple.",
       ctaLabel: "Ajuster",
       actionType: "open_adjust",

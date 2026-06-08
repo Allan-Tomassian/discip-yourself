@@ -113,7 +113,7 @@ const TODAY_STATE_CONFIG = Object.freeze({
     welcome: "Bon retour — reprends avec un bloc simple, pas une dette.",
     mode: "MODE REPRISE",
     title: "Reprise propre.",
-    detail: "On réduit la friction aujourd’hui.",
+    detail: "On réduit le bloc à récupérer aujourd’hui.",
   },
   locked: {
     tone: "locked",
@@ -726,9 +726,9 @@ function buildPrimaryAction({ occurrencesForDay, goalsById, categoriesById, acti
       : resolveActionDescription(goal, category);
   const reason =
     status === "blocked"
-      ? "Ce bloc a rencontré une friction. Repars court, ou ajuste-le."
+      ? "Ce bloc t’a bloqué. Repars court, ou ajuste-le."
       : status === "reported"
-        ? "Tu as signalé une friction. Choisis une version faisable."
+        ? "Ce bloc a été signalé. Choisis une version faisable."
         : resolveActionReason(goal);
 
   return {
@@ -967,7 +967,7 @@ function applyPrimaryState(primaryAction, state) {
       primaryLabel: "Simplifier le bloc",
       secondaryLabel: "Ajuster",
       detailLabel: "Voir détail",
-      reason: "Ce bloc a rencontré une friction. Repars court, ou ajuste-le.",
+      reason: "Ce bloc t’a bloqué. Repars court, ou ajuste-le.",
     };
   }
 
@@ -980,7 +980,7 @@ function applyPrimaryState(primaryAction, state) {
       primaryLabel: "Simplifier le bloc",
       secondaryLabel: "Changer l’heure",
       detailLabel: "Voir détail",
-      reason: "Tu as signalé une friction. Choisis une version faisable.",
+      reason: "Ce bloc a été signalé. Choisis une version faisable.",
     };
   }
 
@@ -1006,7 +1006,7 @@ function applyPrimaryState(primaryAction, state) {
       primaryLabel: "Simplifier le bloc",
       secondaryLabel: "Reporter",
       detailLabel: "Voir détail",
-      reason: next.reason || "Réduis la friction et ferme un bloc proprement.",
+      reason: next.reason || "Réduis le bloc à récupérer et ferme une étape proprement.",
     };
   }
 

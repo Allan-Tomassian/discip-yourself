@@ -87,7 +87,7 @@ export default function TodayTrajectoryCard({
   const remainingMinutes = Number.isFinite(trajectory.remainingMinutesToday) ? Math.max(0, trajectory.remainingMinutesToday) : 0;
   const frictionMarker = pickFrictionMarker(points);
   const trajectoryMessage = frictionCount > 0
-    ? "Une friction demande un ajustement."
+    ? "Un point de blocage demande un ajustement."
     : "Ton système avance aujourd’hui.";
   const className = [
     "todayTrajectoryCard",
@@ -180,7 +180,7 @@ export default function TodayTrajectoryCard({
         <span>
           <AlertTriangle size={18} strokeWidth={2.1} aria-hidden="true" />
           <strong>{frictionCount}</strong>
-          <em>{pluralize("Friction", frictionCount)}</em>
+          <em>{frictionCount > 1 ? "Points de blocage" : "Point de blocage"}</em>
         </span>
         <span>
           <Clock3 size={18} strokeWidth={2.1} aria-hidden="true" />

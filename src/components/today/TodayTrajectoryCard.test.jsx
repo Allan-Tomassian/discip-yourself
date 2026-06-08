@@ -25,11 +25,11 @@ describe("TodayTrajectoryCard", () => {
 
     expect(html).toContain("Trajectoire du jour");
     expect(html).toContain("Vue 7 derniers jours");
-    expect(html).toContain("Une friction demande un ajustement.");
+    expect(html).toContain("Un point de blocage demande un ajustement.");
     expect(html).toContain("<svg");
     expect(html).toContain("Aujourd’hui");
     expect(html).toContain("Bloc terminé");
-    expect(html).toContain("Friction");
+    expect(html).toContain("Point de blocage");
     expect(html).toContain("Restantes");
     expect(html).not.toContain("Discipline score");
     expect(html).not.toContain("Mode exécution");
@@ -49,6 +49,7 @@ describe("TodayTrajectoryCard", () => {
 
     expect(html).toContain("Ton système avance aujourd’hui.");
     expect(html).not.toContain("Une friction demande un ajustement.");
+    expect(html).not.toContain("Un point de blocage demande un ajustement.");
     expect(html).not.toContain("todayTrajectoryFrictionMarker");
   });
 });
