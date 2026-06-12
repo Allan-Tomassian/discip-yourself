@@ -27,9 +27,19 @@ export default function SessionLaunchView({
     return (
       <AiPreparationShell
         data-testid={phase === "checking_access" ? "session-launch-checking" : "session-launch-preparing"}
-        title={phase === "checking_access" ? "Vérification en cours" : "Préparation en cours"}
+        title={phase === "checking_access" ? "Vérification en cours" : "Préparation du guidage"}
         meta={title}
+        detail={
+          phase === "checking_access"
+            ? "Tu peux toujours démarrer en session standard."
+            : "Tu peux toujours passer en session standard."
+        }
         icon={<CoachAssistIcon className="sessionLaunchPreparingIcon" size={20} />}
+        steps={
+          phase === "checking_access"
+            ? ["Vérification de l’accès", "Préparation du guidage", "Session standard disponible"]
+            : ["Lecture du bloc", "Préparation du guidage", "Construction du prochain geste"]
+        }
       />
     );
   }
@@ -38,7 +48,7 @@ export default function SessionLaunchView({
     return (
       <div className="sessionLaunchViewStack sessionLaunchViewStack--ready" data-testid="session-launch-degraded">
         <div className="sessionLaunchHero sessionLaunchHero--ready">
-          <div className="sessionLaunchSectionEyebrow">Séance prête</div>
+          <div className="sessionLaunchSectionEyebrow sessionLaunchSectionEyebrow--guided">Guidage IA</div>
           <div className="sessionLaunchCategory">{categoryName || "Catégorie"}</div>
           <div className="sessionLaunchTitle">{title}</div>
           <div className="sessionLaunchChips">
@@ -47,11 +57,18 @@ export default function SessionLaunchView({
           </div>
         </div>
         <div className="sessionLaunchCard sessionLaunchCard--ready">
+          <div className="sessionLaunchStatusBlock">
+            <div className="sessionLaunchStatusTitle">Guidage IA indisponible</div>
+            <div className="sessionLaunchStatusText">
+              Impossible de préparer le guidage maintenant. Tu peux démarrer en session standard.
+            </div>
+          </div>
           <div className="sessionLaunchBrief">
             <div className="sessionLaunchBriefRow">
-              <div className="sessionLaunchBriefLabel">Détail</div>
+              <div className="sessionLaunchBriefLabel">État</div>
               <div className="sessionLaunchBriefText">
-                {degradedMessage || "Impossible de préparer un plan détaillé pour le moment."}
+                {degradedMessage ||
+                  "Impossible de préparer le guidage maintenant. Tu peux démarrer en session standard."}
               </div>
             </div>
           </div>
@@ -60,7 +77,7 @@ export default function SessionLaunchView({
               Réessayer
             </PrimaryButton>
             <button type="button" className="sessionLaunchTextAction" onClick={onStartStandard}>
-              Passer en standard
+              Démarrer en standard
             </button>
           </div>
         </div>
@@ -72,7 +89,7 @@ export default function SessionLaunchView({
     return (
       <div className="sessionLaunchViewStack sessionLaunchViewStack--ready" data-testid="session-launch-access-error">
         <div className="sessionLaunchHero sessionLaunchHero--ready">
-          <div className="sessionLaunchSectionEyebrow">Séance prête</div>
+          <div className="sessionLaunchSectionEyebrow sessionLaunchSectionEyebrow--guided">Guidage IA</div>
           <div className="sessionLaunchCategory">{categoryName || "Catégorie"}</div>
           <div className="sessionLaunchTitle">{title}</div>
           <div className="sessionLaunchChips">
@@ -81,6 +98,12 @@ export default function SessionLaunchView({
           </div>
         </div>
         <div className="sessionLaunchCard sessionLaunchCard--ready">
+          <div className="sessionLaunchStatusBlock">
+            <div className="sessionLaunchStatusTitle">Guidage IA indisponible</div>
+            <div className="sessionLaunchStatusText">
+              Impossible de vérifier l’accès maintenant. La session standard reste disponible.
+            </div>
+          </div>
           <div className="sessionLaunchBrief">
             <div className="sessionLaunchBriefRow">
               <div className="sessionLaunchBriefLabel">Accès</div>
@@ -94,7 +117,7 @@ export default function SessionLaunchView({
               Réessayer
             </PrimaryButton>
             <button type="button" className="sessionLaunchTextAction" onClick={onStartStandard}>
-              Session standard
+              Démarrer en standard
             </button>
           </div>
         </div>
@@ -107,7 +130,7 @@ export default function SessionLaunchView({
     return (
       <div className="sessionLaunchViewStack sessionLaunchViewStack--ready" data-testid="session-launch-locked">
         <div className="sessionLaunchHero sessionLaunchHero--ready">
-          <div className="sessionLaunchSectionEyebrow">Aperçu Premium</div>
+          <div className="sessionLaunchSectionEyebrow sessionLaunchSectionEyebrow--guided">Guidage IA Premium</div>
           <div className="sessionLaunchCategory">{categoryName || "Catégorie"}</div>
           <div className="sessionLaunchTitle">{title}</div>
           <div className="sessionLaunchChips">
@@ -199,7 +222,7 @@ export default function SessionLaunchView({
               <span className="sessionAssistBadge sessionAssistBadge--cta">
                 <CoachAssistIcon className="sessionLaunchSecondaryIcon" size={13} />
               </span>
-              <span>Mode guidé</span>
+              <span>Préparer avec l’IA</span>
             </span>
           </GhostButton>
         </div>

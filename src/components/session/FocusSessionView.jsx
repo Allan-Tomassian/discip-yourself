@@ -55,8 +55,6 @@ export default function FocusSessionView({
   onFeedbackLevelChange,
   onFeedbackTextChange,
   onFeedbackSubmit,
-  reportMode = false,
-  onChooseReport,
   onReturnToday,
 }) {
   const isFinal = viewState === "completed" || viewState === "blocked" || viewState === "reported";
@@ -90,15 +88,13 @@ export default function FocusSessionView({
   const progressLabel = isGuidedPreview
     ? `Étape ${progressDotsIndex + 1}/${progressDotsTotal}`
     : `Étape ${Math.max(0, Number(guidedPlan?.activeStepIndex || 0)) + 1}/${progressDotsTotal}`;
-  const runtimeTone =
-    isGuided ? "guided" : reportMode || isPaused || isReported ? "attention" : isBlocked ? "critical" : "standard";
+  const runtimeTone = isGuided ? "guided" : isPaused || isReported ? "attention" : isBlocked ? "critical" : "standard";
   const runtimeStateClass = [
     "sessionRuntimeStack",
     `is-${runtimeTone}`,
     isRunning ? "is-running" : "",
     isPaused ? "is-paused" : "",
     showFeedback ? "is-feedback" : "",
-    reportMode ? "is-reporting" : "",
     isCompleted ? "is-completed" : "",
     isBlocked ? "is-blocked" : "",
     isReported ? "is-reported" : "",
@@ -107,11 +103,9 @@ export default function FocusSessionView({
     .join(" ");
   const heroEyebrow = isGuided
     ? isGuidedPreview
-      ? "GUIDÉ IA"
-      : "COACH IA"
-    : reportMode
-      ? "REPORT"
-      : showFeedback
+      ? "GUIDAGE IA"
+      : "GUIDAGE IA"
+    : showFeedback
         ? "VALIDATION"
         : isPaused
           ? "PAUSE COURTE"
@@ -126,11 +120,9 @@ export default function FocusSessionView({
                   : "SESSION";
   const heroTitle = isGuided
     ? isGuidedPreview
-      ? "Mode guidé disponible"
+      ? "Guidage IA prêt"
       : "Guidage actif"
-    : reportMode
-      ? "Reporter sans abandonner"
-      : showFeedback
+    : showFeedback
         ? "Bloc terminé ?"
         : isPaused
           ? "Pause courte"
@@ -145,11 +137,9 @@ export default function FocusSessionView({
                   : "Protège ce bloc.";
   const heroSubtitle = isGuided
     ? isGuidedPreview
-      ? "Le Coach IA t’accompagne pour exécuter ce bloc avec clarté."
+      ? "Un guidage court pour exécuter ce bloc, sans quitter la séance."
       : "Reste avec l’étape actuelle. Le reste peut attendre."
-    : reportMode
-      ? "Choisis une option saine. Reporter n’est pas abandonner."
-      : showFeedback
+    : showFeedback
         ? "Prends 30 secondes. Sois honnête."
         : isPaused
           ? "Reprends avant de renégocier."
@@ -165,7 +155,7 @@ export default function FocusSessionView({
   const primaryAction =
     isGuidedPreview
       ? {
-          label: "Lancer en mode guidé",
+          label: "Démarrer le guidage",
           onClick: onStart,
           disabled: !canStart,
           className: "sessionDockPrimaryAction",
@@ -184,7 +174,7 @@ export default function FocusSessionView({
               disabled: !canComplete,
               className: "sessionDockPrimaryAction",
             }
-          : !isFinal && !showFeedback && !reportMode
+          : !isFinal && !showFeedback
             ? {
                 label: "Démarrer le bloc",
                 onClick: onStart,
@@ -192,13 +182,21 @@ export default function FocusSessionView({
                 className: "sessionDockPrimaryAction",
               }
             : null;
-  const showStandardDock = !isFinal && !showFeedback && !reportMode;
-  const showFullStandardBrief = !isGuided && !isRunning && !isPaused && !showFeedback && !reportMode && !isFinal;
+  const showStandardDock = !isFinal && !showFeedback;
+  const showFullStandardBrief = !isGuided && !isRunning && !isPaused && !showFeedback && !isFinal;
   const showCompactFocusBrief = !isGuided && (isRunning || isPaused);
   const focusInstruction = isPaused
     ? "Reprends avant de renégocier."
     : actionProtocol?.firstStep || "Reste sur la prochaine action utile.";
   const focusReason = actionProtocol?.why || "Ce bloc protège ton avancée du jour.";
+  const handleFeedbackInputFocus = (event) => {
+    const card = event.currentTarget.closest(".sessionSupplementCard--feedback");
+    const validationButton = card?.querySelector(".sessionDockPrimaryAction");
+    if (!validationButton || typeof window === "undefined") return;
+    window.setTimeout(() => {
+      validationButton.scrollIntoView({ block: "center", inline: "nearest" });
+    }, 0);
+  };
 
   return (
     <div className={runtimeStateClass}>
@@ -302,7 +300,7 @@ export default function FocusSessionView({
         </div>
       ) : null}
 
-      {runtimeStats.length && !isGuided && !showFeedback && !reportMode && !isFinal ? (
+      {runtimeStats.length && !isGuided && !showFeedback && !isFinal ? (
         <div className="sessionRuntimeMetaStrip">
           {runtimeStats.map((item) => (
             <div key={item.label} className="sessionRuntimeMetaItem">
@@ -328,11 +326,11 @@ export default function FocusSessionView({
                 onClick={() => primaryAction?.onClick?.()}
                 disabled={primaryAction?.disabled}
               >
-                {primaryAction?.label || "Lancer en mode guidé"}
+                {primaryAction?.label || "Démarrer le guidage"}
               </PrimaryButton>
               <GhostButton
                 type="button"
-                className="sessionDockSecondaryAction"
+                className="sessionDockSecondaryAction sessionGuidedRegenerateAction"
                 onClick={() => onRegenerateGuided?.()}
                 disabled={guidedRegenerating}
               >
@@ -458,39 +456,8 @@ export default function FocusSessionView({
                 : "Le bloc est conservé pour être repris ou ajusté."}
           </div>
           <PrimaryButton type="button" className="sessionDockPrimaryAction" onClick={() => onReturnToday?.()}>
-            Retour à Today
+            Retour à Home
           </PrimaryButton>
-        </div>
-      ) : null}
-
-      {reportMode ? (
-        <div className="sessionSupplementCard sessionSupplementCard--report">
-          <div className="sessionSupplementEyebrow">REPORT</div>
-          <div className="sessionSupplementTitle">Reporter sans abandonner</div>
-          <div className="sessionSupplementHint">Choisis une option saine. Le bloc reste dans ton système.</div>
-          <div className="sessionSupplementActions">
-            <button type="button" className="sessionReportOption" onClick={() => onChooseReport?.("later_today")}>
-              <span>
-                <strong>Plus tard aujourd’hui</strong>
-                <small>Replanifier ce bloc.</small>
-              </span>
-              <span aria-hidden="true">›</span>
-            </button>
-            <button type="button" className="sessionReportOption" onClick={() => onChooseReport?.("tomorrow")}>
-              <span>
-                <strong>Demain</strong>
-                <small>Le replacer demain.</small>
-              </span>
-              <span aria-hidden="true">›</span>
-            </button>
-            <button type="button" className="sessionReportOption" onClick={() => onChooseReport?.("planning")}>
-              <span>
-                <strong>Choisir dans le planning</strong>
-                <small>Reprendre le contrôle de l’horaire.</small>
-              </span>
-              <span aria-hidden="true">›</span>
-            </button>
-          </div>
         </div>
       ) : null}
 
@@ -516,6 +483,7 @@ export default function FocusSessionView({
             rows={3}
             value={feedbackText}
             onChange={(event) => onFeedbackTextChange?.(event.target.value)}
+            onFocus={handleFeedbackInputFocus}
             placeholder="Ajoute un retour rapide si utile…"
           />
           <div className="sessionSupplementActions">

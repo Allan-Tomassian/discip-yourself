@@ -1,7 +1,8 @@
 import { test, expect, devices } from "@playwright/test";
-import { getState } from "./utils/seed.js";
+import { getUserData } from "./utils/seed.js";
 import {
   buildCanonicalExecutionState,
+  E2E_USER_ID,
   seedCurrentUser,
 } from "./utils/currentProduct.js";
 
@@ -68,7 +69,15 @@ test("friction recovery: blocked session opens recovery sheet after recording ou
   await expect(page.getByTestId("unified-recovery-sheet")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Ce bloc a été interrompu." })).toBeVisible();
 
-  const blockedState = await getState(page);
+  await expect
+    .poll(async () => {
+      const current = await getUserData(page, E2E_USER_ID);
+      return (current.sessionHistory || []).some(
+        (entry) => entry.occurrenceId === "occ_today" && entry.endedReason === "blocked"
+      );
+    })
+    .toBeTruthy();
+  const blockedState = await getUserData(page, E2E_USER_ID);
   expect((blockedState.sessionHistory || []).some((entry) => entry.occurrenceId === "occ_today" && entry.endedReason === "blocked")).toBeTruthy();
   expect(blockedState.occurrences.find((occurrence) => occurrence.id === "occ_today")?.status).toBe("planned");
 
@@ -77,7 +86,7 @@ test("friction recovery: blocked session opens recovery sheet after recording ou
   await expect(page.getByRole("heading", { name: "Bloc ajusté" })).toBeVisible();
   await page.getByRole("button", { name: "Retour à Home" }).click();
 
-  const repairedState = await getState(page);
+  const repairedState = await getUserData(page, E2E_USER_ID);
   const source = repairedState.occurrences.find((occurrence) => occurrence.id === "occ_today");
   expect(source?.status).toBe("rescheduled");
   expect(
@@ -103,7 +112,15 @@ test("friction recovery: reported session opens recovery sheet without legacy do
   await expect(page.getByTestId("unified-recovery-sheet")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Ce bloc a été signalé." })).toBeVisible();
 
-  const reportedState = await getState(page);
+  await expect
+    .poll(async () => {
+      const current = await getUserData(page, E2E_USER_ID);
+      return (current.sessionHistory || []).some(
+        (entry) => entry.occurrenceId === "occ_today" && entry.endedReason === "reported"
+      );
+    })
+    .toBeTruthy();
+  const reportedState = await getUserData(page, E2E_USER_ID);
   const reportedSource = reportedState.occurrences.find((entry) => entry.id === "occ_today");
   expect(reportedSource?.date).toBe(today);
   expect(reportedSource?.status).toBe("planned");
@@ -114,7 +131,7 @@ test("friction recovery: reported session opens recovery sheet without legacy do
   await expect(page.getByRole("heading", { name: "Bloc ajusté" })).toBeVisible();
   await page.getByRole("button", { name: "Retour à Home" }).click();
 
-  const movedState = await getState(page);
+  const movedState = await getUserData(page, E2E_USER_ID);
   const movedSource = movedState.occurrences.find((entry) => entry.id === "occ_today");
   const movedTarget = movedState.occurrences.find((entry) => entry.id !== "occ_today" && entry.repairV1?.sourceOccurrenceId === "occ_today");
   expect(movedSource?.status).toBe("rescheduled");

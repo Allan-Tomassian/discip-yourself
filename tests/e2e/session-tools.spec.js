@@ -120,9 +120,9 @@ async function openGuidedRuntime(page, state) {
   await page.getByRole("button", { name: "Planning" }).click();
   await page.locator(".lovableTimelineCardButton").first().click();
   await page.getByRole("button", { name: /Démarrer la session|Reprendre la session/i }).click();
-  await page.getByRole("button", { name: "Mode guidé" }).click();
+  await page.getByRole("button", { name: "Préparer avec l’IA" }).click();
   await expect(page.getByTestId("session-guided-preview-actions")).toBeVisible();
-  await page.getByRole("button", { name: "Lancer en mode guidé" }).click();
+  await page.getByRole("button", { name: "Démarrer le guidage" }).click();
   await expect(page.getByTestId("session-guided-plan")).toBeVisible();
 }
 

@@ -182,7 +182,8 @@ test("timeline opens a blueprint-backed block into the protected execution chamb
   await expect(page.getByTestId("session-launch-ready")).toBeVisible();
   await expect(page.getByText("Protège ce bloc.")).toBeVisible();
   await expect(page.getByRole("button", { name: "Démarrer le bloc" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Mode guidé" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Préparer avec l’IA" })).toBeVisible();
+  await expect(page.getByText("Mode guidé")).toHaveCount(0);
   await expect(page.locator(".lovableTabBarWrap")).toHaveCount(0);
   await expect(page.locator(".pageHeader")).toHaveCount(0);
   await expect(page.getByTestId("session-top-chrome")).toBeVisible();
@@ -216,10 +217,13 @@ test("guided launch shows preparing, spatial preview, and a compact guided runti
   await openTimelineLaunch(page, buildLaunchState());
 
   await expect(page.getByTestId("session-launch-ready")).toBeVisible();
-  await page.getByRole("button", { name: "Mode guidé" }).click();
+  await page.getByRole("button", { name: "Préparer avec l’IA" }).click();
 
   await expect(page.getByTestId("session-launch-preparing")).toBeVisible();
-  await expect(page.getByText("Préparation en cours")).toBeVisible();
+  await expect(page.getByText("Préparation du guidage").first()).toBeVisible();
+  await expect(page.getByText("Lecture du bloc")).toBeVisible();
+  await expect(page.getByText("Construction du prochain geste")).toBeVisible();
+  await expect(page.getByText("Tu peux toujours passer en session standard.")).toBeVisible();
   await expect(page.locator(".lovableTabBarWrap")).toHaveCount(0);
   await expect(page.locator(".pageHeader")).toHaveCount(0);
   await attachScreenshot(page, testInfo, "session-launch-preparing.png");
@@ -227,7 +231,7 @@ test("guided launch shows preparing, spatial preview, and a compact guided runti
   await expect(page.getByTestId("session-guided-plan")).toBeVisible();
   await expect(page.getByTestId("session-guided-preview-actions")).toBeVisible();
   await expect(page.getByRole("button", { name: "Régénérer" })).toBeVisible();
-  await expect(page.getByText("Plan du bloc")).toBeVisible();
+  await expect(page.getByTestId("session-guided-plan").getByText("Guidage IA", { exact: true })).toBeVisible();
   await expect(page.getByText("Mise en route")).toBeVisible();
   await expect(page.locator(".lovableTabBarWrap")).toHaveCount(0);
   await expect(page.locator(".pageHeader")).toHaveCount(0);
@@ -239,17 +243,19 @@ test("guided launch shows preparing, spatial preview, and a compact guided runti
 
   await openTimelineLaunch(page, buildLaunchState());
   await expect(page.getByTestId("session-launch-ready")).toBeVisible();
-  await page.getByRole("button", { name: "Mode guidé" }).click();
+  await page.getByRole("button", { name: "Préparer avec l’IA" }).click();
   await expect(page.getByTestId("session-guided-preview-actions")).toBeVisible();
 
-  await page.getByRole("button", { name: "Lancer en mode guidé" }).click();
+  await page.getByRole("button", { name: "Démarrer le guidage" }).click();
 
   await expect(page.getByTestId("session-guided-plan")).toBeVisible();
   await expect(page.getByTestId("session-action-protocol")).toHaveCount(0);
   await expect(page.getByTestId("session-action-dock")).toBeVisible();
   await expect(page.locator(".pageHeader")).toHaveCount(0);
-  await expect(page.getByText("Plan du bloc")).toBeVisible();
+  await expect(page.getByTestId("session-guided-plan").getByText("Guidage IA", { exact: true })).toBeVisible();
   await expect(page.locator(".sessionRuntimeProgressLabel")).toHaveText("Étape 1/3");
+  await expect(page.getByTestId("session-guided-next-action")).toBeVisible();
+  await expect(page.getByText("Prochain geste")).toBeVisible();
   await expect(page.getByRole("button", { name: "Réajuster" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Outils" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Régénérer" })).toHaveCount(0);
@@ -420,11 +426,13 @@ test("premium guided prepare shows an explicit degraded state and retry can reco
 
   await openTimelineLaunch(page, buildLaunchState());
 
-  await page.getByRole("button", { name: "Mode guidé" }).click();
+  await page.getByRole("button", { name: "Préparer avec l’IA" }).click();
   await expect(page.getByTestId("session-launch-degraded")).toBeVisible({ timeout: 12000 });
-  await expect(page.getByText("Réessaye ou passe en standard.")).toBeVisible();
+  await expect(page.getByText("Guidage IA indisponible")).toBeVisible();
+  await expect(page.getByText("Impossible de préparer le guidage maintenant. Tu peux démarrer en session standard.").first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Réessayer" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Passer en standard" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Démarrer en standard" })).toBeVisible();
+  await attachScreenshot(page, testInfo, "session-guided-unavailable.png");
 
   await page.getByRole("button", { name: "Réessayer" }).click();
   await expect(page.getByTestId("session-guided-preview-actions")).toBeVisible();
@@ -446,10 +454,10 @@ test("free users see a bounded premium preview and only hit the paywall from the
 
   await openTimelineLaunch(page, buildFreeLaunchState());
 
-  await page.getByRole("button", { name: "Mode guidé" }).click();
+  await page.getByRole("button", { name: "Préparer avec l’IA" }).click();
 
   await expect(page.getByTestId("session-launch-locked")).toBeVisible();
-  await expect(page.getByText("Aperçu Premium")).toBeVisible();
+  await expect(page.getByText("Guidage IA Premium")).toBeVisible();
   await expect(page.getByText("Avec Premium")).toBeVisible();
   await expect(page.getByRole("button", { name: "Découvrir Premium" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Session standard" })).toBeVisible();
@@ -479,7 +487,7 @@ test("founder override bypasses the paywall and enters the premium guided flow",
   await page.getByRole("button", { name: /Démarrer la session|Reprendre la session/i }).click();
 
   await expect(page.getByTestId("session-launch-ready")).toBeVisible();
-  await page.getByRole("button", { name: "Mode guidé" }).click();
+  await page.getByRole("button", { name: "Préparer avec l’IA" }).click();
 
   await expect(page.getByTestId("session-guided-plan")).toBeVisible();
   await expect(page.getByTestId("session-launch-locked")).toHaveCount(0);

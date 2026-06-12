@@ -79,6 +79,38 @@
   background: rgba(255, 255, 255, 0.02);
 }
 
+.sessionGuidedNextAction {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 18%, rgba(255, 255, 255, 0.08));
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, rgba(143, 120, 255, 0.11), rgba(143, 120, 255, 0.028)),
+    rgba(255, 255, 255, 0.018);
+}
+
+.sessionGuidedNextActionLabel {
+  font-size: var(--font-micro);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--accent-primary) 72%, white 28%);
+}
+
+.sessionGuidedNextActionTitle {
+  font-size: clamp(1.18rem, 5vw, 1.5rem);
+  line-height: 1.12;
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.sessionGuidedNextActionText {
+  font-size: var(--font-meta);
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
 .sessionGuidedPlanNoticeText {
   font-size: var(--font-meta);
   line-height: 1.45;

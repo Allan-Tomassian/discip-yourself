@@ -47,22 +47,22 @@ export function resolveSessionPrepareFailureMessage({ result = null, quality = n
   const probableCause = readProbableCause(result);
 
   if (errorCode === "PREMIUM_REQUIRED") {
-    return "Cette préparation détaillée fait partie du premium.";
+    return "Le Guidage IA fait partie du premium.";
   }
   if (errorCode === "AUTH_MISSING" || errorCode === "AUTH_INVALID") {
     return "Ta session a expiré. Recharge l'application puis réessaie.";
   }
   if (probableCause === "backend_waking") {
-    return "Le service IA se réveille. Réessaye dans quelques secondes ou passe en standard.";
+    return "Impossible de préparer le guidage maintenant. Tu peux démarrer en session standard.";
   }
   if (errorCode === "TIMEOUT" || errorCode === "SESSION_GUIDANCE_PROVIDER_TIMEOUT") {
-    return "La préparation détaillée a expiré. Réessaye ou passe en standard.";
+    return "Impossible de préparer le guidage maintenant. Tu peux démarrer en session standard.";
   }
   if (errorCode === "NETWORK_ERROR") {
-    return "La préparation détaillée a échoué à cause du réseau. Réessaye ou passe en standard.";
+    return "Impossible de préparer le guidage maintenant. Tu peux démarrer en session standard.";
   }
   if (errorCode === "BACKEND_UNAVAILABLE" || errorCode === "SESSION_GUIDANCE_BACKEND_UNAVAILABLE") {
-    return "La préparation détaillée est indisponible pour le moment. Réessaye ou passe en standard.";
+    return "Impossible de préparer le guidage maintenant. Tu peux démarrer en session standard.";
   }
   if (
     errorCode === "INVALID_RESPONSE" ||
@@ -71,21 +71,21 @@ export function resolveSessionPrepareFailureMessage({ result = null, quality = n
     rejectionReason === PREPARED_SESSION_REJECTION_REASONS.VALIDATION_FAILED ||
     normalizedQuality.validationPassed === false
   ) {
-    return "Le plan premium reçu était inexploitable. Réessaye ou passe en standard.";
+    return "Impossible de préparer le guidage maintenant. Tu peux démarrer en session standard.";
   }
   if (
     rejectionReason === PREPARED_SESSION_REJECTION_REASONS.RICHNESS_FAILED ||
     normalizedQuality.richnessPassed === false
   ) {
-    return "Le plan détaillé n’était pas assez spécifique. Réessaye ou passe en standard.";
+    return "Impossible de préparer le guidage maintenant. Tu peux démarrer en session standard.";
   }
   if (errorCode === "BACKEND_ERROR") {
-    return "La préparation détaillée a échoué côté serveur. Réessaye ou passe en standard.";
+    return "Impossible de préparer le guidage maintenant. Tu peux démarrer en session standard.";
   }
   if (errorCode === "RATE_LIMITED" || errorCode === "QUOTA_EXCEEDED") {
-    return "La préparation détaillée est temporairement indisponible. Réessaye ou passe en standard.";
+    return "Impossible de préparer le guidage maintenant. Tu peux démarrer en session standard.";
   }
-  return "Impossible de préparer un plan détaillé pour le moment. Réessaye ou passe en standard.";
+  return "Impossible de préparer le guidage maintenant. Tu peux démarrer en session standard.";
 }
 
 export function buildSessionPrepareFailureState({ result = null, quality = null } = {}) {

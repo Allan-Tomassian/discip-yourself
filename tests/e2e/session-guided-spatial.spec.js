@@ -3,7 +3,7 @@ import { E2E_AUTH_SESSION_KEY } from "../../src/auth/constants.js";
 import { buildLocalUserDataKey } from "../../src/data/userDataApi.js";
 import { buildLocalProfileKey, LOCAL_PROFILE_USERNAME_MAP_KEY } from "../../src/profile/profileApi.js";
 import { LS_KEY } from "../../src/utils/storage.js";
-import { buildBaseState, buildMockAuthSession, buildMockProfile, seedState } from "./utils/seed.js";
+import { buildBaseState, buildMockAuthSession, buildMockProfile, getUserData, seedState } from "./utils/seed.js";
 import { enablePremium, installSessionGuidanceMock } from "./utils/sessionGuidanceMock.js";
 
 const iPhone13 = devices["iPhone 13"];
@@ -261,14 +261,14 @@ async function openGuidedPreview(page, state) {
   await page.getByRole("button", { name: "Planning" }).click();
   await page.locator(".lovableTimelineCardButton").first().click();
   await page.getByRole("button", { name: /Démarrer la session|Reprendre la session/i }).click();
-  await page.getByRole("button", { name: "Mode guidé" }).click();
+  await page.getByRole("button", { name: "Préparer avec l’IA" }).click();
   await expect(page.getByTestId("session-launch-preparing")).toBeVisible();
   await expect(page.getByTestId("session-guided-preview-actions")).toBeVisible();
 }
 
 async function openGuidedActive(page, state) {
   await openGuidedPreview(page, state);
-  await page.getByRole("button", { name: "Lancer en mode guidé" }).click();
+  await page.getByRole("button", { name: "Démarrer le guidage" }).click();
   await expect(page.getByTestId("session-guided-plan")).toBeVisible();
   await expect(page.getByRole("button", { name: "Réajuster" })).toBeVisible();
   await expect(page.getByTestId("session-guided-preview-actions")).toHaveCount(0);
@@ -280,9 +280,9 @@ async function openGuidedActiveWithOneShotSeed(page, state) {
   await page.getByRole("button", { name: "Planning" }).click();
   await page.locator(".lovableTimelineCardButton").first().click();
   await page.getByRole("button", { name: /Démarrer la session|Reprendre la session/i }).click();
-  await page.getByRole("button", { name: "Mode guidé" }).click();
+  await page.getByRole("button", { name: "Préparer avec l’IA" }).click();
   await expect(page.getByTestId("session-guided-preview-actions")).toBeVisible();
-  await page.getByRole("button", { name: "Lancer en mode guidé" }).click();
+  await page.getByRole("button", { name: "Démarrer le guidage" }).click();
   await expect(page.getByTestId("session-guided-plan")).toBeVisible();
   await expect(page.getByRole("button", { name: "Réajuster" })).toBeVisible();
 }
@@ -291,7 +291,7 @@ test("guided preview opens directly after preparing and can return to standard",
   await openGuidedPreview(page, buildState());
 
   await expect(page.getByTestId("session-guided-plan")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Lancer en mode guidé" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Démarrer le guidage" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Régénérer" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Réajuster" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Outils" })).toHaveCount(0);
@@ -307,9 +307,59 @@ test("active guided keeps the spatial deck visible without surfacing recenter ch
 
   await expect(page.getByTestId("session-guided-active-step-notice")).toHaveCount(0);
   await expect(page.locator(".sessionRuntimeProgressLabel")).toHaveText("Étape 1/3");
+  await expect(page.getByTestId("session-guided-next-action")).toBeVisible();
+  await expect(page.getByText("Prochain geste")).toBeVisible();
   await expect(page.getByTestId("session-guided-slide-track")).toBeVisible();
   await expect(page.getByTestId("session-guided-slide-viewed")).toContainText("Étape 1/3");
   await attachScreenshot(page, testInfo, "session-guided-spatial-consulted.png");
+});
+
+test("guided blocked session still queues recovery after recording history", async ({ page }) => {
+  await openGuidedActive(page, buildState());
+
+  await page.getByRole("button", { name: "Bloquer" }).click();
+  await expect(page.getByTestId("unified-recovery-sheet")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ce bloc a été interrompu." })).toBeVisible();
+
+  await expect
+    .poll(async () => {
+      const current = await getUserData(page, E2E_USER_ID);
+      return (current.sessionHistory || []).some(
+        (entry) => entry.occurrenceId === "occ_guided_spatial" && entry.endedReason === "blocked"
+      );
+    })
+    .toBeTruthy();
+  const state = await getUserData(page, E2E_USER_ID);
+  expect(
+    (state.sessionHistory || []).some(
+      (entry) => entry.occurrenceId === "occ_guided_spatial" && entry.endedReason === "blocked"
+    )
+  ).toBeTruthy();
+});
+
+test("guided reported session still queues recovery without corrupting guided runtime history", async ({ page }) => {
+  await openGuidedActive(page, buildState());
+
+  await page.getByRole("button", { name: "Pause" }).click();
+  await page.getByRole("button", { name: "Reporter" }).click();
+  await expect(page.getByTestId("unified-recovery-sheet")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ce bloc a été signalé." })).toBeVisible();
+
+  await expect
+    .poll(async () => {
+      const current = await getUserData(page, E2E_USER_ID);
+      return (current.sessionHistory || []).some(
+        (entry) => entry.occurrenceId === "occ_guided_spatial" && entry.endedReason === "reported"
+      );
+    })
+    .toBeTruthy();
+  const state = await getUserData(page, E2E_USER_ID);
+  expect(
+    (state.sessionHistory || []).some(
+      (entry) => entry.occurrenceId === "occ_guided_spatial" && entry.endedReason === "reported"
+    )
+  ).toBeTruthy();
+  expect(state.occurrences.find((entry) => entry.id === "occ_guided_spatial")?.status).toBe("planned");
 });
 
 test("deep work guided uses checklist-style execution without changing the global timer model", async ({ page }, testInfo) => {

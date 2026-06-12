@@ -234,7 +234,16 @@ export default function SessionGuidedDeck({
 
   return (
     <div className="sessionGuidedPlan" data-testid="session-guided-plan">
-      <div className="sessionGuidedPlanEyebrow">Plan du bloc</div>
+      <div className="sessionGuidedPlanEyebrow">Guidage IA</div>
+      {plan.mode === "active" && plan.currentItem ? (
+        <div className="sessionGuidedNextAction" data-testid="session-guided-next-action">
+          <div className="sessionGuidedNextActionLabel">Prochain geste</div>
+          <div className="sessionGuidedNextActionTitle">{plan.currentItem.label}</div>
+          {plan.currentItem.guidance ? (
+            <div className="sessionGuidedNextActionText">{plan.currentItem.guidance}</div>
+          ) : null}
+        </div>
+      ) : null}
       {plan.mode === "active" && plan.canReturnToActiveStep ? (
         <div className="sessionGuidedPlanNotice" data-testid="session-guided-active-step-notice">
           <div className="sessionGuidedPlanNoticeText">

@@ -1296,7 +1296,7 @@ export default function Session({
       return;
     }
     if (gateDecision === "access_error") {
-      openPremiumAccessError("Impossible de vérifier l’accès premium pour le moment. Réessaye ou passe en standard.");
+      openPremiumAccessError("Impossible de vérifier l’accès premium maintenant. Tu peux démarrer en session standard.");
       return;
     }
 
@@ -1498,7 +1498,7 @@ export default function Session({
         openLockedPremiumPreview(buildLockedPremiumPreview(fallbackRunbook));
         return;
       }
-      openPremiumAccessError("Impossible de confirmer l’accès premium pour le moment. Réessaye ou passe en standard.");
+      openPremiumAccessError("Impossible de confirmer l’accès premium maintenant. Tu peux démarrer en session standard.");
       return;
     }
     setSessionLaunchState((current) => {
@@ -1761,7 +1761,7 @@ export default function Session({
         openLockedPremiumPreview(buildLockedPremiumPreview(launchRunbook));
         return;
       }
-      openPremiumAccessError("Impossible de confirmer l’accès premium pour le moment. Réessaye ou passe en standard.");
+      openPremiumAccessError("Impossible de confirmer l’accès premium maintenant. Tu peux démarrer en session standard.");
       return;
     }
 
@@ -2301,19 +2301,6 @@ export default function Session({
     });
   }
 
-  function cancelSession() {
-    if (!session?.occurrenceId || typeof setData !== "function") return;
-    setData((prev) =>
-      applySessionRuntimeTransition(prev, {
-        type: "cancel",
-        occurrenceId: session.occurrenceId,
-        dateKey: selectedOccurrence?.date || effectiveDateKey,
-        durationSec: elapsedSec,
-      })
-    );
-  }
-  void cancelSession;
-
   const blockSession = () => {
     if (!session?.occurrenceId || typeof setData !== "function") return;
     const recoveryRequest = {
@@ -2421,7 +2408,7 @@ export default function Session({
             onPrepareGuided={handlePrepareGuided}
             onRetryGuided={handlePrepareGuided}
             onOpenLockedPaywall={() => {
-              if (currentEntitlementAccess.canOpenPaywall) onOpenPaywall?.("Aller plus loin");
+              if (currentEntitlementAccess.canOpenPaywall) onOpenPaywall?.("Guidage IA");
             }}
           />
         ) : (
@@ -2489,8 +2476,6 @@ export default function Session({
             onFeedbackLevelChange={setFeedbackLevel}
             onFeedbackTextChange={setFeedbackText}
             onFeedbackSubmit={endSession}
-            reportMode={false}
-            onChooseReport={null}
             onReturnToday={() => setTab?.("home")}
           />
         )}

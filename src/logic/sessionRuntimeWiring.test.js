@@ -29,7 +29,7 @@ describe("session runtime wiring (SSoT)", () => {
     expect(session).toContain("function pauseTimer()");
     expect(session).toContain("function resumeTimer()");
     expect(session).toContain("function endSession()");
-    expect(session).toContain("function cancelSession()");
+    expect(session).not.toContain("function cancelSession()");
     expect(session).toContain("activeSession");
     expect(session).toContain("sessionHistory");
     expect(session).not.toContain("activeSessionId");

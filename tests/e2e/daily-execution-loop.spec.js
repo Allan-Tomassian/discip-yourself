@@ -1,7 +1,8 @@
 import { test, expect, devices } from "@playwright/test";
-import { getState } from "./utils/seed.js";
+import { getUserData } from "./utils/seed.js";
 import {
   buildCanonicalExecutionState,
+  E2E_USER_ID,
   seedCurrentUser,
 } from "./utils/currentProduct.js";
 
@@ -58,14 +59,34 @@ test("daily execution: Today → Session → finish → feedback → surfaces up
   await page.getByRole("button", { name: "Terminer le bloc" }).click();
   await expect(page.getByText("Bloc terminé ?").first()).toBeVisible();
   await page.getByRole("button", { name: "normal" }).click();
+  const feedbackInput = page.locator(".sessionFeedbackInput");
+  await feedbackInput.fill("tenu correctement");
+  await feedbackInput.focus();
+  await expect(feedbackInput).toBeVisible();
+  const feedbackFontSize = await feedbackInput.evaluate((node) => Number.parseFloat(window.getComputedStyle(node).fontSize));
+  expect(feedbackFontSize).toBeGreaterThanOrEqual(16);
+  const viewport = page.viewportSize();
+  expect(viewport).toBeTruthy();
+  await expect
+    .poll(async () => {
+      const box = await page.getByRole("button", { name: "Valider la session" }).boundingBox();
+      return box ? box.y + box.height : Number.POSITIVE_INFINITY;
+    })
+    .toBeLessThanOrEqual(viewport.height);
   await page.getByRole("button", { name: "Valider la session" }).click();
   await expect(page.getByText("Preuve validée.").first()).toBeVisible();
-  await page.getByRole("button", { name: "Retour à Today" }).click();
+  await page.getByRole("button", { name: "Retour à Home" }).click();
 
   await expect(page.getByTestId("today-primary-action-card")).toBeVisible();
   await expect(page.getByTestId("today-primary-action-card")).not.toContainText("Démarrer le bloc");
 
-  const next = await getState(page);
+  await expect
+    .poll(async () => {
+      const current = await getUserData(page, E2E_USER_ID);
+      return current.occurrences.find((occurrence) => occurrence.id === "occ_today")?.status || "";
+    })
+    .toBe("done");
+  const next = await getUserData(page, E2E_USER_ID);
   expect(next.occurrences.find((occurrence) => occurrence.id === "occ_today")?.status).toBe("done");
   expect((next.sessionHistory || []).some((entry) => entry.occurrenceId === "occ_today" && entry.endedReason === "done")).toBeTruthy();
 

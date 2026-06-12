@@ -5,7 +5,7 @@ import {
 } from "./sessionPrepareFeedback";
 
 describe("sessionPrepareFeedback", () => {
-  it("distinguishes invalid premium payloads from timeout failures", () => {
+  it("keeps unavailable guidance copy intentional and non-technical", () => {
     expect(
       resolveSessionPrepareFailureMessage({
         result: {
@@ -13,7 +13,7 @@ describe("sessionPrepareFeedback", () => {
           errorDetails: { rejectionReason: "provider_parse_failed" },
         },
       })
-    ).toBe("Le plan premium reçu était inexploitable. Réessaye ou passe en standard.");
+    ).toBe("Impossible de préparer le guidage maintenant. Tu peux démarrer en session standard.");
 
     expect(
       resolveSessionPrepareFailureMessage({
@@ -22,10 +22,10 @@ describe("sessionPrepareFeedback", () => {
           backendErrorCode: "SESSION_GUIDANCE_PROVIDER_TIMEOUT",
         },
       })
-    ).toBe("La préparation détaillée a expiré. Réessaye ou passe en standard.");
+    ).toBe("Impossible de préparer le guidage maintenant. Tu peux démarrer en session standard.");
   });
 
-  it("surfaces a backend wakeup with dedicated premium copy", () => {
+  it("keeps backend wakeup copy non-blocking", () => {
     expect(
       resolveSessionPrepareFailureMessage({
         result: {
@@ -33,10 +33,10 @@ describe("sessionPrepareFeedback", () => {
           probableCause: "backend_waking",
         },
       })
-    ).toBe("Le service IA se réveille. Réessaye dans quelques secondes ou passe en standard.");
+    ).toBe("Impossible de préparer le guidage maintenant. Tu peux démarrer en session standard.");
   });
 
-  it("surfaces richness failures with the dedicated premium-specific copy", () => {
+  it("keeps richness failures action-oriented", () => {
     expect(
       resolveSessionPrepareFailureMessage({
         result: { ok: true },
@@ -48,7 +48,7 @@ describe("sessionPrepareFeedback", () => {
           rejectionReason: "richness_failed",
         },
       })
-    ).toBe("Le plan détaillé n’était pas assez spécifique. Réessaye ou passe en standard.");
+    ).toBe("Impossible de préparer le guidage maintenant. Tu peux démarrer en session standard.");
   });
 
   it("keeps machine-readable diagnostics for degraded premium prepares", () => {
@@ -73,7 +73,7 @@ describe("sessionPrepareFeedback", () => {
       status: 502,
       rejectionReason: "provider_parse_failed",
       rejectionStage: "provider_parse",
-      message: "Le plan premium reçu était inexploitable. Réessaye ou passe en standard.",
+      message: "Impossible de préparer le guidage maintenant. Tu peux démarrer en session standard.",
     });
   });
 });

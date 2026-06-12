@@ -42,9 +42,12 @@ describe("session action protocol contract", () => {
     expect(focusView).toContain('label: "Terminer le bloc"');
     expect(focusView).toContain('label: "Reprendre"');
     expect(focusView).toContain("Valider la session");
-    expect(focusView).toContain("Retour à Today");
-    expect(focusView).toContain("Reporter sans abandonner");
-    expect(focusView).toContain("Lancer en mode guidé");
+    expect(focusView).toContain("Retour à Home");
+    expect(focusView).not.toContain("Retour à Today");
+    expect(focusView).not.toContain("Reporter sans abandonner");
+    expect(focusView).toContain("Démarrer le guidage");
+    expect(focusView).not.toContain("Lancer en mode guidé");
+    expect(focusView).not.toContain("Mode guidé");
     expect(focusView).toContain("sessionDockDangerAction");
     expect(styles).toContain(".sessionRuntimeStack.is-guided");
     expect(styles).toContain("--session-guided");

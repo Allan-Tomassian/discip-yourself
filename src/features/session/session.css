@@ -25,6 +25,9 @@
 }
 
 .sessionScreenBody--launch {
+  --session-guided: #a879ff;
+  --session-guided-soft: rgba(168, 121, 255, 0.13);
+  --session-guided-border: rgba(168, 121, 255, 0.32);
   gap: clamp(20px, 5vh, 48px);
 }
 
@@ -476,6 +479,31 @@
   gap: 14px;
 }
 
+.sessionLaunchStatusBlock {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid var(--session-guided-border);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(168, 121, 255, 0.12), rgba(168, 121, 255, 0.035)),
+    rgba(255, 255, 255, 0.018);
+}
+
+.sessionLaunchStatusTitle {
+  font-size: clamp(1.18rem, 5vw, 1.48rem);
+  line-height: 1.12;
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.sessionLaunchStatusText {
+  font-size: var(--font-meta);
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--text-secondary) 88%, white 12%);
+}
+
 .sessionLaunchBriefRow {
   display: grid;
   grid-template-columns: minmax(58px, 72px) minmax(0, 1fr);
@@ -524,6 +552,33 @@
   justify-items: center;
   gap: 10px;
   text-align: center;
+}
+
+.sessionScreenBody--launch .aiPreparationShell {
+  --accent-primary: var(--session-guided);
+  width: min(100%, 430px);
+}
+
+.sessionScreenBody--launch .aiPreparationTitle {
+  font-size: clamp(1.28rem, 6vw, 1.7rem);
+}
+
+.sessionScreenBody--launch .aiPreparationOrb {
+  width: 92px;
+  height: 92px;
+}
+
+.sessionScreenBody--launch .aiPreparationIconBadge {
+  width: 42px;
+  height: 42px;
+}
+
+.sessionScreenBody--launch .aiPreparationCard {
+  border-color: var(--session-guided-border);
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, rgba(168, 121, 255, 0.1), rgba(168, 121, 255, 0.025)),
+    rgba(255, 255, 255, 0.025);
 }
 
 .sessionLaunchPreparingOrb {
@@ -1032,6 +1087,19 @@
   color: color-mix(in srgb, var(--session-guided) 80%, white 20%) !important;
 }
 
+.sessionLaunchSectionEyebrow--guided,
+.sessionRuntimeStack.is-guided .sessionRuntimeHeroEyebrow,
+.sessionRuntimeStack.is-guided .sessionGuidedPlanEyebrow {
+  color: color-mix(in srgb, var(--session-guided) 82%, white 18%);
+}
+
+.sessionGuidedRegenerateAction {
+  min-height: 38px;
+  border-color: rgba(168, 121, 255, 0.12) !important;
+  background: rgba(168, 121, 255, 0.035) !important;
+  color: color-mix(in srgb, var(--text-secondary) 88%, white 12%) !important;
+}
+
 .sessionRuntimeStack.is-guided .sessionRuntimeHero,
 .sessionRuntimeStack.is-guided .sessionGuidedSurface {
   border-color: var(--session-guided-border);
@@ -1120,6 +1188,11 @@
   .sessionSupplementCard,
   .sessionCompletionSurface {
     border-radius: 22px;
+  }
+
+  .sessionScreenBody--launch .aiPreparationOrb {
+    width: 86px;
+    height: 86px;
   }
 
   .sessionRuntimeBriefRow,
