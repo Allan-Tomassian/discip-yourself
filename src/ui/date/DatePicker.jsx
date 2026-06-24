@@ -8,6 +8,9 @@ import { formatDisplayValue } from "./dateDisplayValue";
 
 const DEFAULT_MENU_WIDTH = 320;
 const DEFAULT_MENU_HEIGHT = 360;
+const DATE_PICKER_PREFERRED_WIDTH = 320;
+const DATE_PICKER_MIN_WIDTH = 304;
+const DATE_PICKER_MAX_WIDTH = 360;
 
 function toMonthStart(dateLike) {
   const base = dateLike instanceof Date ? dateLike : new Date();
@@ -80,6 +83,9 @@ export default function DatePicker({
       rect: anchorRect,
       menuRect: { width: menuWidth, height: menuHeight },
       viewport,
+      preferredWidth: DATE_PICKER_PREFERRED_WIDTH,
+      minWidth: DATE_PICKER_MIN_WIDTH,
+      maxWidth: DATE_PICKER_MAX_WIDTH,
     });
 
     const nextStyle = {
@@ -258,7 +264,7 @@ export default function DatePicker({
             />
             <div
               ref={menuRef}
-              className="selectMenuOuter GateGlassOuter"
+              className="selectMenuOuter datePickerMenuOuter GateGlassOuter"
               style={{
                 ...(isPositioned ? {} : { position: "fixed", left: 0, top: 0 }),
                 ...(menuStyle || {}),
@@ -269,7 +275,12 @@ export default function DatePicker({
               }}
             >
               <div className="selectMenuClip GateGlassClip GateGlassBackdrop">
-                <div className={`selectMenu datePickerMenu GateGlassContent${menuClassName ? ` ${menuClassName}` : ""}`} role="dialog">
+                <div
+                  className={`selectMenu datePickerMenu GateGlassContent${menuClassName ? ` ${menuClassName}` : ""}`}
+                  role="dialog"
+                  aria-label={ariaLabel || "Choisir une date"}
+                  data-testid="date-picker-menu"
+                >
                   <div className="datePickerHeader">
                     <button
                       type="button"
@@ -292,13 +303,13 @@ export default function DatePicker({
 
                   <div className="datePickerWeekdays">
                     {WEEKDAY_LABELS_FR.map((label, idx) => (
-                      <div key={`${label}-${idx}`} className="datePickerWeekday">
+                      <div key={`${label}-${idx}`} className="datePickerWeekday" data-testid="date-picker-weekday">
                         {label}
                       </div>
                     ))}
                   </div>
 
-                  <div className="datePickerGrid" role="grid">
+                  <div className="datePickerGrid" role="grid" data-testid="date-picker-grid">
                     {gridCells.map((cell) => {
                       const isSelected = normalizedValue && cell.key === normalizedValue;
                       const isToday = cell.key === todayKey;

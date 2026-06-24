@@ -992,6 +992,13 @@ a{ color:inherit; }
   max-width:calc(100vw - (2 * var(--page-pad)) - var(--safe-left) - var(--safe-right));
   box-sizing:border-box;
 }
+.datePickerMenuOuter{
+  width:min(360px, calc(100vw - 16px - var(--safe-left) - var(--safe-right)));
+  max-width:calc(100vw - 16px - var(--safe-left) - var(--safe-right));
+}
+.datePickerMenuOuter .selectMenuClip{
+  width:100%;
+}
 .selectMenuClip{
   border-radius:inherit;
 }
@@ -1036,8 +1043,12 @@ a{ color:inherit; }
   font-size:var(--font-sm);
 }
 .datePickerMenu{
+  box-sizing:border-box;
   gap:10px;
   padding:10px;
+  width:100%;
+  min-width:0;
+  max-width:100%;
   max-height:min(70dvh, 420px);
   overflow:hidden;
 }
@@ -1076,21 +1087,30 @@ a{ color:inherit; }
   text-align:center;
 }
 .datePickerWeekday{
+  min-width:0;
+  overflow:hidden;
   padding:4px 0;
+  text-align:center;
 }
 .datePickerGrid{
   display:grid;
   grid-template-columns:repeat(7, minmax(0, 1fr));
   gap:4px;
+  min-width:0;
 }
 .datePickerDay{
+  display:grid;
+  min-width:0;
+  min-height:36px;
+  place-items:center;
   border:0;
   background:transparent;
   color:var(--text-1, var(--text));
   border-radius:var(--radius-12);
-  padding:8px 0;
+  padding:0;
   cursor:pointer;
   font-size:var(--font-sm);
+  line-height:1;
 }
 .datePickerDay:hover{
   background: var(--menuOptionHover, rgba(255,255,255,.06));
@@ -1108,10 +1128,15 @@ a{ color:inherit; }
 }
 .datePickerFooter{
   display:flex;
-  justify-content:space-between;
+  flex-wrap:wrap;
+  justify-content:flex-end;
   gap:8px;
+  min-width:0;
 }
 .datePickerAction{
+  flex:1 1 0;
+  min-width:min(128px, 100%);
+  min-height:36px;
   border:1px solid var(--border-subtle, var(--border));
   background: var(--surface-2, var(--glass2));
   color:var(--text-1, var(--text));
@@ -1119,6 +1144,7 @@ a{ color:inherit; }
   padding:6px 10px;
   cursor:pointer;
   font-size:var(--font-sm);
+  white-space:nowrap;
 }
 .datePickerAction:hover{
   background: var(--surface-3, var(--glass2));
@@ -1153,6 +1179,46 @@ a{ color:inherit; }
     animation: none;
   }
 
+  .datePickerMenuOuter{
+    top:auto !important;
+    right:calc(var(--page-pad) + var(--safe-right)) !important;
+    bottom:calc(12px + var(--safe-bottom)) !important;
+    left:calc(var(--page-pad) + var(--safe-left)) !important;
+    width:auto !important;
+    min-width:0 !important;
+    max-width:none;
+    border-radius:20px;
+  }
+
+  .datePickerMenuOuter .selectMenuClip,
+  .datePickerMenuOuter .datePickerMenu{
+    width:100%;
+    max-width:100%;
+  }
+
+  .datePickerMenu{
+    gap:8px;
+    overflow:hidden;
+  }
+
+  .datePickerWeekdays,
+  .datePickerGrid{
+    gap:3px;
+  }
+
+  .datePickerDay{
+    min-height:38px;
+  }
+
+  .datePickerFooter{
+    justify-content:stretch;
+  }
+
+  .datePickerAction{
+    min-width:0;
+    text-align:center;
+  }
+
   .selectOption{
     padding: 12px 12px;
     font-size: var(--font-lg);
@@ -1161,6 +1227,28 @@ a{ color:inherit; }
   .selectOption.isSelected{
     background: var(--accent-soft, var(--menuOptionSelectedStrong, rgba(124,58,237,.18)));
     box-shadow: inset 0 0 0 1px var(--accentBorder, var(--menuOptionSelectedBorder, rgba(124,58,237,.28)));
+  }
+}
+@media (max-width: 360px){
+  .datePickerMenu{
+    gap:7px;
+    padding:8px;
+  }
+
+  .datePickerWeekdays,
+  .datePickerGrid{
+    gap:2px;
+  }
+
+  .datePickerDay{
+    min-height:34px;
+    border-radius:10px;
+    font-size:var(--font-xs);
+  }
+
+  .datePickerNavBtn{
+    width:30px;
+    height:30px;
   }
 }
 .disciplineOverlay{

@@ -788,9 +788,11 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
+  flex-wrap: wrap;
 }
 
 .firstRunWindowCardTitle {
+  min-width: 0;
   font-size: 14px;
   font-weight: var(--font-weight-medium);
   color: var(--text-primary);
@@ -824,15 +826,18 @@
 }
 
 .firstRunDayRow {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 6px;
+  min-width: 0;
 }
 
 .firstRunDayChip {
-  min-width: 34px;
+  width: 100%;
+  min-width: 0;
   min-height: 30px;
-  padding-inline: var(--space-8);
+  justify-content: center;
+  padding-inline: 0;
 }
 
 .firstRunDayChip.is-active {
@@ -960,6 +965,27 @@
 @media (max-width: 420px) {
   .firstRunCapacityGrid {
     grid-template-columns: 1fr;
+  }
+
+  .firstRunWindowCardHeader .gateButton {
+    width: 100%;
+  }
+
+  .firstRunWindowTopRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .firstRunWindowLabelField {
+    grid-column: auto;
+  }
+
+  .firstRunDayRow {
+    gap: 4px;
+  }
+
+  .firstRunDayChip {
+    min-height: 32px;
+    font-size: var(--font-xs);
   }
 }
 

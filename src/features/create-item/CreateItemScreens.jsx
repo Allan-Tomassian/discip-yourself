@@ -23,6 +23,7 @@ import {
   REPEAT_OPTIONS,
   getMeasurePlaceholder,
 } from "../edit-item/editItemShared";
+import "../edit-item/editItem.css";
 import "./createItem.css";
 
 function resolveSelectedCategoryLabel(controller) {

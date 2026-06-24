@@ -824,7 +824,7 @@ export default function CreateItem({
       headerSubtitle={headerSubtitle}
       headerRight={headerRight}
     >
-      <div className="mainPageStack">
+      <div className="mainPageStack createItemScope editItemScope">
         {effectiveKind === "outcome" ? (
           <OutcomeManualCreateScreen controller={outcomeScreenController} />
         ) : effectiveKind === "guided" ? (

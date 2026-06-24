@@ -13,6 +13,10 @@
   min-height: 100%;
 }
 
+.createItemChoiceCard .appChoiceCardText {
+  min-width: 0;
+}
+
 .createItemStack--compact {
   gap: var(--space-8);
 }
@@ -33,6 +37,10 @@
   gap: var(--space-8);
 }
 
+.createItemChipRow .appChip {
+  min-width: 0;
+}
+
 .createItemReviewCard,
 .createItemQuestionCard {
   display: grid;
@@ -44,13 +52,16 @@
   flex-wrap: wrap;
   gap: var(--space-8);
   align-items: center;
+  min-width: 0;
 }
 
 .createItemHeaderBadge {
+  flex: 0 0 auto;
   white-space: nowrap;
 }
 
 .createItemHeaderText {
+  min-width: 0;
   color: var(--text-2);
   font-size: var(--font-sm);
   line-height: var(--line-height-body);
@@ -66,4 +77,18 @@
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: var(--space-8);
+}
+
+@media (max-width: 520px) {
+  .createItemChoiceGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .createItemHeaderMeta {
+    justify-content: flex-start;
+  }
+
+  .createItemHeaderText {
+    flex: 1 1 100%;
+  }
 }

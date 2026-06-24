@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
-import { buildBaseState, getState, getTodayKey, seedState } from "./utils/seed.js";
+import { buildBaseState, getState, getTodayKey, getUserData, seedState } from "./utils/seed.js";
+
+const E2E_USER_ID = "e2e-user-id";
 
 function applyActionDraft(state, actionDraft = {}) {
   state.ui.createDraft = {
@@ -48,24 +50,47 @@ async function chooseTiming(page, label) {
   await page.getByRole("button", { name: new RegExp(`^${label}\\b`) }).click();
 }
 
+async function expectCreatedActionContract(page, title) {
+  await expect(page.getByText(title, { exact: true }).first()).toBeVisible();
+
+  await expect
+    .poll(async () => {
+      const userScoped = await getUserData(page, E2E_USER_ID);
+      return Array.isArray(userScoped?.goals) && userScoped.goals.some((goal) => goal?.title === title);
+    })
+    .toBeTruthy();
+
+  const userScoped = await getUserData(page, E2E_USER_ID);
+  const action = userScoped.goals.find((goal) => goal.title === title);
+  expect(action).toBeTruthy();
+
+  const globalState = await getState(page);
+  expect((globalState?.goals || []).some((goal) => goal?.title === title)).toBeFalsy();
+
+  return { state: userScoped, action };
+}
+
 test("CreateItem: action maintenant -> occurrence aujourd’hui sans heure fixe", async ({ page }) => {
+  const title = "Action maintenant E2E";
   await openCreate(page, buildCreateState());
 
-  await fillActionTitle(page, "Action maintenant E2E");
+  await fillActionTitle(page, title);
   await chooseTiming(page, "Maintenant");
   await saveAction(page);
 
-  const next = await getState(page);
-  const action = next.goals.find((goal) => goal.title === "Action maintenant E2E");
-  expect(action).toBeTruthy();
+  const { state: next, action } = await expectCreatedActionContract(page, title);
   expect(action.categoryId).toBe("cat_business");
   expect(action.planType).toBe("ONE_OFF");
   expect(action.timeMode).toBe("NONE");
   expect(action.startTime || "").toBe("");
   expect((next.occurrences || []).some((occ) => occ.goalId === action.id && occ.date === getTodayKey())).toBeTruthy();
+
+  await page.reload();
+  await expect(page.getByText(title, { exact: true }).first()).toBeVisible();
 });
 
 test("CreateItem: action aujourd’hui à heure fixe -> planning et durée persistés", async ({ page }) => {
+  const title = "Action heure fixe E2E";
   await openCreate(page, buildCreateState({
     actionDraft: {
       repeat: "none",
@@ -76,13 +101,11 @@ test("CreateItem: action aujourd’hui à heure fixe -> planning et durée persi
     },
   }));
 
-  await fillActionTitle(page, "Action heure fixe E2E");
+  await fillActionTitle(page, title);
   await expect(page.locator("input[type=\"time\"]").first()).toHaveValue("10:30");
   await saveAction(page);
 
-  const next = await getState(page);
-  const action = next.goals.find((goal) => goal.title === "Action heure fixe E2E");
-  expect(action).toBeTruthy();
+  const { state: next, action } = await expectCreatedActionContract(page, title);
   expect(action.oneOffDate).toBe(getTodayKey());
   expect(action.timeMode).toBe("FIXED");
   expect(action.startTime).toBe("10:30");
@@ -91,6 +114,7 @@ test("CreateItem: action aujourd’hui à heure fixe -> planning et durée persi
 });
 
 test("CreateItem: action récurrente -> cadence et génération d’occurrences", async ({ page }) => {
+  const title = "Action récurrente E2E";
   await openCreate(page, buildCreateState({
     actionDraft: {
       repeat: "daily",
@@ -100,13 +124,11 @@ test("CreateItem: action récurrente -> cadence et génération d’occurrences"
     },
   }));
 
-  await fillActionTitle(page, "Action récurrente E2E");
+  await fillActionTitle(page, title);
   await expect(page.locator("input[type=\"time\"]").first()).toHaveValue("11:15");
   await saveAction(page);
 
-  const next = await getState(page);
-  const action = next.goals.find((goal) => goal.title === "Action récurrente E2E");
-  expect(action).toBeTruthy();
+  const { state: next, action } = await expectCreatedActionContract(page, title);
   expect(action.repeat).toBe("daily");
   expect(action.timeMode).toBe("FIXED");
   expect(action.startTime).toBe("11:15");
@@ -117,6 +139,7 @@ test("CreateItem: action récurrente -> cadence et génération d’occurrences"
 });
 
 test("CreateItem: conflit horaire reste une dette UI hors flux canonique", async ({ page }) => {
+  const title = "Action même créneau E2E";
   const state = buildCreateState({
     withContent: true,
     actionDraft: {
@@ -128,11 +151,9 @@ test("CreateItem: conflit horaire reste une dette UI hors flux canonique", async
   });
   await openCreate(page, state);
 
-  await fillActionTitle(page, "Action même créneau E2E");
+  await fillActionTitle(page, title);
   await saveAction(page);
 
-  const next = await getState(page);
-  const action = next.goals.find((goal) => goal.title === "Action même créneau E2E");
-  expect(action).toBeTruthy();
+  await expectCreatedActionContract(page, title);
   await expect(page.getByTestId("conflict-resolver-modal")).toHaveCount(0);
 });

@@ -1,5 +1,11 @@
 .editItemScope {
   width: 100%;
+  --controlBg: color-mix(in srgb, var(--surface-1) 92%, var(--background-secondary));
+  --controlBorder: color-mix(in srgb, var(--command-execution) 18%, var(--border-subtle));
+  --controlText: var(--text-primary);
+  --controlFocusRing:
+    0 0 0 1px color-mix(in srgb, var(--command-execution) 42%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--command-execution) 10%, transparent);
 }
 
 .editItemPageShell {
@@ -7,13 +13,47 @@
   margin: 0 auto;
 }
 
+.editItemScope .appFormSection {
+  border-color: color-mix(in srgb, var(--command-execution) 14%, var(--border-subtle));
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.018), rgba(255, 255, 255, 0)),
+    color-mix(in srgb, var(--surface-1) 90%, var(--background-secondary));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035),
+    0 18px 44px rgba(0, 0, 0, 0.22);
+}
+
+.editItemScope .appFormSection.GateMainSectionCard {
+  border-color: color-mix(in srgb, var(--command-execution) 24%, var(--border-subtle));
+  background:
+    radial-gradient(circle at 88% 0%, color-mix(in srgb, var(--command-execution) 7%, transparent), transparent 36%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.024), rgba(255, 255, 255, 0)),
+    color-mix(in srgb, var(--surface-1) 92%, var(--background-secondary));
+}
+
+.editItemScope .appInlineMetaCard {
+  min-width: 0;
+  border-color: color-mix(in srgb, var(--command-execution) 12%, var(--border-subtle));
+  background: color-mix(in srgb, var(--surface-1) 76%, transparent);
+}
+
+.editItemScope .appFieldLabel {
+  color: color-mix(in srgb, var(--command-execution) 62%, var(--text-primary));
+  font-size: var(--font-micro);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .editItemScope .AppInput,
 .editItemScope .AppTextarea,
-.editItemScope .selectTrigger.AppSelect {
+.editItemScope .selectTrigger.AppSelect,
+.editItemScope .selectTrigger.AppDateField {
   width: 100%;
 }
 
-.editItemScope .selectTrigger.AppSelect {
+.editItemScope .selectTrigger.AppSelect,
+.editItemScope .selectTrigger.AppDateField {
   justify-content: space-between;
 }
 
@@ -102,9 +142,17 @@
 }
 
 .editItemDaysRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-8);
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-6);
+}
+
+.editItemDaysRow .appChip {
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  justify-content: center;
+  padding-inline: 0;
 }
 
 .editItemDayChip {
@@ -181,4 +229,49 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .editItemScope .appFormSection {
+    border-radius: calc(var(--radius-card) - 2px);
+  }
+
+  .editItemReminderRow {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .editItemReminderRow > .gateButton,
+  .editItemInlineCardRow > .gateButton,
+  .editItemCategoryCreateActions > .gateButton,
+  .editItemScope .appInlineMetaCardAction,
+  .editItemDangerButton {
+    width: 100%;
+  }
+
+  .editItemCategoryCreateActions {
+    justify-content: stretch;
+  }
+
+  .editItemCategoryCreateActions > .gateButton {
+    flex: 1 1 0;
+  }
+
+  .editItemScope .appStickyFooterActions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .editItemScope .appStickyFooterActions > .gateButton {
+    width: 100%;
+  }
+}
+
+@media (max-width: 380px) {
+  .editItemDaysRow {
+    gap: 4px;
+  }
+
+  .editItemDaysRow .appChip {
+    min-height: 34px;
+    font-size: var(--font-xs);
+  }
 }

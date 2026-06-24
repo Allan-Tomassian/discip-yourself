@@ -46,4 +46,21 @@ describe("edit item canonical contract", () => {
     expect(index).not.toContain(".editSection{");
     expect(index).not.toContain(".editPanelFooter{");
   });
+
+  it("keeps edit and create forms on mobile-safe command surfaces", () => {
+    const editCss = readSrc("features/edit-item/editItem.css");
+    const createPage = readSrc("pages/CreateItem.jsx");
+    const createScreens = readSrc("features/create-item/CreateItemScreens.jsx");
+    const firstRunCss = readSrc("features/first-run/firstRun.css");
+
+    expect(createPage).toContain("createItemScope editItemScope");
+    expect(createScreens).toContain('import "../edit-item/editItem.css";');
+    expect(editCss).toContain(".editItemReminderRow");
+    expect(editCss).toContain("grid-template-columns: minmax(0, 1fr);");
+    expect(editCss).toContain(".editItemDaysRow");
+    expect(editCss).toContain("grid-template-columns: repeat(7, minmax(0, 1fr));");
+    expect(editCss).toContain(".editItemDangerButton");
+    expect(firstRunCss).toContain(".firstRunDayRow");
+    expect(firstRunCss).toContain("grid-template-columns: repeat(7, minmax(0, 1fr));");
+  });
 });
