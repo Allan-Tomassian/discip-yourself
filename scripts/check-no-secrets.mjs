@@ -1,5 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
+import {
+  findSecretTokensInLine,
+  formatSecretViolation,
+} from "./release-validation-core.mjs";
 
 const ROOT = process.cwd();
 const SKIP_DIRS = new Set([
@@ -88,15 +92,17 @@ function isPlaceholderValue(value) {
 
 function scanFrontendSecretNames(relPath, source, violations) {
   if (!relPath.startsWith("src/")) return;
+  if (/\.(test|spec)\.[cm]?[jt]sx?$/.test(relPath)) return;
   const lines = source.split(/\r?\n/);
   lines.forEach((line, index) => {
     for (const pattern of FRONTEND_SECRET_NAME_PATTERNS) {
       if (pattern.test(line)) {
+        const nameMatch = line.match(/\b([A-Z][A-Z0-9_]*(?:KEY|SECRET|SERVICE_ROLE)[A-Z0-9_]*)\b/);
         violations.push({
           kind: "frontend-secret-read",
           file: relPath,
           line: index + 1,
-          detail: line.trim(),
+          name: nameMatch?.[1] || "frontend-secret-env",
         });
       }
     }
@@ -118,6 +124,7 @@ function scanEnvAssignments(relPath, source, violations) {
         kind: "committed-env-value",
         file: relPath,
         line: index + 1,
+        name,
         detail: `${name}=***`,
       });
     }
@@ -128,28 +135,21 @@ function scanLiteralKeys(relPath, source, violations) {
   const lines = source.split(/\r?\n/);
   lines.forEach((line, index) => {
     const trimmed = line.trim();
-    if (/\bsk-(proj-|live-|test-)?[A-Za-z0-9_-]{20,}\b/.test(trimmed)) {
+    for (const finding of findSecretTokensInLine(trimmed)) {
       violations.push({
-        kind: "openai-key-literal",
+        kind: finding.type,
         file: relPath,
         line: index + 1,
-        detail: trimmed,
-      });
-    }
-    if (/\bsb_secret_[A-Za-z0-9._-]{20,}\b/.test(trimmed)) {
-      violations.push({
-        kind: "supabase-secret-literal",
-        file: relPath,
-        line: index + 1,
-        detail: trimmed,
+        name: finding.name,
       });
     }
     if (/\bsb_publishable_[A-Za-z0-9._-]{20,}\b/.test(trimmed) && !/e2e|test|example|placeholder/i.test(trimmed)) {
+      const nameMatch = trimmed.match(/\b([A-Z][A-Z0-9_]*PUBLISHABLE[A-Z0-9_]*)\b/);
       violations.push({
         kind: "supabase-publishable-literal",
         file: relPath,
         line: index + 1,
-        detail: trimmed,
+        name: nameMatch?.[1] || "supabase-publishable",
       });
     }
   });
@@ -167,7 +167,7 @@ for (const file of walk(ROOT)) {
 if (violations.length) {
   console.error("Secret hygiene check failed:");
   for (const violation of violations) {
-    console.error(`- ${violation.kind}: ${violation.file}:${violation.line} -> ${violation.detail}`);
+    console.error(formatSecretViolation(violation));
   }
   process.exit(1);
 }
