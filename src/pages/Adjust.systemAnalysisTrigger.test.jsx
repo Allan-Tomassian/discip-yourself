@@ -225,7 +225,7 @@ describe("Adjust system analysis trigger contract", () => {
 
   it("routes latest persisted analysis through the command sheet instead of inline preview", () => {
     const source = readSrc("pages/Adjust.jsx");
-    const recommendationIndex = source.indexOf("adjustRecommendationCard adjustRecommendationCard--primary");
+    const primaryIndex = source.indexOf("adjustPrimaryDecisionCard");
     const sheetIndex = source.indexOf("<SystemAnalysisCommandSheet");
 
     expect(source).toContain("buildSystemAnalysisHistoryDisplayModel");
@@ -234,15 +234,15 @@ describe("Adjust system analysis trigger contract", () => {
     expect(source).toContain("staleNote={displayedSystemAnalysisPreviewState.staleNote}");
     expect(source).not.toContain("<SystemAnalysisResultPreview");
     expect(source).not.toContain('data-system-analysis-preview-anchor="true"');
-    expect(recommendationIndex).toBeGreaterThan(-1);
-    expect(sheetIndex).toBeGreaterThan(recommendationIndex);
+    expect(primaryIndex).toBeGreaterThan(-1);
+    expect(sheetIndex).toBeGreaterThan(primaryIndex);
   });
 
   it("does not render a reload-shaped latest analysis inline in the Ajuster stack", () => {
     const html = renderToStaticMarkup(<Adjust data={dataWithLatestAnalysis()} />);
 
     expect(html).toContain("Analyser le système");
-    expect(html).toContain("RECOMMANDATION");
+    expect(html).toContain("adjust-primary-decision");
     expect(html).not.toContain("Dernière analyse");
     expect(html).not.toContain("Le dernier audit reste disponible après rechargement.");
   });
@@ -303,15 +303,15 @@ describe("Adjust system analysis trigger contract", () => {
 
   it("keeps the deterministic recommendation before the command sheet mount point", () => {
     const source = readSrc("pages/Adjust.jsx");
-    const recommendationIndex = source.indexOf("adjustRecommendationCard adjustRecommendationCard--primary");
+    const primaryIndex = source.indexOf("adjustPrimaryDecisionCard");
     const sheetIndex = source.indexOf("<SystemAnalysisCommandSheet");
     const ajusterStack = source.slice(
       source.indexOf('<div className="adjustCommandPage'),
       sheetIndex
     );
 
-    expect(recommendationIndex).toBeGreaterThan(-1);
-    expect(sheetIndex).toBeGreaterThan(recommendationIndex);
+    expect(primaryIndex).toBeGreaterThan(-1);
+    expect(sheetIndex).toBeGreaterThan(primaryIndex);
     expect(ajusterStack).not.toContain("SystemAnalysisResultPreview");
     expect(ajusterStack).not.toContain("SystemAnalysisCorrectionReview");
   });

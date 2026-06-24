@@ -64,9 +64,9 @@ describe("main section container contract", () => {
     expect(adjust).toContain("adjustCommandPage");
     expect(adjust).toContain("CommandMotionReveal");
     expect(adjust).toContain("buildAdjustDiagnostic");
-    expect(adjust).toContain("CommandAIBlock");
-    expect(adjust).toContain("CommandEmptyState");
-    expect(adjust).toContain("visibleFrictionSignals");
+    expect(adjust).toContain("buildAdjustPresentationModel");
+    expect(adjust).toContain("adjustPrimaryDecisionCard");
+    expect(adjust).toContain("AdjustDetailSection");
     expect(coach).toContain("lovableCoachMessages");
     expect(coach).toContain("lovableCoachComposer");
   });

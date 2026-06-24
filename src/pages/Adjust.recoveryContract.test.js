@@ -71,12 +71,15 @@ describe("Adjust recovery integration contract", () => {
 
   it("changes only the concrete recovery CTA and preserves general Ajuster routing", () => {
     const adjust = readSrc("pages/Adjust.jsx");
+    const presentation = readSrc("features/adjust/adjustPresentationModel.js");
 
     expect(adjust).toContain('onClick={handlePrimaryRecommendationAction}');
-    expect(adjust).toContain('recoveryRequest ? "Réparer ce bloc"');
-    expect(adjust).toContain('recommendationAction ? recommendationAction.label : "Lancer cette correction"');
+    expect(adjust).toContain("buildAdjustPresentationModel");
+    expect(adjust).toContain("adjustPresentation.primaryAction.label");
+    expect(presentation).toContain('label: "Réparer ce bloc"');
+    expect(presentation).toContain('kind: "recommendation"');
     expect(adjust).toContain("<SystemAnalysisCommandSheet");
-    expect(adjust).toContain("quickActions.map((action) => (");
+    expect(adjust).toContain("AdjustActionsDetail");
     expect(adjust).toContain("onAction={onAdjustAction}");
   });
 
@@ -84,7 +87,7 @@ describe("Adjust recovery integration contract", () => {
     const html = renderToStaticMarkup(React.createElement(Adjust, { data: adjustData() }));
 
     expect(html).toContain("Réparer ce bloc");
-    expect(html).toContain("Aucune modification n’est appliquée sans passer par l’action choisie.");
+    expect(html).toContain("Tu choisis la réparation avant toute modification.");
   });
 
   it("keeps the normal Ajuster CTA when no concrete occurrence can be repaired", () => {

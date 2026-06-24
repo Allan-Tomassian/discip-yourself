@@ -17,7 +17,7 @@ function data(overrides = {}) {
 }
 
 describe("Adjust system signal preview", () => {
-  it("renders the primary attention signal near the top of Ajuster", () => {
+  it("promotes the primary attention signal into the decision card", () => {
     const html = renderToStaticMarkup(
       <Adjust
         data={data({
@@ -37,10 +37,13 @@ describe("Adjust system signal preview", () => {
       />
     );
 
-    expect(html).toContain("adjust-system-signal-preview");
-    expect(html).toContain("SIGNAL SYSTÈME");
+    expect(html).toContain("adjust-primary-decision");
+    expect(html).toContain("CE QUI BLOQUE");
     expect(html).toContain("Bloc bloqué");
-    expect(html).toContain("Un bloc a rencontré une friction d’exécution.");
+    expect(html).toContain("1 bloc bloqué aujourd’hui.");
+    expect(html).toContain("Réparer ce bloc");
+    expect(html).not.toContain("SIGNAL SYSTÈME");
+    expect(html).not.toContain("adjust-system-signal-preview");
   });
 
   it("does not render a fake preview when no signal is available", () => {

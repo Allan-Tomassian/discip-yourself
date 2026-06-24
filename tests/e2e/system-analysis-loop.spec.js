@@ -1,5 +1,5 @@
 import { test, expect, devices } from "@playwright/test";
-import { getState } from "./utils/seed.js";
+import { getUserData } from "./utils/seed.js";
 import {
   addDaysKey,
   buildCanonicalExecutionState,
@@ -304,7 +304,7 @@ test("System Analysis: preview, review, final apply and local history metadata",
   await expect(page.getByText("Corrections proposées")).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText("Rien n’est appliqué sans validation finale.").first()).toBeVisible();
 
-  const beforeReview = await getState(page);
+  const beforeReview = await getUserData(page, E2E_USER_ID);
   expect(beforeReview.occurrences.find((occ) => occ.id === "occ_today")?.date).toBe(today);
 
   await expect(page.locator('[data-system-analysis-correction-id="ci_reduce_occ_today"]').getByText("Réduire", { exact: true })).toBeVisible();
@@ -312,7 +312,7 @@ test("System Analysis: preview, review, final apply and local history metadata",
   await expect(page.getByText("DESTRUCTIF")).toBeVisible();
   await page.getByRole("button", { name: "Sélectionner" }).first().click();
 
-  const beforeApply = await getState(page);
+  const beforeApply = await getUserData(page, E2E_USER_ID);
   expect(beforeApply.occurrences.find((occ) => occ.id === "occ_today")?.date).toBe(today);
 
   await page.getByRole("button", { name: "Préparer la validation" }).click();
@@ -322,7 +322,7 @@ test("System Analysis: preview, review, final apply and local history metadata",
   await page.getByRole("button", { name: "Appliquer les corrections" }).click();
 
   await expect(page.getByText("Corrections appliquées")).toBeVisible();
-  const afterApply = await getState(page);
+  const afterApply = await getUserData(page, E2E_USER_ID);
   const source = afterApply.occurrences.find((occ) => occ.id === "occ_today");
   expect(source?.status).toBe("planned");
   expect(source?.durationMinutes).toBe(20);
@@ -346,7 +346,8 @@ test("System Analysis: preview, review, final apply and local history metadata",
     );
   }, E2E_USER_ID)).toBe(1);
   await page.getByRole("button", { name: "Retour à Ajuster" }).click();
-  await expect(page.getByText("RECOMMANDATION")).toBeVisible();
+  await expect(page.getByTestId("adjust-primary-decision")).toBeVisible();
+  await expect(page.getByText("RECOMMANDATION")).toHaveCount(0);
 
   await page.reload({ waitUntil: "networkidle" });
   await page.getByRole("button", { name: /Analyser le système/i }).click();

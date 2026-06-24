@@ -113,6 +113,188 @@
   width: 100%;
 }
 
+.adjustPrimaryDecisionCard {
+  display: grid;
+  gap: 13px;
+  padding: 16px;
+  border-color: color-mix(in srgb, var(--command-tone, var(--command-execution)) 34%, var(--command-border));
+  background:
+    radial-gradient(circle at 88% 10%, color-mix(in srgb, var(--command-tone, var(--command-execution)) 18%, transparent), transparent 34%),
+    linear-gradient(180deg, color-mix(in srgb, var(--command-tone, var(--command-execution)) 8%, transparent), transparent),
+    var(--command-surface);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    0 18px 48px color-mix(in srgb, var(--command-tone, var(--command-execution)) 11%, rgba(0, 0, 0, 0.34));
+}
+
+.adjustPrimaryDecisionHeader {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.adjustPrimaryDecisionIcon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--command-tone, var(--command-execution)) 34%, var(--command-border));
+  border-radius: 15px;
+  background: color-mix(in srgb, var(--command-tone, var(--command-execution)) 11%, transparent);
+  color: var(--command-tone, var(--command-execution));
+  box-shadow: 0 0 22px color-mix(in srgb, var(--command-tone, var(--command-execution)) 14%, transparent);
+}
+
+.adjustPrimaryDecisionCard .CommandSectionHeader {
+  min-width: 0;
+  margin: 0;
+}
+
+.adjustPrimaryDecisionCard .CommandSectionHeader__title {
+  max-width: 13ch;
+  font-size: clamp(27px, 8vw, 39px);
+  line-height: 1.01;
+}
+
+.adjustPrimaryDecisionCard .CommandCTA {
+  min-height: 48px;
+}
+
+.adjustEvidenceLine {
+  display: grid;
+  gap: 5px;
+  padding: 11px 12px;
+  border: 1px solid color-mix(in srgb, var(--command-tone, var(--command-execution)) 21%, var(--command-border));
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.028);
+}
+
+.adjustEvidenceLine span {
+  color: color-mix(in srgb, var(--command-tone, var(--command-execution)) 76%, #ffffff);
+  font-size: 10px;
+  font-weight: 860;
+  letter-spacing: 0.1em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.adjustEvidenceLine p {
+  margin: 0;
+  color: var(--command-text);
+  font-size: 14px;
+  line-height: 1.36;
+}
+
+.adjustContextCard {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 11px;
+  align-items: center;
+  padding: 13px;
+  border-color: color-mix(in srgb, var(--command-execution) 22%, var(--command-border));
+}
+
+.adjustContextCard > svg {
+  color: var(--command-execution);
+}
+
+.adjustContextCard strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--command-text);
+  font-size: 15px;
+  line-height: 1.16;
+}
+
+.adjustContextCard p {
+  margin: 4px 0 0;
+  color: var(--command-muted);
+  font-size: 12px;
+  line-height: 1.38;
+}
+
+.adjustDetailSections {
+  display: grid;
+  gap: 8px;
+}
+
+.adjustDetailSection {
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--command-neutral) 18%, var(--command-border));
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--command-surface-strong) 48%, transparent);
+  overflow: hidden;
+}
+
+.adjustDetailToggle {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 24px;
+  gap: 10px;
+  width: 100%;
+  min-height: 58px;
+  align-items: center;
+  padding: 12px 13px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.adjustDetailToggle span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.adjustDetailToggle strong {
+  color: var(--command-text);
+  font-size: 14px;
+  line-height: 1.15;
+}
+
+.adjustDetailToggle small {
+  color: var(--command-muted);
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.adjustDetailToggle svg {
+  justify-self: end;
+  color: var(--command-muted);
+  transition: transform var(--comfort-motion-fast, 120ms) var(--comfort-motion-ease, ease-out);
+}
+
+.adjustDetailToggle[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+
+.adjustDetailToggle:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--command-execution) 54%, rgba(255, 255, 255, 0.28));
+  outline-offset: -3px;
+}
+
+.adjustDetailPanel {
+  display: grid;
+  gap: 10px;
+  padding: 0 13px 13px;
+}
+
+.adjustDetailStack,
+.adjustDiagnosticDetail {
+  display: grid;
+  gap: 10px;
+}
+
+.adjustDetailEmpty {
+  margin: 0;
+  padding: 10px 2px;
+  color: var(--command-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .adjustHero {
   min-height: 128px;
   align-content: end;
@@ -1194,6 +1376,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .systemAnalysisEntryButton,
+  .adjustDetailToggle svg,
   .systemAnalysisCommandSheet__pulse span {
     transition: none !important;
     animation: none !important;
@@ -1710,7 +1893,8 @@
 @media (prefers-reduced-motion: reduce) {
   .adjustQuickAction,
   .adjustQuickAction:hover,
-  .adjustQuickAction:active {
+  .adjustQuickAction:active,
+  .adjustDetailToggle svg {
     transition: none;
     transform: none;
   }

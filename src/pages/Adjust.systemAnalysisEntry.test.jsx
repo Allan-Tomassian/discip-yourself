@@ -115,14 +115,15 @@ describe("Adjust system analysis entry", () => {
     expect(html).not.toContain("disabled=\"\"");
   });
 
-  it("keeps the diagnostic recommendation before friction details", () => {
+  it("keeps the primary decision before collapsed details", () => {
     const html = renderToStaticMarkup(<Adjust data={eligibleData()} />);
-    const recommendationIndex = html.indexOf("adjustRecommendationCard");
-    const frictionIndex = html.indexOf("adjust-friction-title");
+    const primaryIndex = html.indexOf("adjustPrimaryDecisionCard");
+    const detailsIndex = html.indexOf("adjustDetailSections");
 
-    expect(recommendationIndex).toBeGreaterThan(-1);
-    expect(frictionIndex).toBeGreaterThan(-1);
-    expect(recommendationIndex).toBeLessThan(frictionIndex);
+    expect(primaryIndex).toBeGreaterThan(-1);
+    expect(detailsIndex).toBeGreaterThan(-1);
+    expect(primaryIndex).toBeLessThan(detailsIndex);
+    expect(html).not.toContain("adjust-friction-title");
   });
 
   it("keeps the entry restrained: no large card class, no green/red dominance, no pulse", () => {

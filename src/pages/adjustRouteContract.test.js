@@ -34,26 +34,35 @@ describe("Ajuster route contract", () => {
   it("keeps quick actions on safe destinations without direct schedule mutations", () => {
     const app = readSrc("App.jsx");
     const adjust = readSrc("pages/Adjust.jsx");
+    const model = readSrc("features/adjust/adjustPresentationModel.js");
 
     expect(app).toContain('setTab("timeline")');
     expect(app).toContain("Simplifie ma journée en gardant seulement le prochain bloc utile.");
     expect(app).toContain("Réduis la charge de ma journée sans perdre l’action critique.");
     expect(app).toContain("Aide-moi à ajuster ma journée.");
-    expect(adjust).toContain("Ces actions ouvrent Coach IA ou Planning. Elles ne modifient rien automatiquement.");
+    expect(adjust).toContain("handlePrimaryRecommendationAction");
+    expect(adjust).toContain("onAdjustAction?.(recommendation?.actionId || ADJUST_ACTION_IDS.ASK_COACH)");
+    expect(model).toContain("Autres leviers");
+    expect(model).toContain("Demande un arbitrage sans modification automatique.");
   });
 
   it("prioritizes the recommendation before secondary diagnostics", () => {
     const adjust = readSrc("pages/Adjust.jsx");
-    const recommendationIndex = adjust.indexOf("adjustRecommendationCard adjustRecommendationCard--primary");
-    const frictionIndex = adjust.indexOf('id="adjust-friction-title"');
-    const trendIndex = adjust.indexOf("<TrendSnapshot trendSnapshot={trendSnapshot} />");
+    const presentationIndex = adjust.indexOf("buildAdjustPresentationModel");
+    const primaryIndex = adjust.indexOf('data-testid="adjust-primary-decision"');
+    const contextIndex = adjust.indexOf("adjustContextCard");
+    const detailIndex = adjust.indexOf('data-testid="adjust-detail-sections"');
 
-    expect(adjust).toContain("frictionSignals.slice(0, 2)");
-    expect(adjust).toContain("adjustFrictionCard--preview");
-    expect(recommendationIndex).toBeGreaterThan(-1);
-    expect(frictionIndex).toBeGreaterThan(-1);
-    expect(trendIndex).toBeGreaterThan(-1);
-    expect(recommendationIndex).toBeLessThan(frictionIndex);
-    expect(frictionIndex).toBeLessThan(trendIndex);
+    expect(adjust).toContain("adjustPresentation.primaryAction.label");
+    expect(adjust).toContain("AdjustSignalsDetail");
+    expect(adjust).toContain("AdjustTrendsDetail");
+    expect(adjust).not.toContain("adjustRecommendationCard adjustRecommendationCard--primary");
+    expect(adjust).not.toContain('id="adjust-friction-title"');
+    expect(presentationIndex).toBeGreaterThan(-1);
+    expect(primaryIndex).toBeGreaterThan(-1);
+    expect(contextIndex).toBeGreaterThan(-1);
+    expect(detailIndex).toBeGreaterThan(-1);
+    expect(primaryIndex).toBeLessThan(contextIndex);
+    expect(contextIndex).toBeLessThan(detailIndex);
   });
 });

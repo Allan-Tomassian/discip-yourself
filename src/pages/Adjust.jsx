@@ -6,25 +6,21 @@ import {
   Clock3,
   Gauge,
   ShieldCheck,
-  SlidersHorizontal,
   Sparkles,
   Target,
+  ChevronDown,
 } from "lucide-react";
 import { AppScreen } from "../shared/ui/app";
 import SystemAnalysisEntryButton from "../components/system-analysis/SystemAnalysisEntryButton";
 import SystemAnalysisCommandSheet from "../components/system-analysis/SystemAnalysisCommandSheet";
 import { useAuth } from "../auth/useAuth";
 import {
-  CommandAIBlock,
-  CommandBadge,
   CommandCard,
   CommandCTA,
-  CommandEmptyState,
   CommandSectionHeader,
-  CommandSurface,
 } from "../shared/ui/command";
 import { ADJUST_ACTION_IDS, buildAdjustDiagnostic } from "../features/adjust/adjustDiagnostic";
-import { buildAdjustSystemSignalPreview } from "../features/adjust/adjustSystemSignalPreviewModel";
+import { buildAdjustPresentationModel } from "../features/adjust/adjustPresentationModel";
 import { resolveAdjustRecoveryRequest } from "../features/recovery/recoveryEntryPoints";
 import {
   applySystemAnalysisSelectedCorrections,
@@ -44,7 +40,6 @@ import {
 } from "../features/system-analysis/systemAnalysisHistory";
 import { buildSystemAnalysisSnapshot } from "../features/system-analysis/systemAnalysisSnapshot";
 import { requestAiSystemAnalysis } from "../infra/aiSystemAnalysisClient";
-import { getPrimarySystemSignal } from "../logic/systemSignals";
 import { fromLocalDateKey, normalizeLocalDateKey, todayLocalKey } from "../utils/datetime";
 import "../features/adjust/adjust.css";
 
@@ -60,56 +55,9 @@ const ACTION_ICONS = Object.freeze({
   [ADJUST_ACTION_IDS.ASK_COACH]: BrainCircuit,
 });
 
-function formatDateLabel(dateKey) {
-  const date = fromLocalDateKey(dateKey);
-  return new Intl.DateTimeFormat("fr-FR", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  }).format(date);
-}
-
 function formatShortDay(dateKey) {
   const date = fromLocalDateKey(dateKey);
   return new Intl.DateTimeFormat("fr-FR", { weekday: "short" }).format(date).replace(".", "");
-}
-
-function formatMinutes(minutes) {
-  const safeMinutes = Number(minutes);
-  if (!Number.isFinite(safeMinutes) || safeMinutes <= 0) return "0 min";
-  const rounded = Math.round(safeMinutes);
-  if (rounded < 60) return `${rounded} min`;
-  const hours = Math.floor(rounded / 60);
-  const rest = rounded % 60;
-  return rest ? `${hours}h ${String(rest).padStart(2, "0")}` : `${hours}h`;
-}
-
-function formatScore(score) {
-  return Number.isFinite(score) ? `${Math.round(score)}%` : "--%";
-}
-
-function formatBlockMeta(block) {
-  if (!block) return "Aucun bloc net";
-  const parts = [];
-  if (block.categoryName) parts.push(block.categoryName);
-  if (block.dateKey) parts.push(formatDateLabel(block.dateKey));
-  if (block.start) parts.push(block.start);
-  if (block.durationMinutes) parts.push(formatMinutes(block.durationMinutes));
-  return parts.join(" · ");
-}
-
-function resolveSummaryTone(summary) {
-  if (!summary?.hasPlannedData) return "neutral";
-  if (summary.state === "friction") return "attention";
-  if (summary.state === "control") return "execution";
-  return "neutral";
-}
-
-function resolveStateLabel(summary) {
-  if (!summary?.hasPlannedData) return "Signal faible";
-  if (summary.state === "friction") return "Friction";
-  if (summary.state === "control") return "Sous contrôle";
-  return "À ajuster";
 }
 
 function buildSystemAnalysisReferenceNow(dateKey) {
@@ -252,7 +200,7 @@ function CategorySignals({ signals }) {
 }
 
 function ActionButton({ action, onAction }) {
-  const Icon = ACTION_ICONS[action.id] || SlidersHorizontal;
+  const Icon = ACTION_ICONS[action.id] || Gauge;
   return (
     <button
       type="button"
@@ -271,6 +219,119 @@ function ActionButton({ action, onAction }) {
   );
 }
 
+function AdjustDetailSection({ section, open, onToggle, children }) {
+  const panelId = `adjust-detail-panel-${section.id}`;
+  return (
+    <section className="adjustDetailSection">
+      <button
+        type="button"
+        className="adjustDetailToggle"
+        aria-expanded={open ? "true" : "false"}
+        aria-controls={panelId}
+        onClick={onToggle}
+      >
+        <span>
+          <strong>{section.title}</strong>
+          <small>{section.summary}</small>
+        </span>
+        <ChevronDown size={18} strokeWidth={2} aria-hidden="true" />
+      </button>
+      {open ? (
+        <div id={panelId} className="adjustDetailPanel">
+          {children}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function AdjustSignalsDetail({ section }) {
+  const signals = Array.isArray(section.items) ? section.items : [];
+  if (!signals.length) {
+    return (
+      <CommandCard tone="neutral" className="adjustCalmCard" density="compact">
+        <CheckCircle2 size={20} strokeWidth={2} aria-hidden="true" />
+        <div>
+          <strong>Système lisible</strong>
+          <p>Rien ne justifie une alerte. Tu peux garder le prochain bloc comme point d’appui.</p>
+        </div>
+      </CommandCard>
+    );
+  }
+  return (
+    <div className="adjustFrictionGrid">
+      {signals.map((signal) => (
+        <CommandCard key={signal.id} tone="attention" className="adjustFrictionCard" density="compact">
+          <div className="adjustFrictionIcon" aria-hidden="true">
+            <AlertTriangle size={17} strokeWidth={2} />
+          </div>
+          <div>
+            <strong>{signal.title}</strong>
+            <p>{signal.description}</p>
+          </div>
+        </CommandCard>
+      ))}
+    </div>
+  );
+}
+
+function AdjustTrendsDetail({ section }) {
+  const hasTrend = Array.isArray(section.trendSnapshot?.series) && section.trendSnapshot.series.length > 0;
+  const hasCategories = Array.isArray(section.categorySignals) && section.categorySignals.some((signal) => signal.expected > 0);
+  if (!hasTrend && !hasCategories) {
+    return (
+      <p className="adjustDetailEmpty">Pas encore assez d’historique pour lire une tendance fiable.</p>
+    );
+  }
+  return (
+    <div className="adjustDetailStack">
+      <TrendSnapshot trendSnapshot={section.trendSnapshot} />
+      <CategorySignals signals={section.categorySignals} />
+    </div>
+  );
+}
+
+function AdjustActionsDetail({ section, onAction }) {
+  const actions = Array.isArray(section.actions) ? section.actions : [];
+  if (!actions.length) {
+    return (
+      <p className="adjustDetailEmpty">Le Coach IA est déjà l’action recommandée maintenant.</p>
+    );
+  }
+  return (
+    <div className="adjustQuickActions">
+      {actions.map((action) => (
+        <ActionButton key={action.id} action={action} onAction={onAction} />
+      ))}
+    </div>
+  );
+}
+
+function AdjustDiagnosticDetail({ section }) {
+  const metrics = Array.isArray(section.metrics) ? section.metrics : [];
+  const expectedImpact = Array.isArray(section.expectedImpact) ? section.expectedImpact : [];
+  return (
+    <div className="adjustDiagnosticDetail">
+      <div className="adjustSummaryMetrics adjustSummaryMetrics--detail">
+        {metrics.map((metric) => (
+          <div key={metric.id}>
+            <span>{metric.label}</span>
+            <strong>{metric.value}</strong>
+          </div>
+        ))}
+      </div>
+      {expectedImpact.length ? (
+        <div className="adjustImpactList">
+          <span>Impact attendu</span>
+          {expectedImpact.map((item) => (
+            <div key={item}><Sparkles size={13} strokeWidth={2} aria-hidden="true" />{item}</div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function Adjust({
   data,
   setData,
@@ -282,6 +343,7 @@ export default function Adjust({
   const { session } = useAuth();
   const [systemAnalysisRequestState, setSystemAnalysisRequestState] = useState(createInitialSystemAnalysisState);
   const [systemAnalysisSheetOpen, setSystemAnalysisSheetOpen] = useState(false);
+  const [openDetailSections, setOpenDetailSections] = useState({});
   const [selectedSystemAnalysisCorrectionIds, setSelectedSystemAnalysisCorrectionIds] = useState([]);
   const [systemAnalysisConfirmationOpen, setSystemAnalysisConfirmationOpen] = useState(false);
   const [preparedSystemAnalysisApplicationPreview, setPreparedSystemAnalysisApplicationPreview] = useState(null);
@@ -296,18 +358,7 @@ export default function Adjust({
     () => buildAdjustDiagnostic(safeData, activeDateKey),
     [activeDateKey, safeData]
   );
-  const { summary, nextBlock, frictionSignals, recommendation, quickActions, trendSnapshot, categorySignals, systemSignals } = diagnostic;
-  const summaryTone = resolveSummaryTone(summary);
-  const systemSignalPreview = buildAdjustSystemSignalPreview(
-    getPrimarySystemSignal(Array.isArray(systemSignals) ? systemSignals : [])
-  );
-  const hasSignals = Array.isArray(frictionSignals) && frictionSignals.length > 0;
-  const visibleFrictionSignals = hasSignals ? frictionSignals.slice(0, 2) : [];
-  const hiddenFrictionCount = hasSignals ? Math.max(0, frictionSignals.length - visibleFrictionSignals.length) : 0;
-  const recommendationTone = recommendation?.tone || "execution";
-  const hasUsefulData = Boolean(summary?.hasPlannedData || nextBlock || hasSignals);
-
-  const recommendationAction = quickActions.find((action) => action.id === recommendation?.actionId) || null;
+  const { recommendation } = diagnostic;
   const recoveryRequest = useMemo(
     () => resolveAdjustRecoveryRequest({
       diagnostic,
@@ -317,6 +368,24 @@ export default function Adjust({
     }),
     [activeDateKey, diagnostic, safeData]
   );
+  const adjustPresentation = useMemo(
+    () => buildAdjustPresentationModel({
+      diagnostic,
+      recoveryRequest,
+      systemAnalysisEntry: {
+        placement: "header",
+        priority: "secondary",
+        state: systemAnalysisAvailabilityState,
+      },
+    }),
+    [diagnostic, recoveryRequest, systemAnalysisAvailabilityState]
+  );
+  const toggleDetailSection = useCallback((sectionId) => {
+    setOpenDetailSections((current) => ({
+      ...current,
+      [sectionId]: !current?.[sectionId],
+    }));
+  }, []);
   const handlePrimaryRecommendationAction = useCallback(() => {
     if (recoveryRequest && typeof onOpenRecoverySheet === "function") {
       const opened = onOpenRecoverySheet(recoveryRequest);
@@ -814,190 +883,72 @@ export default function Adjust({
       headerRight={systemAnalysisHeaderAction}
     >
       <div className="adjustCommandPage CommandMotionReveal">
-        <CommandSurface tone="execution" className="adjustHero" density="compact">
-          <span className="adjustHeroGlyph" aria-hidden="true">
-            <SlidersHorizontal size={22} strokeWidth={2} />
-          </span>
-          <CommandSectionHeader
-            label="AJUSTER"
-            title="Corrige ton système."
-            subtitle="Analyse la friction, allège la charge et protège le prochain bloc utile."
-            tone="execution"
-          />
-          <span className="adjustHeroWave" aria-hidden="true" />
-        </CommandSurface>
-
-        <CommandCard tone={summaryTone} className="adjustSummaryCard" density="compact">
-          <div className="adjustSummaryHeader">
-            <div>
-              <span className="adjustSectionKicker">ÉTAT DU SYSTÈME — AUJOURD’HUI</span>
-              <strong>{resolveStateLabel(summary)}</strong>
-            </div>
-            <CommandBadge tone={summaryTone}>{formatDateLabel(summary.activeDateKey)}</CommandBadge>
+        <CommandCard
+          tone={adjustPresentation.primaryDiagnosis.tone}
+          className="adjustPrimaryDecisionCard"
+          density="compact"
+          data-testid="adjust-primary-decision"
+        >
+          <div className="adjustPrimaryDecisionHeader">
+            <span className="adjustPrimaryDecisionIcon" aria-hidden="true">
+              {adjustPresentation.primaryAction.kind === "recovery" ? (
+                <AlertTriangle size={20} strokeWidth={2} />
+              ) : adjustPresentation.source === "recommendation" ? (
+                <CheckCircle2 size={20} strokeWidth={2} />
+              ) : (
+                <Target size={20} strokeWidth={2} />
+              )}
+            </span>
+            <CommandSectionHeader
+              label={adjustPresentation.primaryDiagnosis.eyebrow}
+              title={adjustPresentation.primaryDiagnosis.title}
+              subtitle=""
+              tone={adjustPresentation.primaryDiagnosis.tone}
+            />
           </div>
-          <div className="adjustSummaryGrid">
-            <div className="adjustScoreRing" style={{ "--adjust-score": `${summary.completionScore || 0}%` }}>
-              <span>{formatScore(summary.completionScore)}</span>
-              <small>Score</small>
-            </div>
-            <div className="adjustSummaryMetrics">
-              <div><span>Blocs planifiés</span><strong>{summary.plannedCount}</strong></div>
-              <div><span>Terminés</span><strong>{summary.doneCount}</strong></div>
-              <div><span>Manqués / reportés</span><strong>{summary.missedCount + summary.postponedCount}</strong></div>
-              <div><span>Charge restante</span><strong>{formatMinutes(summary.remainingMinutes)}</strong></div>
-            </div>
+          <div className="adjustEvidenceLine">
+            <span>Pourquoi</span>
+            <p>{adjustPresentation.evidence}</p>
           </div>
-        </CommandCard>
-
-        {systemSignalPreview ? (
-          <CommandCard
-            tone={systemSignalPreview.tone}
-            className={`adjustSystemSignalCard is-signal-${systemSignalPreview.tone}`}
-            density="compact"
-            data-testid="adjust-system-signal-preview"
-          >
-            <div className="adjustSystemSignalIcon" aria-hidden="true">
-              <AlertTriangle size={17} strokeWidth={2} />
-            </div>
-            <div className="adjustSystemSignalText">
-              <span className="adjustSectionKicker">SIGNAL SYSTÈME</span>
-              <strong>{systemSignalPreview.title}</strong>
-              <p>{systemSignalPreview.message}</p>
-            </div>
-          </CommandCard>
-        ) : null}
-
-        <CommandCard tone={recommendationTone} className="adjustRecommendationCard adjustRecommendationCard--primary" density="compact">
-          <CommandSectionHeader
-            label="RECOMMANDATION"
-            title={recommendation?.title || "Choisis un ajustement simple"}
-            subtitle={recommendation?.description || "Aucune correction automatique n’est appliquée depuis cette page."}
-            tone={recommendationTone}
-          />
           <CommandCTA
             variant="primary"
+            tone={adjustPresentation.primaryAction.tone}
             onClick={handlePrimaryRecommendationAction}
           >
-            {recoveryRequest ? "Réparer ce bloc" : recommendationAction ? recommendationAction.label : "Lancer cette correction"}
+            {adjustPresentation.primaryAction.label}
           </CommandCTA>
-          {Array.isArray(recommendation?.expectedImpact) && recommendation.expectedImpact.length ? (
-            <div className="adjustImpactList">
-              <span>Impact attendu</span>
-              {recommendation.expectedImpact.map((item) => (
-                <div key={item}><Sparkles size={13} strokeWidth={2} aria-hidden="true" />{item}</div>
-              ))}
-            </div>
-          ) : null}
-          <p className="adjustHonestNote">Aucune modification n’est appliquée sans passer par l’action choisie.</p>
+          {adjustPresentation.note ? <p className="adjustHonestNote">{adjustPresentation.note}</p> : null}
         </CommandCard>
 
-        {nextBlock ? (
-          <CommandCard tone="execution" className="adjustNextBlockCard" density="compact">
-            <Target size={20} strokeWidth={2} aria-hidden="true" />
-            <div>
-              <span className="adjustSectionKicker">PROCHAIN BLOC UTILE</span>
-              <strong>{nextBlock.title}</strong>
-              <p>{formatBlockMeta(nextBlock)}</p>
-            </div>
-          </CommandCard>
-        ) : null}
-
-        {!hasUsefulData ? (
-          <CommandEmptyState
-            label="DIAGNOSTIC"
-            title="Pas encore assez de signaux"
-            subtitle="Ajuster devient utile quand des blocs sont planifiés ou exécutés. Commence par structurer ton planning ou demande au Coach IA de clarifier le prochain bloc."
-            tone="neutral"
-            className="adjustEmptyState"
-            actions={(
-              <>
-                <CommandCTA variant="primary" onClick={() => onAdjustAction?.(ADJUST_ACTION_IDS.REORGANIZE_SCHEDULE)}>
-                  Ouvrir Planning
-                </CommandCTA>
-                <CommandCTA variant="secondary" tone="ai" onClick={() => onAdjustAction?.(ADJUST_ACTION_IDS.ASK_COACH)}>
-                  Demander au Coach IA
-                </CommandCTA>
-              </>
-            )}
-          />
-        ) : null}
-
-        <section className="adjustSection" aria-labelledby="adjust-friction-title">
-          <CommandSectionHeader
-            id="adjust-friction-title"
-            label="FRICTION"
-            title="Ce qui bloque maintenant"
-            subtitle={hasSignals ? "Les signaux les plus utiles à corriger maintenant." : "Aucune friction forte détectée pour le moment."}
-            tone={hasSignals ? "attention" : "neutral"}
-            className="adjustInlineHeader"
-          />
-          {hasSignals ? (
-            <div className="adjustFrictionGrid">
-              {visibleFrictionSignals.map((signal) => (
-                <CommandCard key={signal.id} tone="attention" className="adjustFrictionCard adjustFrictionCard--preview" density="compact">
-                  <div className="adjustFrictionIcon" aria-hidden="true">
-                    <AlertTriangle size={17} strokeWidth={2} />
-                  </div>
-                  <div>
-                    <strong>{signal.title}</strong>
-                    <p>{signal.description}</p>
-                  </div>
-                </CommandCard>
-              ))}
-              {hiddenFrictionCount ? (
-                <p className="adjustFrictionMore">
-                  {hiddenFrictionCount} autre{hiddenFrictionCount > 1 ? "s" : ""} {hiddenFrictionCount > 1 ? "signaux placés" : "signal placé"} plus bas dans l’analyse.
-                </p>
-              ) : null}
-            </div>
-          ) : (
-            <CommandCard tone="neutral" className="adjustCalmCard" density="compact">
-              <CheckCircle2 size={20} strokeWidth={2} aria-hidden="true" />
-              <div>
-                <strong>Système lisible</strong>
-                <p>Rien ne justifie une alerte. Tu peux garder le prochain bloc comme point d’appui.</p>
-              </div>
-            </CommandCard>
-          )}
-        </section>
-
-        <section className="adjustSection" aria-labelledby="adjust-actions-title">
-          <CommandSectionHeader
-            id="adjust-actions-title"
-            label="ACTIONS RAPIDES"
-            title="Choisis le bon levier"
-            subtitle="Ces actions ouvrent Coach IA ou Planning. Elles ne modifient rien automatiquement."
-            tone="execution"
-            className="adjustInlineHeader"
-          />
-          <div className="adjustQuickActions">
-            {quickActions.map((action) => (
-              <ActionButton key={action.id} action={action} onAction={onAdjustAction} />
-            ))}
+        <CommandCard tone="execution" className="adjustContextCard" density="compact">
+          <Target size={19} strokeWidth={2} aria-hidden="true" />
+          <div>
+            <span className="adjustSectionKicker">{adjustPresentation.secondaryContext.label}</span>
+            <strong>{adjustPresentation.secondaryContext.title}</strong>
+            <p>{adjustPresentation.secondaryContext.description}</p>
           </div>
-        </section>
+        </CommandCard>
 
-        <TrendSnapshot trendSnapshot={trendSnapshot} />
-        <CategorySignals signals={categorySignals} />
-
-        <CommandAIBlock
-          label="COACH IA"
-          title="Besoin d’un arbitrage ?"
-          subtitle="Le Coach peut transformer ce diagnostic en plan d’action conversationnel."
-          className="adjustCoachBlock"
-        >
-          <div className="adjustCoachBlockBody">
-            <BrainCircuit size={21} strokeWidth={2} aria-hidden="true" />
-            <div>
-              <strong>Demander une analyse au Coach IA</strong>
-              <p>Tu gardes le contrôle : le Coach propose, tu valides.</p>
-            </div>
-          </div>
-          <CommandCTA tone="ai" variant="secondary" onClick={() => onAdjustAction?.(ADJUST_ACTION_IDS.ASK_COACH)}>
-            Ouvrir le Coach IA
-          </CommandCTA>
-        </CommandAIBlock>
-
+        <div className="adjustDetailSections" data-testid="adjust-detail-sections">
+          {adjustPresentation.detailSections.map((section) => (
+            <AdjustDetailSection
+              key={section.id}
+              section={section}
+              open={Boolean(openDetailSections[section.id])}
+              onToggle={() => toggleDetailSection(section.id)}
+            >
+              {section.kind === "signals" ? (
+                <AdjustSignalsDetail section={section} />
+              ) : section.kind === "trends" ? (
+                <AdjustTrendsDetail section={section} />
+              ) : section.kind === "actions" ? (
+                <AdjustActionsDetail section={section} onAction={onAdjustAction} />
+              ) : (
+                <AdjustDiagnosticDetail section={section} />
+              )}
+            </AdjustDetailSection>
+          ))}
+        </div>
       </div>
       <SystemAnalysisCommandSheet
         open={systemAnalysisSheetOpen}
