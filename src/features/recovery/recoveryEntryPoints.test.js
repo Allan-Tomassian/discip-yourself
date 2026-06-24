@@ -4,6 +4,7 @@ import {
   resolveAdjustRecoveryRequest,
   resolveHomePrimaryRecoveryRequest,
   resolveNotificationRecoveryRequest,
+  resolveObjectivesRecoveryRequest,
   resolvePlanningEntryRecoveryRequest,
 } from "./recoveryEntryPoints";
 import { RECOVERY_CONTEXT } from "./recoveryTypes";
@@ -335,6 +336,71 @@ describe("recovery entry points", () => {
         })
       ).toBeNull();
     }
+  });
+
+  it("resolves Objectifs actionability recovery requests onto the Objectifs route", () => {
+    const state = buildState({
+      occurrences: [buildOccurrence({ id: "occ_missed", status: "missed" })],
+    });
+
+    expect(
+      resolveObjectivesRecoveryRequest({
+        objective: state.goals[0],
+        actionability: {
+          state: "needs_recovery",
+          occurrence: state.occurrences[0],
+          recoveryContext: RECOVERY_CONTEXT.MISSED,
+        },
+        state,
+        selectedDateKey: DATE_KEY,
+        now: NOW,
+      })
+    ).toMatchObject({
+      occurrenceId: "occ_missed",
+      context: RECOVERY_CONTEXT.MISSED,
+      source: "objectives",
+      originTab: "objectives",
+      successTab: "objectives",
+    });
+  });
+
+  it("does not resolve stale or unsupported Objectifs recovery requests", () => {
+    const staleSource = buildOccurrence({
+      id: "occ_source",
+      status: "missed",
+      repairV1: { targetOccurrenceId: "occ_target" },
+    });
+    const staleTarget = buildOccurrence({
+      id: "occ_target",
+      start: "14:00",
+      slotKey: "14:00",
+      status: "planned",
+    });
+    const staleState = buildState({ occurrences: [staleSource, staleTarget] });
+
+    expect(
+      resolveObjectivesRecoveryRequest({
+        actionability: {
+          occurrence: staleSource,
+          recoveryContext: RECOVERY_CONTEXT.MISSED,
+        },
+        state: staleState,
+        selectedDateKey: DATE_KEY,
+        now: NOW,
+      })
+    ).toBeNull();
+
+    expect(
+      resolveObjectivesRecoveryRequest({
+        actionability: {
+          occurrence: staleSource,
+          recoveryContext: RECOVERY_CONTEXT.POSTPONED,
+        },
+        state: staleState,
+        selectedDateKey: DATE_KEY,
+        now: NOW,
+      })
+    ).toBeNull();
   });
 
   it("resolves Planning blocked, reported, and recoverable postponed entries", () => {

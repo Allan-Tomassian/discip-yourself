@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { normalizeLibraryFocusTarget } from "../app/coachCreatedViewTarget";
 import { resolveGoalType } from "../domain/goalType";
 import { getVisibleCategories } from "../domain/categoryVisibility";
@@ -10,6 +10,11 @@ import {
   buildObjectiveProgressModel,
   OBJECTIVE_PROGRESS_SOURCE,
 } from "../features/objectives/objectiveProgressModel";
+import {
+  OBJECTIVE_ACTIONABILITY_STATE,
+  buildObjectiveActionabilityModel,
+} from "../features/objectives/objectiveActionabilityModel";
+import { resolveObjectivesRecoveryRequest } from "../features/recovery/recoveryEntryPoints";
 import { AppScreen, CompactCategoryFilter } from "../shared/ui/app";
 import {
   CommandBadge,
@@ -261,6 +266,29 @@ function resolveObjectiveStatus(goal, progress = 0) {
   return { key: "active", label: "Actif", tone: "execution" };
 }
 
+function resolveActionabilityTone(actionability) {
+  if (!actionability) return "neutral";
+  if (actionability.state === OBJECTIVE_ACTIONABILITY_STATE.NEEDS_RECOVERY) return "attention";
+  if (
+    actionability.state === OBJECTIVE_ACTIONABILITY_STATE.COMPLETED ||
+    actionability.state === OBJECTIVE_ACTIONABILITY_STATE.PAUSED
+  ) {
+    return "disabled";
+  }
+  if (
+    actionability.state === OBJECTIVE_ACTIONABILITY_STATE.NEEDS_PLANNING ||
+    actionability.state === OBJECTIVE_ACTIONABILITY_STATE.NEEDS_ACTION
+  ) {
+    return "attention";
+  }
+  return "execution";
+}
+
+function shouldShowFooterAddAction(card, actionability) {
+  if (card?.type !== "outcome") return true;
+  return actionability?.state !== OBJECTIVE_ACTIONABILITY_STATE.NEEDS_ACTION;
+}
+
 function resolveActionTone(item, todayKey) {
   if (item?.tone) return item.tone;
   if (item?.isDone) return "execution";
@@ -319,8 +347,10 @@ export default function Objectives({
   onOpenCreateMenu,
   onOpenCreateAction,
   onEditItem,
+  onOpenSession,
+  onOpenRecoverySheet,
 }) {
-  const safeData = data && typeof data === "object" ? data : {};
+  const safeData = useMemo(() => (data && typeof data === "object" ? data : {}), [data]);
   const categories = useMemo(() => getVisibleCategories(safeData.categories), [safeData.categories]);
   const goals = useMemo(() => (Array.isArray(safeData.goals) ? safeData.goals : []), [safeData.goals]);
   const categoriesById = useMemo(() => new Map(categories.map((category) => [category.id, category])), [categories]);
@@ -345,6 +375,11 @@ export default function Objectives({
     () => (Array.isArray(safeData.sessionHistory) ? safeData.sessionHistory : []),
     [safeData.sessionHistory]
   );
+  const activeSession = safeData?.ui?.activeSession && typeof safeData.ui.activeSession === "object"
+    ? safeData.ui.activeSession
+    : null;
+  const selectedDateKey =
+    normalizeLocalDateKey(safeData?.ui?.selectedDateKey || safeData?.ui?.selectedDate) || todayKey;
   const progressModel = useMemo(
     () =>
       buildObjectiveProgressModel({
@@ -443,6 +478,72 @@ export default function Objectives({
       anchorRect: event.currentTarget.getBoundingClientRect(),
     });
   };
+
+  const buildCardActionability = useCallback(
+    (card) => {
+      if (!card || card.type !== "outcome") return null;
+      return buildObjectiveActionabilityModel({
+        objective: card.outcome,
+        linkedActions: card.actions,
+        occurrences: safeData.occurrences,
+        sessionHistory,
+        activeSession,
+        now: new Date(),
+        selectedDateKey,
+        state: safeData,
+      });
+    },
+    [activeSession, safeData, selectedDateKey, sessionHistory]
+  );
+
+  const handleActionabilityCta = useCallback(
+    (event, card, actionability) => {
+      event?.preventDefault?.();
+      event?.stopPropagation?.();
+      const ctaKind = actionability?.cta?.kind || "";
+      if (!ctaKind) return;
+
+      if (ctaKind === "start_session" || ctaKind === "resume_session") {
+        const occurrence = actionability?.occurrence || null;
+        const occurrenceId = occurrence?.id || safeData?.ui?.activeSession?.occurrenceId || null;
+        if (!occurrenceId) return;
+        onOpenSession?.({
+          categoryId: actionability?.action?.categoryId || card?.category?.id || null,
+          dateKey: occurrence?.date || safeData?.ui?.activeSession?.dateKey || selectedDateKey || todayKey,
+          occurrenceId,
+        });
+        return;
+      }
+
+      if (ctaKind === "repair") {
+        const request = resolveObjectivesRecoveryRequest({
+          objective: card?.outcome,
+          actionability,
+          state: safeData,
+          selectedDateKey,
+          now: new Date(),
+        });
+        if (request) onOpenRecoverySheet?.(request);
+        return;
+      }
+
+      if (ctaKind === "plan_action") {
+        const action = actionability?.action || null;
+        if (!action?.id) return;
+        onEditItem?.({
+          id: action.id,
+          type: "PROCESS",
+          categoryId: action.categoryId || card?.category?.id || null,
+        });
+        return;
+      }
+
+      if (ctaKind === "add_action") {
+        onOpenCreateAction?.(card?.category?.id || null, card?.type === "outcome" ? card?.id : null);
+      }
+    },
+    [onEditItem, onOpenCreateAction, onOpenRecoverySheet, onOpenSession, safeData, selectedDateKey, todayKey]
+  );
 
   useEffect(() => {
     const firstActionId = focusTarget?.actionIds?.[0] || null;
@@ -563,6 +664,8 @@ export default function Objectives({
               const color = resolveCategoryColor(card.category, "#30f273");
               const progressPercent = clampPercent(card.progress);
               const status = card.status || resolveObjectiveStatus(card.outcome, card.progress);
+              const actionability = buildCardActionability(card);
+              const actionabilityTone = resolveActionabilityTone(actionability);
               return (
                 <CommandCard
                   key={card.id}
@@ -608,6 +711,33 @@ export default function Objectives({
                       </span>
                     </span>
                   </button>
+                  {actionability ? (
+                    <div
+                      className="objectivesActionabilityStrip"
+                      data-objective-actionability-state={actionability.state}
+                      data-testid={`objective-actionability-${card.id}`}
+                    >
+                      <div className="objectivesActionabilityText">
+                        <CommandBadge tone={actionabilityTone} className="objectivesActionabilityBadge">
+                          {actionability.label}
+                        </CommandBadge>
+                        <span className="objectivesActionabilityDescription">
+                          {actionability.description}
+                        </span>
+                      </div>
+                      {actionability.cta ? (
+                        <CommandCTA
+                          type="button"
+                          tone={actionabilityTone === "attention" ? "attention" : "execution"}
+                          className="objectivesActionabilityCta"
+                          data-testid={`objective-actionability-cta-${card.id}`}
+                          onClick={(event) => handleActionabilityCta(event, card, actionability)}
+                        >
+                          {actionability.cta.label}
+                        </CommandCTA>
+                      ) : null}
+                    </div>
+                  ) : null}
                   {expanded ? (
                     <div className="objectivesCardBody">
                       <div className="objectivesDetailPanel">
@@ -688,14 +818,16 @@ export default function Objectives({
                             {OBJECTIVES_SCREEN_COPY.editObjective}
                           </CommandCTA>
                         ) : null}
-                        <CommandCTA
-                          variant="secondary"
-                          tone="execution"
-                          className="objectivesFooterAction"
-                          onClick={() => onOpenCreateAction?.(card.category?.id || null, card.type === "outcome" ? card.id : null)}
-                        >
-                          {OBJECTIVES_SCREEN_COPY.addAction}
-                        </CommandCTA>
+                        {shouldShowFooterAddAction(card, actionability) ? (
+                          <CommandCTA
+                            variant="secondary"
+                            tone="execution"
+                            className="objectivesFooterAction"
+                            onClick={() => onOpenCreateAction?.(card.category?.id || null, card.type === "outcome" ? card.id : null)}
+                          >
+                            {OBJECTIVES_SCREEN_COPY.addAction}
+                          </CommandCTA>
+                        ) : null}
                       </div>
                     </div>
                   ) : null}

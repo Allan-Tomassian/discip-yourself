@@ -1,7 +1,16 @@
+[data-page-id="objectives"].screenShell {
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  scroll-padding-bottom: var(--main-tab-bottom-padding, calc(var(--main-tab-bottom-clearance, 112px) + 32px));
+}
+
 [data-page-id="objectives"] .container {
   max-width: 665px;
   padding-top: calc(14px + var(--safe-top));
-  padding-bottom: var(--main-tab-bottom-padding, calc(var(--main-tab-bottom-clearance, 112px) + 32px));
+  padding-bottom: calc(var(--main-tab-bottom-padding, calc(var(--main-tab-bottom-clearance, 112px) + 32px)) + 96px);
 }
 
 .objectivesCommandPage {
@@ -222,6 +231,57 @@
   padding: 0 16px 16px;
 }
 
+.objectivesActionabilityStrip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin: 0 16px 14px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--command-execution) 28%, var(--command-border));
+  border-radius: var(--radius-14);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012)),
+    color-mix(in srgb, var(--command-surface-strong) 74%, transparent);
+}
+
+.objectivesActionabilityStrip[data-objective-actionability-state="needs_recovery"],
+.objectivesActionabilityStrip[data-objective-actionability-state="needs_planning"],
+.objectivesActionabilityStrip[data-objective-actionability-state="needs_action"] {
+  border-color: color-mix(in srgb, var(--command-attention) 42%, var(--command-border));
+}
+
+.objectivesActionabilityStrip[data-objective-actionability-state="completed"],
+.objectivesActionabilityStrip[data-objective-actionability-state="paused"] {
+  border-color: var(--command-border);
+  opacity: 0.82;
+}
+
+.objectivesActionabilityText {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.objectivesActionabilityBadge {
+  width: max-content;
+  max-width: 100%;
+}
+
+.objectivesActionabilityDescription {
+  min-width: 0;
+  color: var(--command-text);
+  font-size: 13px;
+  font-weight: 760;
+  line-height: 1.3;
+}
+
+.objectivesActionabilityCta.CommandCTA {
+  min-height: 40px;
+  padding-inline: 16px;
+  white-space: nowrap;
+}
+
 .objectivesDetailPanel {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(94px, 0.32fr);
@@ -411,11 +471,21 @@
   .objectivesDetailPanel {
     grid-template-columns: 1fr;
   }
+
+  .objectivesActionabilityStrip {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .objectivesActionabilityCta.CommandCTA {
+    width: 100%;
+  }
 }
 
 @media (prefers-reduced-motion: no-preference) {
   .objectivesCommandCard,
   .objectivesActionRow,
+  .objectivesActionabilityCta.CommandCTA,
   .lovableObjectivesCreate.CommandCTA {
     transition:
       border-color var(--motion-standard) var(--ease-standard),
@@ -423,6 +493,7 @@
   }
 
   .objectivesActionRow:hover,
+  .objectivesActionabilityCta.CommandCTA:hover,
   .lovableObjectivesCreate.CommandCTA:hover {
     transform: translateY(-1px);
   }

@@ -794,6 +794,7 @@ export default function App() {
     ({ sourceSurface = "unknown", categoryId = null, dateKey = null, occurrenceId = null } = {}) => {
       const normalizedSource =
         sourceSurface === "today" ||
+        sourceSurface === "objectives" ||
         sourceSurface === "timeline" ||
         sourceSurface === "coach" ||
         sourceSurface === "insights" ||
@@ -1568,6 +1569,15 @@ export default function App() {
         <Objectives
           data={data}
           setData={setData}
+          onOpenSession={({ categoryId, dateKey, occurrenceId }) =>
+            openSessionSurface({
+              sourceSurface: "objectives",
+              categoryId,
+              dateKey,
+              occurrenceId,
+            })
+          }
+          onOpenRecoverySheet={openRecoverySheet}
           onOpenCreateAction={(categoryId, outcomeId) =>
             launchActionCreate({
               sourceSurface: "objectives",

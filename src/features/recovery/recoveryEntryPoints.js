@@ -57,6 +57,13 @@ const POSTPONED_SAFE_OPTION_TYPES = new Set([
   RECOVERY_OPTION_TYPE.SKIP_ONCE,
 ]);
 
+const OBJECTIVES_RECOVERY_CONTEXTS = new Set([
+  RECOVERY_CONTEXT.LATE,
+  RECOVERY_CONTEXT.MISSED,
+  RECOVERY_CONTEXT.BLOCKED,
+  RECOVERY_CONTEXT.REPORTED,
+]);
+
 function safeString(value) {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -169,6 +176,14 @@ function isPostponedOccurrence(occurrence) {
   const normalized = normalizeOccurrenceStatus(occurrence?.status);
   const raw = safeString(occurrence?.status).toLowerCase();
   return normalized === OCCURRENCE_STATUS.RESCHEDULED || raw === "postponed" || raw === "reported";
+}
+
+function hasValidRepairTarget(state, occurrence) {
+  const targetId = safeString(occurrence?.repairV1?.targetOccurrenceId);
+  if (!targetId) return false;
+  const target = getOccurrenceById(state, targetId);
+  const status = normalizeOccurrenceStatus(target?.status);
+  return status === OCCURRENCE_STATUS.PLANNED || status === OCCURRENCE_STATUS.IN_PROGRESS;
 }
 
 function deriveSurfaceStatus(state, occurrence) {
@@ -330,5 +345,39 @@ export function resolvePlanningEntryRecoveryRequest({
     source: "planning",
     originTab: "timeline",
     successTab: "timeline",
+  });
+}
+
+export function resolveObjectivesRecoveryRequest({
+  objective,
+  actionability,
+  state,
+  selectedDateKey,
+  now,
+} = {}) {
+  const occurrenceId =
+    safeString(actionability?.occurrence?.id) ||
+    safeString(actionability?.occurrenceId);
+  if (!occurrenceId) return null;
+
+  const context = safeString(actionability?.recoveryContext);
+  if (!OBJECTIVES_RECOVERY_CONTEXTS.has(context)) return null;
+  const occurrence = getOccurrenceById(state, occurrenceId) || actionability?.occurrence || null;
+  if (hasValidRepairTarget(state, occurrence)) return null;
+
+  const requestDateKey =
+    normalizeDateKey(selectedDateKey) ||
+    normalizeDateKey(occurrence?.date) ||
+    normalizeDateKey(objective?.date);
+
+  return buildValidatedRecoveryRequest({
+    state,
+    occurrenceId,
+    context,
+    selectedDateKey: requestDateKey,
+    now,
+    source: "objectives",
+    originTab: "objectives",
+    successTab: "objectives",
   });
 }
