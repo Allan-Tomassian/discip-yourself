@@ -1,6 +1,6 @@
 {
-  "appId": "com.company.discipyourself",
-  "appName": "Discip-Yourself",
+  "appId": "com.allantomassian.discipyourself",
+  "appName": "Discip Yourself",
   "webDir": "dist",
   "bundledWebRuntime": false
 }

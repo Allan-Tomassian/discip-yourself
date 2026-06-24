@@ -5,7 +5,7 @@ import pkg from "../../package.json";
 
 export default function Support({ data, onBack }) {
   const safeData = data && typeof data === "object" ? data : {};
-  const version = pkg?.version || "0.0.0";
+  const version = pkg?.version || "1.0.0";
 
   return (
     <AppScreen

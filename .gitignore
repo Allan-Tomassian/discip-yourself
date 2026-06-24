@@ -10,6 +10,12 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+test-results/
+playwright-report/
+blob-report/
+screenshots/
+tmp-screenshots/
+artifacts/
 .env
 .env.*
 **/.env
@@ -23,6 +29,13 @@ dist-ssr
 !**/.env.staging.example
 !**/.env.production.example
 *.local
+*.p8
+*.p12
+*.cer
+*.pem
+*.key
+*.mobileprovision
+*.provisionprofile
 
 # Editor directories and files
 .vscode/*
