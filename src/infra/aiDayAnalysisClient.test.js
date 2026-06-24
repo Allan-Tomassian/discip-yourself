@@ -125,6 +125,17 @@ describe("requestAiDayAnalysis", () => {
     });
   });
 
+  it("uses the centralized /api base for day analysis in dev", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(responseFixture()));
+
+    await requestAiDayAnalysis(baseArgs({ baseUrl: "/api/", fetchImpl }));
+
+    const [url, options] = fetchImpl.mock.calls[0];
+    expect(url).toBe("/api/ai/day-analysis");
+    expect(options.headers.Authorization).toBe("Bearer token_test");
+    expect(options.headers["Content-Type"]).toBe("application/json");
+  });
+
   it("rejects a successful backend body that references an unknown candidate", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(
       jsonResponse(

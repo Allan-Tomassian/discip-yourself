@@ -1,7 +1,7 @@
 import { buildAiTransportMeta, logAiTransportIssue } from "./aiTransportDiagnostics";
 import { ensureAiBackendWarm } from "./aiBackendWarmup";
 import { fetchJsonWithTimeout } from "./aiRequest";
-import { readAiBackendBaseUrl } from "./aiNowClient";
+import { buildApiUrl, readAiBackendBaseUrl } from "./apiBaseUrl";
 import { LOCAL_ANALYSIS_SURFACES, normalizeLocalAnalysisSurface } from "../domain/aiPolicy";
 import { resolveAiIntentForLocalAnalysis } from "../domain/aiIntent";
 
@@ -306,7 +306,7 @@ export async function requestAiLocalAnalysis({
 
   const requestResult = await fetchJsonWithTimeout({
     fetchImpl,
-    url: `${resolvedBaseUrl}/ai/local-analysis`,
+    url: buildApiUrl("/ai/local-analysis", resolvedBaseUrl),
     timeoutMs,
     defaultTimeoutMs: DEFAULT_AI_LOCAL_ANALYSIS_TIMEOUT_MS,
     options: {

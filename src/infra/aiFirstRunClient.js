@@ -1,7 +1,7 @@
 import { buildAiTransportMeta, logAiTransportIssue } from "./aiTransportDiagnostics";
 import { ensureAiBackendWarm } from "./aiBackendWarmup";
 import { fetchJsonWithTimeout } from "./aiRequest";
-import { readAiBackendBaseUrl } from "./aiNowClient";
+import { buildApiUrl, readAiBackendBaseUrl } from "./apiBaseUrl";
 import {
   FIRST_RUN_STARTER_HINTS_RESPONSE_VERSION,
   FIRST_RUN_STARTER_HINTS_SOURCE,
@@ -469,7 +469,7 @@ export async function requestAiFirstRunWhyClarification({
 
   const requestResult = await fetchJsonWithTimeout({
     fetchImpl,
-    url: `${resolvedBaseUrl}${endpoint}`,
+    url: buildApiUrl(endpoint, resolvedBaseUrl),
     timeoutMs,
     defaultTimeoutMs: DEFAULT_AI_FIRST_RUN_WHY_CLARIFICATION_TIMEOUT_MS,
     options: {
@@ -671,7 +671,7 @@ export async function requestAiFirstRunStarterHints({
 
   const requestResult = await fetchJsonWithTimeout({
     fetchImpl,
-    url: `${resolvedBaseUrl}/ai/first-run-starter-hints`,
+    url: buildApiUrl("/ai/first-run-starter-hints", resolvedBaseUrl),
     timeoutMs,
     defaultTimeoutMs: DEFAULT_AI_FIRST_RUN_STARTER_HINTS_TIMEOUT_MS,
     options: {
@@ -903,7 +903,7 @@ export async function requestAiFirstRunPlan({
 
   const requestResult = await fetchJsonWithTimeout({
     fetchImpl,
-    url: `${resolvedBaseUrl}/ai/first-run-plan`,
+    url: buildApiUrl("/ai/first-run-plan", resolvedBaseUrl),
     timeoutMs,
     defaultTimeoutMs: DEFAULT_AI_FIRST_RUN_TIMEOUT_MS,
     options: {

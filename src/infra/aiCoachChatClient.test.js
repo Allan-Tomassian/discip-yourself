@@ -272,6 +272,31 @@ describe("aiCoachChatClient", () => {
     expect(JSON.parse(fetchImpl.mock.calls[0]?.[1]?.body || "{}").aiIntent).toBe("explore");
   });
 
+  it("utilise le prefixe /api centralise pour le coach en dev", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => buildConversationResponse({ mode: "free", proposal: null }),
+    });
+
+    await requestAiCoachChat({
+      accessToken: "token",
+      baseUrl: "/api/",
+      fetchImpl,
+      payload: {
+        selectedDateKey: "2026-03-25",
+        activeCategoryId: "cat-1",
+        mode: "free",
+        message: "Bonjour",
+        recentMessages: [],
+      },
+    });
+
+    expect(fetchImpl.mock.calls[0]?.[0]).toBe("/api/ai/chat");
+    expect(fetchImpl.mock.calls[0]?.[1]?.headers?.Authorization).toBe("Bearer token");
+    expect(fetchImpl.mock.calls[0]?.[1]?.headers?.["Content-Type"]).toBe("application/json");
+  });
+
   it("réveille le backend public avant le premier appel coach dans le navigateur", async () => {
     vi.stubGlobal("window", {
       location: {

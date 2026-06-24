@@ -107,7 +107,9 @@ describe("session launch contract", () => {
     expect(session).toContain("guidedMode={effectiveLaunchMode === \"guided\" ? guidedMode : \"\"}");
     expect(focusView).toContain('data-testid="session-guided-preview-actions"');
     expect(deck).toContain('data-testid="session-guided-plan"');
-    expect(deck).toContain("Guidage IA");
+    expect(deck).toContain('data-testid="session-guided-slide-track"');
+    expect(deck).not.toContain("sessionGuidedPlanEyebrow");
+    expect(deck).not.toContain("Guidage IA");
     expect(deck).toContain("Prochain geste");
     expect(focusView).toContain("Réajuster");
     expect(focusView).toContain("Outils");

@@ -2,71 +2,60 @@
 
 ## Cible recommandée
 
-Pour le correctif prioritaire Coach:
+En développement Vite, le navigateur ne contacte plus le backend Render directement.
 
-- validation par défaut = **front local + backend local**
-- le chemin `front local/LAN -> backend public` n'est pas la voie de debug recommandée
-- si tu gardes un backend public avec une origine privée/LAN, il faut autoriser explicitement cette origine côté backend public
+```text
+iPhone browser
+-> http://<mac-lan-ip>:5173/api/...
+-> Vite dev proxy
+-> https://discip-yourself-backend.onrender.com/...
+```
 
-- Front iPhone: `http://192.168.1.183:5173`
-- Backend local: `http://192.168.1.183:3001`
+Le changement d'IP privée du Mac ou de l'iPhone ne nécessite donc plus d'ajout dans `ALLOWED_ORIGINS`.
 
 ## 1. Frontend
 
-Le front lit `VITE_AI_BACKEND_URL` au démarrage Vite.
-
-Pour pointer vers le backend local, utiliser temporairement:
+Variables locales recommandées:
 
 ```bash
-VITE_AI_BACKEND_URL=http://192.168.1.183:3001 npm run dev:lan
+VITE_DEV_API_PROXY_TARGET=https://discip-yourself-backend.onrender.com
+VITE_AI_BACKEND_URL=https://discip-yourself-backend.onrender.com
 ```
 
-Alternative via `.env` local non versionné:
+`VITE_AI_BACKEND_URL` reste la base backend de production/preview. En développement Vite, le front utilise `/api` par défaut et `VITE_DEV_API_PROXY_TARGET` configure seulement la cible du proxy.
+
+Pour ouvrir depuis le Mac uniquement:
 
 ```bash
-VITE_AI_BACKEND_URL=http://192.168.1.183:3001
-```
-
-Puis relancer `npm run dev:lan`.
-
-Important:
-
-- si Vite était déjà lancé, il faut l'arrêter puis le relancer
-- tant que Vite n'est pas relancé, l'iPhone continue de viser l'ancienne URL
-
-## 2. Backend
-
-Le backend lit `process.env` au démarrage. Modifier un fichier `.env` sans le sourcer ne change rien au process déjà lancé.
-
-Commande de référence:
-
-```bash
-cd "/Users/allan/Desktop/discip-yourself code/backend"
-
-PORT=3001 \
-SUPABASE_URL="https://<project-ref>.supabase.co" \
-SUPABASE_SECRET_KEY="<backend-secret-key>" \
-OPENAI_API_KEY="<server-only>" \
-AI_QUOTA_MODE=dev_relaxed \
-CORS_ALLOW_PRIVATE_NETWORK_DEV=true \
-CORS_ALLOWED_ORIGINS="http://localhost:5173,http://127.0.0.1:5173" \
-LOG_LEVEL=info \
 npm run dev
 ```
 
+Pour ouvrir depuis l'iPhone sur le LAN avec les scripts actuels:
+
+```bash
+npm run dev:lan
+```
+
 Important:
 
-- `CORS_ALLOW_PRIVATE_NETWORK_DEV=true` doit être présent au démarrage
-- si tu changes une variable backend, arrête puis relance `npm run dev`
+- si Vite était déjà lancé, il faut l'arrêter puis le relancer après un changement d'env
+- l'iPhone doit ouvrir `http://<mac-lan-ip>:5173`
+- les appels IA visibles dans le navigateur doivent viser `/api/...`
 
-## 3. Vérifications réseau minimales
+## 2. Vérifications réseau minimales
 
-### Santé backend
+### Santé backend via proxy
 
-Ouvrir sur l'iPhone:
+Depuis le Mac:
+
+```bash
+curl -i "http://localhost:5173/api/health"
+```
+
+Depuis l'iPhone:
 
 ```text
-http://192.168.1.183:3001/health
+http://<mac-lan-ip>:5173/api/health
 ```
 
 Résultat attendu:
@@ -75,61 +64,47 @@ Résultat attendu:
 {"ok":true}
 ```
 
-### Preflight CORS
+### Appels IA attendus
 
-Depuis le Mac:
+Depuis l'app iPhone, déclencher une préparation IA ou un message Coach.
 
-```bash
-curl -i -X OPTIONS "http://192.168.1.183:3001/ai/chat" \
-  -H "Origin: http://192.168.1.183:5173" \
-  -H "Access-Control-Request-Method: POST" \
-  -H "Access-Control-Request-Headers: authorization,content-type"
-```
-
-Attendu:
-
-- statut `204`
-- `access-control-allow-origin: http://192.168.1.183:5173`
-
-Puis:
-
-```bash
-curl -i -X OPTIONS "http://192.168.1.183:3001/ai/now" \
-  -H "Origin: http://192.168.1.183:5173" \
-  -H "Access-Control-Request-Method: POST" \
-  -H "Access-Control-Request-Headers: authorization,content-type"
-```
-
-## 4. Vérification fonctionnelle
-
-Sur iPhone, ouvrir:
+Le navigateur doit appeler:
 
 ```text
-http://192.168.1.183:5173
+/api/ai/session-guidance
+/api/ai/chat
+/api/ai/day-analysis
 ```
 
-Puis tester:
+Render doit recevoir les routes backend sans préfixe:
 
-- ouverture du `CoachPanel`
-- envoi d'un message
-- réponse visible
-- ouverture de `coach-chat`
-- nouvelle réponse visible
-- relance d'une analyse `Today`
+```text
+POST /ai/session-guidance
+POST /ai/chat
+POST /ai/day-analysis
+```
 
-Avec `LOG_LEVEL=info`, le backend doit montrer:
+## 3. Interprétation rapide
 
-- `OPTIONS /ai/chat` puis `POST /ai/chat`
-- `OPTIONS /ai/now` puis `POST /ai/now`
-
-## 5. Interprétation rapide
-
-- `Coach indisponible sur cette origine de test` + aucun hit backend:
-  - front mal redémarré
-  - ou front encore sur Render
-- `GET /health` fonctionne mais aucun `/ai/chat` ou `/ai/now`:
-  - le front n'utilise pas le backend local
+- aucun hit `/api/...` dans le navigateur:
+  - Vite n'a pas été relancé
+  - ou le front utilise une version buildée/preview non dev
+- hit `/api/...` mais réponse proxy indisponible:
+  - vérifier `VITE_DEV_API_PROXY_TARGET`
+  - vérifier que Render répond sur `/health`
 - hits backend avec `401`:
   - auth/session
 - hits backend avec `429` ou `503`:
   - réseau OK, problème backend/quota/schema
+
+## 4. Mode backend local direct
+
+Le mode direct vers un backend local reste possible uniquement si nécessaire:
+
+```bash
+VITE_USE_DEV_API_PROXY=false
+VITE_AI_BACKEND_URL=http://<mac-lan-ip>:3001
+npm run dev:lan
+```
+
+Dans ce mode direct, les règles CORS du backend local redeviennent applicables. Ce n'est pas le mode recommandé pour tester le backend Render depuis iPhone.

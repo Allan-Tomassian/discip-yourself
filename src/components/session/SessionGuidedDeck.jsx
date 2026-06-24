@@ -234,7 +234,6 @@ export default function SessionGuidedDeck({
 
   return (
     <div className="sessionGuidedPlan" data-testid="session-guided-plan">
-      <div className="sessionGuidedPlanEyebrow">Guidage IA</div>
       {plan.mode === "active" && plan.currentItem ? (
         <div className="sessionGuidedNextAction" data-testid="session-guided-next-action">
           <div className="sessionGuidedNextActionLabel">Prochain geste</div>

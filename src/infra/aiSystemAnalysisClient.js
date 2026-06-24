@@ -2,7 +2,7 @@ import { validateSystemAnalysisResult } from "../features/system-analysis/system
 import { buildAiTransportMeta, logAiTransportIssue } from "./aiTransportDiagnostics";
 import { ensureAiBackendWarm } from "./aiBackendWarmup";
 import { fetchJsonWithTimeout } from "./aiRequest";
-import { readAiBackendBaseUrl } from "./aiNowClient";
+import { buildApiUrl, readAiBackendBaseUrl } from "./apiBaseUrl";
 
 const AI_SURFACE = "system_analysis";
 const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -247,7 +247,7 @@ export async function requestAiSystemAnalysis({
 
   const requestResult = await fetchJsonWithTimeout({
     fetchImpl,
-    url: `${resolvedBaseUrl}/ai/system-analysis`,
+    url: buildApiUrl("/ai/system-analysis", resolvedBaseUrl),
     timeoutMs: resolveTimeoutMs(timeoutMs),
     defaultTimeoutMs: DEFAULT_AI_SYSTEM_ANALYSIS_TIMEOUT_MS,
     signal,

@@ -5,7 +5,7 @@ import {
 } from "./logic/state";
 import { autoActivateScheduledGoals } from "./logic/goals";
 import { markIOSRootClass } from "./utils/dialogs";
-import { readAiBackendBaseUrl } from "./infra/aiNowClient";
+import { readAiBackendBaseUrl } from "./infra/apiBaseUrl";
 import { logAiBackendTargetOnce } from "./infra/aiTransportDiagnostics";
 import {
   AppActionRow,

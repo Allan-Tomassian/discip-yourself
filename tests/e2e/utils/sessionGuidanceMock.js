@@ -67,6 +67,13 @@ function buildSportRunbook({ occurrenceId, actionId, dateKey, title, categoryNam
             successCue: "bassin aligné",
             restSec: 20,
           },
+        ],
+      },
+      {
+        label: "Stabilisation",
+        purpose: "verrouiller la forme avant la récupération",
+        successCue: "posture stable",
+        items: [
           {
             kind: "effort",
             label: "Pont fessier",

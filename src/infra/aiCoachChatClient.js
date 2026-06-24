@@ -1,4 +1,4 @@
-import { readAiBackendBaseUrl } from "./aiNowClient";
+import { buildApiUrl, readAiBackendBaseUrl } from "./apiBaseUrl";
 import { ensureAiBackendWarm } from "./aiBackendWarmup";
 import { buildAiTransportMeta, logAiTransportIssue } from "./aiTransportDiagnostics";
 import { fetchJsonWithTimeout } from "./aiRequest";
@@ -356,7 +356,7 @@ export async function requestAiCoachChat({
 
   const requestResult = await fetchJsonWithTimeout({
     fetchImpl,
-    url: `${resolvedBaseUrl}/ai/chat`,
+    url: buildApiUrl("/ai/chat", resolvedBaseUrl),
     timeoutMs,
     defaultTimeoutMs: DEFAULT_AI_COACH_CHAT_TIMEOUT_MS,
     options: {

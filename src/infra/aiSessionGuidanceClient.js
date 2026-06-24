@@ -1,7 +1,7 @@
 import { buildAiTransportMeta, logAiTransportIssue } from "./aiTransportDiagnostics";
 import { ensureAiBackendWarm } from "./aiBackendWarmup";
 import { fetchJsonWithTimeout } from "./aiRequest";
-import { readAiBackendBaseUrl } from "./aiNowClient";
+import { buildApiUrl, readAiBackendBaseUrl } from "./apiBaseUrl";
 import { resolveAiIntentForSessionGuidance } from "../domain/aiIntent";
 
 const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -300,7 +300,7 @@ export async function requestAiSessionGuidance({
 
   const requestResult = await fetchJsonWithTimeout({
     fetchImpl,
-    url: `${resolvedBaseUrl}/ai/session-guidance`,
+    url: buildApiUrl("/ai/session-guidance", resolvedBaseUrl),
     timeoutMs: resolvedTimeoutMs,
     defaultTimeoutMs: resolvedTimeoutMs,
     options: {

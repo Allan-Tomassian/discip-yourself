@@ -291,6 +291,11 @@ test("guided preview opens directly after preparing and can return to standard",
   await openGuidedPreview(page, buildState());
 
   await expect(page.getByTestId("session-guided-plan")).toBeVisible();
+  await expect(page.getByTestId("session-guided-plan").getByText("Guidage IA", { exact: true })).toHaveCount(0);
+  await expect(page.getByTestId("session-guided-plan").getByText("Étape 1/4")).toBeVisible();
+  await expect(page.getByTestId("session-guided-plan").getByText("Rythme guidé").first()).toBeVisible();
+  await expect(page.getByTestId("session-guided-plan").getByText("Aperçu").first()).toBeVisible();
+  await expect(page.locator(".sessionGuidedSlideFrame")).toHaveCount(4);
   await expect(page.getByRole("button", { name: "Démarrer le guidage" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Régénérer" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Réajuster" })).toHaveCount(0);
@@ -306,11 +311,11 @@ test("active guided keeps the spatial deck visible without surfacing recenter ch
   await openGuidedActive(page, buildState());
 
   await expect(page.getByTestId("session-guided-active-step-notice")).toHaveCount(0);
-  await expect(page.locator(".sessionRuntimeProgressLabel")).toHaveText("Étape 1/3");
+  await expect(page.locator(".sessionRuntimeProgressLabel")).toHaveText("Étape 1/4");
   await expect(page.getByTestId("session-guided-next-action")).toBeVisible();
   await expect(page.getByText("Prochain geste")).toBeVisible();
   await expect(page.getByTestId("session-guided-slide-track")).toBeVisible();
-  await expect(page.getByTestId("session-guided-slide-viewed")).toContainText("Étape 1/3");
+  await expect(page.getByTestId("session-guided-slide-viewed")).toContainText("Étape 1/4");
   await attachScreenshot(page, testInfo, "session-guided-spatial-consulted.png");
 });
 

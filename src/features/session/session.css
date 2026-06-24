@@ -220,8 +220,7 @@
 .sessionRuntimeBriefLabel,
 .sessionLaunchBriefLabel,
 .sessionLaunchCategory,
-.sessionLaunchSectionEyebrow,
-.sessionGuidedPlanEyebrow {
+.sessionLaunchSectionEyebrow {
   font-size: var(--font-micro);
   font-weight: var(--font-weight-semibold);
   letter-spacing: 0.1em;
@@ -1088,8 +1087,7 @@
 }
 
 .sessionLaunchSectionEyebrow--guided,
-.sessionRuntimeStack.is-guided .sessionRuntimeHeroEyebrow,
-.sessionRuntimeStack.is-guided .sessionGuidedPlanEyebrow {
+.sessionRuntimeStack.is-guided .sessionRuntimeHeroEyebrow {
   color: color-mix(in srgb, var(--session-guided) 82%, white 18%);
 }
 
@@ -1100,8 +1098,7 @@
   color: color-mix(in srgb, var(--text-secondary) 88%, white 12%) !important;
 }
 
-.sessionRuntimeStack.is-guided .sessionRuntimeHero,
-.sessionRuntimeStack.is-guided .sessionGuidedSurface {
+.sessionRuntimeStack.is-guided .sessionRuntimeHero {
   border-color: var(--session-guided-border);
   box-shadow:
     0 24px 78px rgba(0, 0, 0, 0.3),

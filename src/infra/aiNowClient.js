@@ -3,10 +3,10 @@ import {
   TODAY_INTERVENTION_TYPE,
   TODAY_BACKEND_RESOLUTION_STATUS,
 } from "../domain/todayIntervention";
+import { buildApiUrl, isAiBackendConfigured, readAiBackendBaseUrl } from "./apiBaseUrl";
 import { ensureAiBackendWarm } from "./aiBackendWarmup";
 import { buildAiTransportMeta, logAiTransportIssue } from "./aiTransportDiagnostics";
 import { fetchJsonWithTimeout } from "./aiRequest";
-import { readAiBackendBaseUrl as readAiBackendBaseUrlFromEnv } from "./frontendEnv";
 import { resolveAiIntentForNow } from "../domain/aiIntent";
 
 const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -68,13 +68,7 @@ function summarizeBodyShape(body) {
   };
 }
 
-export function readAiBackendBaseUrl(rawValue) {
-  return readAiBackendBaseUrlFromEnv(rawValue);
-}
-
-export function isAiBackendConfigured(rawValue) {
-  return Boolean(readAiBackendBaseUrl(rawValue));
-}
+export { isAiBackendConfigured, readAiBackendBaseUrl };
 
 export function normalizeAiNowPayload(input) {
   const source = isPlainObject(input) ? input : {};
@@ -326,7 +320,7 @@ export async function requestAiNow({
 
   const requestResult = await fetchJsonWithTimeout({
     fetchImpl,
-    url: `${resolvedBaseUrl}/ai/now`,
+    url: buildApiUrl("/ai/now", resolvedBaseUrl),
     timeoutMs,
     defaultTimeoutMs: DEFAULT_AI_NOW_TIMEOUT_MS,
     options: {

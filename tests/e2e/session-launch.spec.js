@@ -231,7 +231,43 @@ test("guided launch shows preparing, spatial preview, and a compact guided runti
   await expect(page.getByTestId("session-guided-plan")).toBeVisible();
   await expect(page.getByTestId("session-guided-preview-actions")).toBeVisible();
   await expect(page.getByRole("button", { name: "Régénérer" })).toBeVisible();
-  await expect(page.getByTestId("session-guided-plan").getByText("Guidage IA", { exact: true })).toBeVisible();
+  const guidedPlan = page.getByTestId("session-guided-plan");
+  await expect(guidedPlan.getByText("Guidage IA", { exact: true })).toHaveCount(0);
+  await expect(guidedPlan.getByText("Étape 1/4")).toBeVisible();
+  await expect(guidedPlan.getByText("Rythme guidé").first()).toBeVisible();
+  await expect(guidedPlan.getByText("Aperçu").first()).toBeVisible();
+  await expect(page.locator(".sessionGuidedSlideFrame")).toHaveCount(4);
+  await expect(page.locator(".sessionGuidedSlide").first()).toBeVisible();
+  const guidedPlanStyle = await guidedPlan.evaluate((element) => {
+    const style = window.getComputedStyle(element);
+    return {
+      backgroundColor: style.backgroundColor,
+      backgroundImage: style.backgroundImage,
+      borderRadius: style.borderRadius,
+      borderStyle: style.borderStyle,
+      borderTopWidth: style.borderTopWidth,
+      boxShadow: style.boxShadow,
+      paddingTop: style.paddingTop,
+    };
+  });
+  expect(guidedPlanStyle).toEqual({
+    backgroundColor: "rgba(0, 0, 0, 0)",
+    backgroundImage: "none",
+    borderRadius: "0px",
+    borderStyle: "none",
+    borderTopWidth: "0px",
+    boxShadow: "none",
+    paddingTop: "0px",
+  });
+  const guidedSlideStyle = await page.locator(".sessionGuidedSlide").first().evaluate((element) => {
+    const style = window.getComputedStyle(element);
+    return {
+      borderStyle: style.borderStyle,
+      borderTopWidth: style.borderTopWidth,
+    };
+  });
+  expect(guidedSlideStyle.borderTopWidth).not.toBe("0px");
+  expect(guidedSlideStyle.borderStyle).not.toBe("none");
   await expect(page.getByText("Mise en route")).toBeVisible();
   await expect(page.locator(".lovableTabBarWrap")).toHaveCount(0);
   await expect(page.locator(".pageHeader")).toHaveCount(0);
@@ -252,8 +288,8 @@ test("guided launch shows preparing, spatial preview, and a compact guided runti
   await expect(page.getByTestId("session-action-protocol")).toHaveCount(0);
   await expect(page.getByTestId("session-action-dock")).toBeVisible();
   await expect(page.locator(".pageHeader")).toHaveCount(0);
-  await expect(page.getByTestId("session-guided-plan").getByText("Guidage IA", { exact: true })).toBeVisible();
-  await expect(page.locator(".sessionRuntimeProgressLabel")).toHaveText("Étape 1/3");
+  await expect(page.getByTestId("session-guided-plan").getByText("Guidage IA", { exact: true })).toHaveCount(0);
+  await expect(page.locator(".sessionRuntimeProgressLabel")).toHaveText("Étape 1/4");
   await expect(page.getByTestId("session-guided-next-action")).toBeVisible();
   await expect(page.getByText("Prochain geste")).toBeVisible();
   await expect(page.getByRole("button", { name: "Réajuster" })).toBeVisible();

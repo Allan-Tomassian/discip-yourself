@@ -52,15 +52,11 @@
 .sessionGuidedPlan {
   display: grid;
   gap: 14px;
-  padding: 22px;
-  border: 1px solid color-mix(in srgb, var(--accent-primary) 16%, rgba(255, 255, 255, 0.08));
-  border-radius: 28px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.015), rgba(255, 255, 255, 0)),
-    var(--lovable-surface);
-  box-shadow:
-    var(--lovable-shadow-card),
-    0 0 0 1px color-mix(in srgb, var(--accent-primary) 8%, transparent);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .sessionGuidedSurface {
@@ -705,7 +701,6 @@
 
 @media (max-width: 767px) {
   .sessionGuidedPlan {
-    padding: 20px;
     gap: 12px;
   }
 

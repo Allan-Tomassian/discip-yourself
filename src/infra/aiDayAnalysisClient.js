@@ -2,7 +2,7 @@ import { validateDayAnalysisResult } from "../features/day-analysis/dayAnalysisC
 import { buildAiTransportMeta, logAiTransportIssue } from "./aiTransportDiagnostics";
 import { ensureAiBackendWarm } from "./aiBackendWarmup";
 import { fetchJsonWithTimeout } from "./aiRequest";
-import { readAiBackendBaseUrl } from "./aiNowClient";
+import { buildApiUrl, readAiBackendBaseUrl } from "./apiBaseUrl";
 
 const AI_SURFACE = "day_analysis";
 const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -225,7 +225,7 @@ export async function requestAiDayAnalysis({
 
   const requestResult = await fetchJsonWithTimeout({
     fetchImpl,
-    url: `${resolvedBaseUrl}/ai/day-analysis`,
+    url: buildApiUrl("/ai/day-analysis", resolvedBaseUrl),
     timeoutMs: resolveTimeoutMs(timeoutMs),
     defaultTimeoutMs: DEFAULT_AI_DAY_ANALYSIS_TIMEOUT_MS,
     signal,

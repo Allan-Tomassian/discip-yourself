@@ -1,3 +1,4 @@
+import { buildApiUrl } from "./apiBaseUrl";
 import { fetchJsonWithTimeout } from "./aiRequest";
 
 export const AI_BACKEND_WARMUP_TIMEOUT_MS = 30000;
@@ -114,7 +115,7 @@ export async function ensureAiBackendWarm({
   inFlightWarmup = (async () => {
     const requestResult = await fetchJsonWithTimeout({
       fetchImpl,
-      url: `${normalizedBaseUrl}/health`,
+      url: buildApiUrl("/health", normalizedBaseUrl),
       timeoutMs,
       defaultTimeoutMs: AI_BACKEND_WARMUP_TIMEOUT_MS,
       options: {

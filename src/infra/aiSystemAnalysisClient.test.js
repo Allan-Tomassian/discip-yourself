@@ -248,6 +248,17 @@ describe("requestAiSystemAnalysis", () => {
     expect(result.result.executiveSummary).toContain("Ton système");
   });
 
+  it("uses the centralized /api base for system analysis in dev", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(resultFixture()));
+
+    await requestAiSystemAnalysis(baseArgs({ baseUrl: "/api/", fetchImpl }));
+
+    const [url, options] = fetchImpl.mock.calls[0];
+    expect(url).toBe("/api/ai/system-analysis");
+    expect(options.headers.Authorization).toBe("Bearer token_test");
+    expect(options.headers["Content-Type"]).toBe("application/json");
+  });
+
   it("validates v2 system analysis responses", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(v2ResultFixture()));
 

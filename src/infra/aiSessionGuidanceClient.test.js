@@ -77,6 +77,33 @@ describe("aiSessionGuidanceClient", () => {
     expect(fetchImpl.mock.calls[0]?.[1]?.headers?.["x-discip-surface"]).toBe("session");
   });
 
+  it("utilise le prefixe /api centralise pour session-guidance en dev", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: async () => ({
+        error: "UNKNOWN_BACKEND_ERROR",
+        requestId: "req-session-guidance-dev-proxy",
+      }),
+    });
+
+    await requestAiSessionGuidance({
+      accessToken: "token",
+      baseUrl: "/api/",
+      fetchImpl,
+      payload: {
+        mode: "prepare",
+        dateKey: "2026-03-25",
+        occurrenceId: "occ-1",
+        actionId: "goal-1",
+      },
+    });
+
+    expect(fetchImpl.mock.calls[0]?.[0]).toBe("/api/ai/session-guidance");
+    expect(fetchImpl.mock.calls[0]?.[1]?.headers?.Authorization).toBe("Bearer token");
+    expect(fetchImpl.mock.calls[0]?.[1]?.headers?.["Content-Type"]).toBe("application/json");
+  });
+
   it("expose currentRunbook and fallbackToolPlan in the canonical payload", () => {
     const payload = normalizeAiSessionGuidancePayload({
       mode: "adjust",
