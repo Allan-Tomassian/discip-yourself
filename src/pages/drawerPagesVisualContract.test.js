@@ -23,7 +23,6 @@ describe("drawer pages visual contract", () => {
       "pages/Support.jsx",
       "pages/History.jsx",
       "pages/Journal.jsx",
-      "pages/MicroActions.jsx",
       "pages/Privacy.jsx",
       "pages/Legal.jsx",
       "pages/Data.jsx",
@@ -48,7 +47,6 @@ describe("drawer pages visual contract", () => {
       "pages/Legal.jsx",
       "pages/Data.jsx",
     ].map(readSrc);
-    const microActions = readSrc("pages/MicroActions.jsx");
     const drawer = readSrc("components/navigation/MainDrawer.jsx");
 
     for (const source of pages) {
@@ -59,13 +57,29 @@ describe("drawer pages visual contract", () => {
       ).toBe(true);
     }
 
-    expect(microActions).toContain("headerTitle");
-    expect(microActions).toContain("SectionHeader");
-    expect(microActions).not.toContain("<GatePage");
     expect(drawer).toContain("<AppDrawer");
     expect(drawer).toContain("drawerMenuPanel");
     expect(drawer).toContain('title="Menu"');
     expect(drawer).toContain("AppHeader");
+    expect(drawer).not.toContain('"micro-actions"');
+    expect(drawer).not.toContain("Micro-actions");
+  });
+
+  it("keeps MicroActions dormant and absent from visible drawer navigation", () => {
+    const microActions = readSrc("pages/MicroActions.jsx");
+    const drawer = readSrc("components/navigation/MainDrawer.jsx");
+
+    expect(microActions).toContain('headerTitle="Surface indisponible"');
+    expect(microActions).toContain("version TestFlight");
+    expect(microActions).toContain("SectionHeader");
+    expect(microActions).not.toContain("<GatePage");
+    expect(microActions).not.toContain("MicroActionsCard");
+    expect(microActions).not.toContain("RewardedAdModal");
+    expect(microActions).not.toContain("walletV1");
+    expect(microActions).not.toContain("totemV1");
+    expect(microActions).not.toContain("showRewardedAd");
+    expect(drawer).not.toContain('"micro-actions"');
+    expect(drawer).not.toContain("Micro-actions");
   });
 
   it("keeps drawer-linked simple pages on shared section header primitives", () => {

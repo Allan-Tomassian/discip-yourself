@@ -22,7 +22,6 @@ describe("secondary pages visual canon contract", () => {
       "pages/Privacy.jsx",
       "pages/Legal.jsx",
       "pages/Data.jsx",
-      "pages/MicroActions.jsx",
     ].map(readSrc);
 
     for (const source of pages) {
@@ -31,17 +30,18 @@ describe("secondary pages visual canon contract", () => {
     }
   });
 
-  it("keeps MicroActions on the same secondary page grammar", () => {
+  it("keeps MicroActions dormant instead of menu-linked reward UI", () => {
     const page = readSrc("pages/MicroActions.jsx");
-    const card = readSrc("ui/today/MicroActionsCard.jsx");
 
-    expect(page).toContain("headerTitle");
+    expect(page).toContain('headerTitle="Surface indisponible"');
+    expect(page).toContain("version TestFlight");
     expect(page).toContain("SectionHeader");
     expect(page).not.toContain("<GatePage");
-    expect(card).toContain("AppCard");
-    expect(card).toContain("StatusBadge");
-    expect(card).toContain("AppInlineMetaCard");
-    expect(card).not.toContain('<div className="cardSectionTitle">Micro-actions</div>');
+    expect(page).not.toContain("MicroActionsCard");
+    expect(page).not.toContain("RewardedAdModal");
+    expect(page).not.toContain("walletV1");
+    expect(page).not.toContain("totemV1");
+    expect(page).not.toContain("showRewardedAd");
   });
 
   it("uses shared section header primitives on simple secondary pages", () => {

@@ -1,6 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { BookOpen, Calendar, Compass, Home, Menu } from "lucide-react";
-import WalletBadge from "./WalletBadge";
 import { AppSurface } from "../shared/ui/app";
 import { SURFACE_LABELS } from "../ui/labels";
 import "../features/navigation/topMenuGate.css";
@@ -16,9 +15,6 @@ export default function TopNav({
   active,
   setActive,
   onMenuOpen,
-  coinsBalance = 0,
-  coinDeltaAmount = 0,
-  coinDeltaKey = "",
   mode = "full",
 }) {
   const navTopRef = useRef(null);
@@ -32,7 +28,6 @@ export default function TopNav({
   );
   const navMode = mode === "reduced" ? "reduced" : "full";
   const useIconOnlyTabs = isMobileLayout || navMode === "reduced";
-  const showWallet = navMode === "full" && !isMobileLayout;
 
   useLayoutEffect(() => {
     if (typeof window === "undefined") return;
@@ -180,18 +175,6 @@ export default function TopNav({
                     );
                   })}
                 </div>
-                {showWallet ? (
-                  <div className="navActions topNavWalletSlot">
-                    <WalletBadge
-                      className="topNavWalletBadge"
-                      balance={coinsBalance}
-                      deltaAmount={coinDeltaAmount}
-                      deltaKey={coinDeltaKey}
-                      dataTestId="topnav-coins-balance"
-                      showDelta
-                    />
-                  </div>
-                ) : null}
               </div>
             </AppSurface>
           </div>

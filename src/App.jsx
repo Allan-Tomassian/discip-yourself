@@ -32,7 +32,6 @@ import Faq from "./pages/Faq";
 import History from "./pages/History";
 import Journal from "./pages/Journal";
 import Legal from "./pages/Legal";
-import MicroActions from "./pages/MicroActions";
 import EditItem from "./pages/EditItem";
 import CreateItem from "./pages/CreateItem";
 import CategoryDetailView from "./pages/CategoryDetailView";
@@ -1134,7 +1133,7 @@ export default function App() {
   );
 
   // Theme reconciliation:
-  // - The app now ships a single locked design system.
+  // - The app now ships a single locked interface.
   // - Keep persisted ui.theme/pageThemes/pageAccents aligned silently for backward compatibility.
   useEffect(() => {
     const ui = safeData?.ui && typeof safeData.ui === "object" ? safeData.ui : {};
@@ -1682,8 +1681,6 @@ export default function App() {
         />
       ) : tab === "journal" ? (
         <Journal data={data} setData={setData} onBack={handleSecondaryBack} />
-      ) : tab === "micro-actions" ? (
-        <MicroActions data={data} setData={setData} isPremiumPlan={isPremiumPlan} onBack={handleSecondaryBack} />
       ) : tab === "history" ? (
         <History data={data} onBack={handleSecondaryBack} />
       ) : tab === "account" ? (

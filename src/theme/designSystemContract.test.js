@@ -10,7 +10,7 @@ function readSrc(relPath) {
   return fs.readFileSync(path.join(SRC_ROOT, relPath), "utf8");
 }
 
-describe("design system contract", () => {
+describe("app interface contract", () => {
   it("locks the app to a single shipped theme", () => {
     expect(listThemes()).toEqual([DEFAULT_THEME]);
     expect(getThemeName({}, "home")).toBe(DEFAULT_THEME);
@@ -20,13 +20,17 @@ describe("design system contract", () => {
     expect(getThemeAccent({}, "home")).toBe(BRAND_ACCENT);
   });
 
-  it("removes the old theme picker flow from user-facing settings", () => {
+  it("keeps settings user-facing while removing the old theme picker flow", () => {
     const preferences = readSrc("pages/Preferences.jsx");
 
-    expect(preferences).toContain("Système visuel actif");
+    expect(preferences).toContain("Interface sombre active.");
+    expect(preferences).toContain("Confort visuel et lisibilité.");
     expect(preferences).not.toContain("preferences-theme-select");
     expect(preferences).not.toContain("Choisis le thème de l'app");
     expect(preferences).not.toContain("ThemePicker");
+    expect(preferences).not.toMatch(/design system/i);
+    expect(preferences).not.toMatch(/migration/i);
+    expect(preferences).not.toMatch(/legacy/i);
   });
 
   it("keeps the canonical navigation labels and app-wide theme bootstrapping", () => {

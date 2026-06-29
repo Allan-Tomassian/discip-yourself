@@ -11,7 +11,6 @@ const TABS = new Set([
   "coach",
   "create-item",
   "journal",
-  "micro-actions",
   "history",
   "edit-item",
   "session",
@@ -98,7 +97,6 @@ function buildPathForTab({
   if (tab === "coach") return "/coach";
   if (tab === "onboarding") return "/onboarding";
   if (tab === "journal") return "/journal";
-  if (tab === "micro-actions") return "/micro-actions";
   if (tab === "history") return "/history";
   if (tab === "account") return "/account";
   if (tab === "settings") return "/settings";
@@ -141,7 +139,6 @@ export function parseNavigationState(pathname, search, historyState = null) {
   else if (isAdjustPath || isInsightsPath) initialTab = "adjust";
   else if (initialPath.startsWith("/coach")) initialTab = "coach";
   else if (initialPath.startsWith("/journal")) initialTab = "journal";
-  else if (initialPath.startsWith("/micro-actions")) initialTab = "micro-actions";
   else if (initialPath.startsWith("/history")) initialTab = "history";
   else if (initialPath.startsWith("/session")) initialTab = "session";
   else if (initialPath.startsWith("/account")) initialTab = "account";
@@ -312,6 +309,7 @@ export function useAppNavigation({ safeData, setData }) {
     if (pathname === "/preferences") window.history.replaceState({}, "", "/settings");
     else if (pathname === "/subscription") window.history.replaceState({}, "", "/billing");
     else if (pathname === "/terms") window.history.replaceState({}, "", "/legal");
+    else if (pathname === "/micro-actions") window.history.replaceState({}, "", "/");
   }, []);
 
   useEffect(() => {

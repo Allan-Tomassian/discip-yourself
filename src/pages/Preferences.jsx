@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { DEFAULT_THEME } from "../theme/themeTokens";
 import { getPlanLimits, isPremium } from "../logic/entitlements";
 import { isClickSoundEnabled, setClickSoundEnabled } from "../shared/ui/sound/useClickSound";
 import { safeConfirm } from "../utils/dialogs";
@@ -24,7 +23,6 @@ export default function Preferences({ data, setData, onBack, onNavigate }) {
 
   const premium = isPremium(safeData);
   const limits = getPlanLimits();
-  const visualSystemLabel = DEFAULT_THEME.charAt(0).toUpperCase() + DEFAULT_THEME.slice(1);
   const [soundEnabled, setSoundEnabledState] = useState(() => isClickSoundEnabled());
   const [nowMs] = useState(() => Date.now());
 
@@ -72,18 +70,18 @@ export default function Preferences({ data, setData, onBack, onNavigate }) {
     >
       <section className="mainPageSection">
         <SectionHeader
-          title="Apparence"
-          subtitle="Le design system global est appliqué partout dans l’app."
+          title="Interface"
+          subtitle="Confort visuel et lisibilité."
         />
         <div className="mainPageSectionBody preferencesGateSummary" data-tour-id="settings-theme">
           <p className="preferencesGateNote preferencesGateNoteStrong">
-            Système visuel actif : {visualSystemLabel}
+            Interface sombre active.
           </p>
           <p className="preferencesGateNote">
-            Toutes les surfaces partagent désormais le même thème sombre, calme et responsive.
+            Les écrans restent sobres pour protéger l’attention pendant l’exécution.
           </p>
           <p className="preferencesGateNote">
-            Les anciennes préférences visuelles sont conservées uniquement pour compatibilité technique, sans effet sur l’interface.
+            Les options avancées d’apparence arriveront après la version de lancement.
           </p>
         </div>
       </section>
@@ -139,7 +137,7 @@ export default function Preferences({ data, setData, onBack, onNavigate }) {
       <section className="mainPageSection">
         <SectionHeader
           title="Introduction"
-          subtitle="Relancer l’introduction ou le tutoriel produit."
+          subtitle="Revoir la mise en route ou l’aide intégrée."
         />
         <div className="mainPageSectionBody">
           <AppActionRow align="start" className="preferencesGateActions preferencesGateActionsColumn">
@@ -186,7 +184,7 @@ export default function Preferences({ data, setData, onBack, onNavigate }) {
       <section className="mainPageSection">
         <SectionHeader
           title="Interactions"
-          subtitle="Animation de pression et son optionnel."
+          subtitle="Retours visuels et son optionnel."
         />
         <div className="mainPageSectionBody">
           <AppSettingRow

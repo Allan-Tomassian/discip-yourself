@@ -8,7 +8,6 @@ const SECTIONS = [
     title: "Personnel",
     items: [
       { id: "journal", label: SURFACE_LABELS.journal },
-      { id: "micro-actions", label: "Micro-actions" },
       { id: "history", label: SURFACE_LABELS.history },
     ],
   },
